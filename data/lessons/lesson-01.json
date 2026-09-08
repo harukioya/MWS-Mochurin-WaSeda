@@ -1,0 +1,126 @@
+{
+  "id": "lesson-01",
+  "title": "Anatomy of an Infostealer",
+  "tagline": "Follow a credential-stealer from first look to phone-home — and learn to read each move.",
+  "difficulty": "Beginner",
+  "family": "Infostealer",
+  "source": {
+    "type": "synthetic",
+    "note": "Illustrative, ATT&CK-accurate teaching example. NOT captured from executing a real sample. IPs use the RFC 5737 documentation range and example.com; nothing here is live."
+  },
+  "stages": [
+    {
+      "id": "surface",
+      "name": "Surface — first look",
+      "intro": "Before running anything, an analyst reads the file's surface: its structure, strings, and imports. Here is what static triage shows.",
+      "events": [
+        { "type": "file", "detail": "PE32 executable, .text section entropy 7.91/8.0 (very high — likely packed/compressed).", "attck": { "id": "T1027.002", "name": "Obfuscated Files: Software Packing" } },
+        { "type": "import", "detail": "Imports: VirtualAlloc, VirtualProtect, CreateRemoteThread, WriteProcessMemory.", "attck": { "id": "T1055", "name": "Process Injection (capability present)" } },
+        { "type": "string", "detail": "Embedded base64 blob (~40 KB) and the literal string \"powershell -enc\".", "attck": { "id": "T1027", "name": "Obfuscated Files or Information" } }
+      ],
+      "quiz": {
+        "q": "Which single observation most strongly suggests this file is packed?",
+        "options": [
+          "It is a PE32 executable",
+          "The .text section has entropy of 7.91 out of 8.0",
+          "It imports VirtualAlloc",
+          "It contains the string \"powershell\""
+        ],
+        "correct": 1,
+        "explain": "Near-maximum entropy (≈8.0) means the section's bytes look random — the signature of compression or encryption, i.e. packing. Imports and strings are hints about capability, but high entropy is the direct evidence of packing."
+      }
+    },
+    {
+      "id": "launch",
+      "name": "Launch — it starts running",
+      "intro": "In a sandbox, the sample is executed. The first thing it does is spawn a hidden helper.",
+      "events": [
+        { "type": "process", "detail": "stealer.exe -> powershell.exe -WindowStyle Hidden -EncodedCommand SQBFAFgA...", "attck": { "id": "T1059.001", "name": "Command and Scripting Interpreter: PowerShell" } },
+        { "type": "process", "detail": "PowerShell decodes the base64 command in memory and never writes it to disk.", "attck": { "id": "T1027", "name": "Obfuscated Files or Information" } }
+      ],
+      "quiz": {
+        "q": "Why launch PowerShell with -EncodedCommand and -WindowStyle Hidden?",
+        "options": [
+          "To make the script run faster",
+          "To hide the real command from casual inspection and run without a visible window",
+          "Because PowerShell cannot run plain text",
+          "To improve compatibility with old Windows versions"
+        ],
+        "correct": 1,
+        "explain": "Base64-encoding hides the command from quick log inspection, and a hidden window avoids alerting the user. Neither is required to run PowerShell — both exist to stay quiet."
+      }
+    },
+    {
+      "id": "recon",
+      "name": "Recon — is anyone watching?",
+      "intro": "Before doing damage, capable malware checks whether it is being analysed.",
+      "events": [
+        { "type": "registry", "detail": "Reads HKLM\\SYSTEM\\...\\Disk\\Enum looking for 'VBOX', 'VMWARE', 'QEMU'.", "attck": { "id": "T1497.001", "name": "Virtualization/Sandbox Evasion: System Checks" } },
+        { "type": "process", "detail": "Enumerates running processes for 'wireshark', 'procmon', 'x64dbg'.", "attck": { "id": "T1057", "name": "Process Discovery" } },
+        { "type": "api", "detail": "Calls GetSystemInfo, GetUserNameW, GetComputerNameW.", "attck": { "id": "T1082", "name": "System Information Discovery" } }
+      ],
+      "quiz": {
+        "q": "The sample looks for 'VBOX' and 'VMWARE' in device strings. What is it trying to decide?",
+        "options": [
+          "Whether it has permission to run",
+          "Whether it is inside an analysis virtual machine",
+          "Which antivirus is installed",
+          "Whether the network is online"
+        ],
+        "correct": 1,
+        "explain": "Those strings appear on virtual disks/devices. Finding them suggests a VM — often an analyst's sandbox — so the malware may go dormant to avoid being studied. This is sandbox evasion (T1497)."
+      }
+    },
+    {
+      "id": "persistence",
+      "name": "Persistence — surviving a reboot",
+      "intro": "To keep stealing after the machine restarts, the malware plants itself where Windows will re-launch it.",
+      "events": [
+        { "type": "registry", "detail": "Writes HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Updater = %APPDATA%\\svc\\updater.exe", "attck": { "id": "T1547.001", "name": "Boot or Logon Autostart: Registry Run Keys" } },
+        { "type": "file", "detail": "Copies itself to %APPDATA%\\svc\\updater.exe and sets it hidden.", "attck": { "id": "T1564.001", "name": "Hide Artifacts: Hidden Files and Directories" } }
+      ],
+      "quiz": {
+        "q": "A new value appears under HKCU\\...\\CurrentVersion\\Run. Which artifact is the persistence mechanism?",
+        "options": [
+          "The %APPDATA%\\svc folder",
+          "The Run registry key entry pointing at updater.exe",
+          "The hidden-file attribute",
+          "The base64 blob from earlier"
+        ],
+        "correct": 1,
+        "explain": "The Run key is what makes Windows re-launch the program at every logon — that is the persistence (T1547.001). The copied file and hidden attribute support it, but the Run entry is the mechanism itself."
+      }
+    },
+    {
+      "id": "exfil",
+      "name": "Exfiltration — the payoff",
+      "intro": "Now the real goal: collect secrets and send them out. Watch the network.",
+      "events": [
+        { "type": "file", "detail": "Reads %LOCALAPPDATA%\\Google\\Chrome\\User Data\\Default\\Login Data (browser credential store).", "attck": { "id": "T1555.003", "name": "Credentials from Password Stores: Web Browsers" } },
+        { "type": "network", "detail": "DNS query for cdn.example.com; TLS connection to 203.0.113.10:443.", "attck": { "id": "T1071.001", "name": "Application Layer Protocol: Web Protocols" } },
+        { "type": "network", "detail": "HTTP POST of a 2.1 MB archive to https://cdn.example.com/upload — the stolen data leaving the host.", "attck": { "id": "T1041", "name": "Exfiltration Over C2 Channel" } }
+      ],
+      "quiz": {
+        "q": "This is the moment your 外部流出 (exfiltration) logger fires. What just happened?",
+        "options": [
+          "The malware downloaded an update",
+          "Stolen browser credentials were uploaded to an external server",
+          "The system checked for internet connectivity",
+          "A Windows service restarted"
+        ],
+        "correct": 1,
+        "explain": "It read the browser's credential store (T1555.003), then POSTed a 2.1 MB archive out to an external host (T1041). Data leaving the machine to an attacker-controlled server is exfiltration — the whole point of an infostealer."
+      }
+    }
+  ],
+  "recap": {
+    "summary": "You followed a full infostealer kill chain: a packed file that hid its real command, quietly checked for a sandbox, planted a Run key to survive reboots, then stole browser credentials and shipped them out. Each move maps to a MITRE ATT&CK technique — the shared vocabulary analysts use.",
+    "chain": [
+      { "stage": "Surface", "name": "Packed & obfuscated", "desc": "High-entropy section, hidden encoded command.", "attck": [ { "id": "T1027.002", "name": "Software Packing" } ] },
+      { "stage": "Launch", "name": "Hidden PowerShell", "desc": "Ran an encoded command in a hidden window.", "attck": [ { "id": "T1059.001", "name": "PowerShell" } ] },
+      { "stage": "Recon", "name": "Sandbox evasion", "desc": "Checked for VM and analysis tools.", "attck": [ { "id": "T1497.001", "name": "System Checks" }, { "id": "T1082", "name": "System Info Discovery" } ] },
+      { "stage": "Persistence", "name": "Run key", "desc": "Re-launches at every logon.", "attck": [ { "id": "T1547.001", "name": "Registry Run Keys" } ] },
+      { "stage": "Exfiltration", "name": "Credential theft", "desc": "Stole browser logins and uploaded them.", "attck": [ { "id": "T1555.003", "name": "Browser Credentials" }, { "id": "T1041", "name": "Exfil Over C2" } ] }
+    ]
+  }
+}
