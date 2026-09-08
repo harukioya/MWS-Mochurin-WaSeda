@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MWS Mochurin WaSeda — Malware Behavior Trainer</title>
+  <meta name="description" content="Learn what malware does, one stage at a time — safely. An educational tool by team Mochurin WaSeda for MWS Cup 2026.">
+  <!-- No-flash theme init: set data-theme before first paint -->
+  <script>
+    try {
+      var t = localStorage.getItem("mws-theme");
+      if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="styles/design.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="#/" aria-label="Home">
+        <span class="brand__mark" aria-hidden="true">M</span>
+        <span>Mochurin&nbsp;WaSeda</span>
+        <span class="brand__wt" title="working title — name not final">working title</span>
+      </a>
+      <span class="topbar__spacer"></span>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color theme">◐&nbsp;Theme</button>
+    </div>
+  </header>
+
+  <!-- The router renders the active view (home / lesson player / recap) into here. -->
+  <main id="app" class="wrap" aria-live="polite"></main>
+
+  <footer class="safety-note">
+    <div class="wrap">
+      <strong>Safety:</strong> This trainer never runs malware. Every lesson is built from
+      pre-captured sandbox behavior (or clearly-labelled synthetic examples); nothing is executed on your machine.
+      <span class="mono">· MWS Cup 2026 · team Mochurin WaSeda</span>
+    </div>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

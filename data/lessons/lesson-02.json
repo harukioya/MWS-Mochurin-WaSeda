@@ -1,0 +1,127 @@
+{
+  "id": "lesson-02",
+  "title": "Anatomy of Ransomware",
+  "tagline": "Watch a crypto-locker go from a phishing attachment to encrypted files and a ransom note — and learn each move.",
+  "difficulty": "Intermediate",
+  "family": "Ransomware",
+  "source": {
+    "type": "synthetic",
+    "note": "Illustrative, ATT&CK-accurate teaching example. NOT captured from executing a real sample. IPs use the RFC 5737 documentation range and example.com; nothing here is live or runnable."
+  },
+  "stages": [
+    {
+      "id": "surface",
+      "name": "Surface — first look",
+      "intro": "Static triage of the dropped file. Before anything runs, the analyst reads its structure, strings, and imports.",
+      "events": [
+        { "type": "file", "detail": "PE64 executable delivered by a macro-enabled document; .rdata section entropy 7.88/8.0 (very high — likely packed/encrypted payload).", "attck": { "id": "T1027.002", "name": "Obfuscated Files: Software Packing" } },
+        { "type": "import", "detail": "Imports: CryptAcquireContextW, CryptGenKey, CryptEncrypt, BCryptGenRandom.", "attck": { "id": "T1027", "name": "Obfuscated Files or Information" } },
+        { "type": "string", "detail": "Embedded strings include \"vssadmin\", \"YOUR FILES HAVE BEEN ENCRYPTED\", and a contact address on a .onion site.", "attck": { "id": "T1486", "name": "Data Encrypted for Impact (capability present)" } }
+      ],
+      "quiz": {
+        "q": "Which observation most directly signals this sample is built to encrypt files?",
+        "options": [
+          "It is a PE64 executable",
+          "The crypto API imports such as CryptEncrypt and CryptGenKey",
+          "It was delivered inside a document",
+          "The .rdata section is large"
+        ],
+        "correct": 1,
+        "explain": "Cryptographic APIs (CryptGenKey, CryptEncrypt, BCryptGenRandom) are exactly the tools used to generate keys and encrypt data, so their presence is the direct signal of encryption capability. File type and entropy only hint at packing."
+      }
+    },
+    {
+      "id": "delivery",
+      "name": "Delivery — it starts running",
+      "intro": "The user opens the attachment. A macro runs, pulls the real payload down, and launches it.",
+      "events": [
+        { "type": "process", "detail": "winword.exe -> cmd.exe -> powershell.exe fetches locker.exe from http://198.51.100.23/p and starts it.", "attck": { "id": "T1059.001", "name": "Command and Scripting Interpreter: PowerShell" } },
+        { "type": "process", "detail": "The Office macro spawns the shell child process the moment the document is opened.", "attck": { "id": "T1059.005", "name": "Command and Scripting Interpreter: Visual Basic (macro)" } }
+      ],
+      "quiz": {
+        "q": "A Word document that spawns powershell.exe to download and run an executable is a classic sign of what?",
+        "options": [
+          "A routine software update",
+          "Malicious macro-based delivery of a payload",
+          "A printer driver installing itself",
+          "Windows checking for updates"
+        ],
+        "correct": 1,
+        "explain": "Office apps do not normally launch shells to fetch and run binaries. winword.exe -> powershell.exe downloading an executable is the hallmark of a malicious macro (T1059.005) delivering a payload via scripting (T1059.001)."
+      }
+    },
+    {
+      "id": "recon",
+      "name": "Recon — mapping what to encrypt",
+      "intro": "Before locking anything, the payload surveys the machine: which files exist, and which drives and shares it can reach.",
+      "events": [
+        { "type": "file", "detail": "Recursively enumerates C:\\Users and mapped drives for .docx, .xlsx, .pdf, and .jpg files, building a target list.", "attck": { "id": "T1083", "name": "File and Directory Discovery" } },
+        { "type": "network", "detail": "Queries for network shares and mounted volumes to widen the set of reachable files.", "attck": { "id": "T1135", "name": "Network Share Discovery" } },
+        { "type": "process", "detail": "Enumerates running processes to find and stop database and backup services before encrypting.", "attck": { "id": "T1057", "name": "Process Discovery" } }
+      ],
+      "quiz": {
+        "q": "Why does the ransomware build a list of documents and enumerate network shares before encrypting?",
+        "options": [
+          "To defragment the disk",
+          "To maximize impact by finding every valuable file it can reach",
+          "To check whether the files are already encrypted by someone else",
+          "To back the files up safely"
+        ],
+        "correct": 1,
+        "explain": "File and share discovery (T1083, T1135) lets the malware locate the maximum set of valuable, reachable files. The more it can encrypt — including files on network shares — the more pressure it can apply for the ransom."
+      }
+    },
+    {
+      "id": "impact",
+      "name": "Impact — encryption and sabotage",
+      "intro": "Now the destructive core. The malware first removes the victim's ability to recover, then encrypts every targeted file.",
+      "events": [
+        { "type": "process", "detail": "Runs vssadmin to delete Volume Shadow Copies so files cannot be restored from snapshots.", "attck": { "id": "T1490", "name": "Inhibit System Recovery" } },
+        { "type": "file", "detail": "Encrypts each targeted file with a per-file key, appends the extension .locked, and drops READ_ME.txt in every folder.", "attck": { "id": "T1486", "name": "Data Encrypted for Impact" } },
+        { "type": "process", "detail": "Disables automatic startup repair via bcdedit so Windows will not self-heal on next boot.", "attck": { "id": "T1490", "name": "Inhibit System Recovery" } }
+      ],
+      "quiz": {
+        "q": "Why delete the Volume Shadow Copies before encrypting the files?",
+        "options": [
+          "To free up disk space for the encrypted copies",
+          "To remove the victim's ability to restore files from backups/snapshots",
+          "To make the encryption run faster",
+          "To hide the ransom note"
+        ],
+        "correct": 1,
+        "explain": "Shadow Copies let Windows restore previous versions of files. Deleting them (T1490, Inhibit System Recovery) strips away an easy recovery path, so the victim is far more likely to pay rather than roll back to a snapshot."
+      }
+    },
+    {
+      "id": "exfil",
+      "name": "Extortion — double extortion",
+      "intro": "Modern ransomware often steals a copy of the data first, then threatens to leak it. Watch the network before the lock finishes.",
+      "events": [
+        { "type": "file", "detail": "Bundles the most valuable discovered documents into an archive staged in %TEMP%\\exfil.dat.", "attck": { "id": "T1074.001", "name": "Data Staged: Local Data Staging" } },
+        { "type": "network", "detail": "DNS query for leaks.example.com; TLS connection to 203.0.113.55:443.", "attck": { "id": "T1071.001", "name": "Application Layer Protocol: Web Protocols" } },
+        { "type": "network", "detail": "HTTPS PUT of the staged archive to https://leaks.example.com/drop before the ransom note is shown.", "attck": { "id": "T1567.002", "name": "Exfiltration to Cloud Storage" } }
+      ],
+      "quiz": {
+        "q": "The archive of stolen documents is uploaded before the ransom note appears. Why steal a copy at all if the files will be encrypted anyway?",
+        "options": [
+          "To verify the encryption worked",
+          "To enable double extortion — threatening to leak the data even if the victim restores from backup",
+          "To compress the files before encrypting",
+          "To send the decryption key to the victim"
+        ],
+        "correct": 1,
+        "explain": "Copying data out first (T1074.001 staging, then T1567.002 exfiltration) sets up double extortion: even a victim with good backups faces the threat of their stolen data being published, which pressures them to pay anyway."
+      }
+    }
+  ],
+  "recap": {
+    "summary": "You followed a full ransomware kill chain: a packed crypto-locker delivered by a malicious macro, downloaded and launched via PowerShell, which mapped the files and shares worth taking, stole a copy for extortion, then deleted recovery snapshots and encrypted everything. Each move maps to a MITRE ATT&CK technique — the shared vocabulary analysts use.",
+    "chain": [
+      { "stage": "Surface", "name": "Packed crypto-locker", "desc": "High-entropy payload with crypto and shadow-copy strings.", "attck": [ { "id": "T1027.002", "name": "Software Packing" } ] },
+      { "stage": "Delivery", "name": "Malicious macro", "desc": "Document spawned PowerShell to fetch and run the payload.", "attck": [ { "id": "T1059.005", "name": "Visual Basic (macro)" }, { "id": "T1059.001", "name": "PowerShell" } ] },
+      { "stage": "Recon", "name": "File & share discovery", "desc": "Mapped documents, drives, and network shares to hit.", "attck": [ { "id": "T1083", "name": "File and Directory Discovery" }, { "id": "T1135", "name": "Network Share Discovery" } ] },
+      { "stage": "Impact", "name": "Encryption & sabotage", "desc": "Deleted shadow copies, then encrypted every targeted file.", "attck": [ { "id": "T1490", "name": "Inhibit System Recovery" }, { "id": "T1486", "name": "Data Encrypted for Impact" } ] },
+      { "stage": "Extortion", "name": "Double extortion", "desc": "Staged and uploaded stolen data before showing the note.", "attck": [ { "id": "T1074.001", "name": "Local Data Staging" }, { "id": "T1567.002", "name": "Exfiltration to Cloud Storage" } ] }
+    ]
+  }
+}
