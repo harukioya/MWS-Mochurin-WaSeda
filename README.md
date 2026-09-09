@@ -1,42 +1,64 @@
-# Mochurin WaSeda — Malware Behavior Trainer *(working title)*
+# Mochurin WaSeda — マルウェア挙動トレーナー *(仮称)*
 
-An educational web app for **MWS Cup 2026** (team Mochurin WaSeda). It walks a learner
-through **what a piece of malware does, one stage at a time** — observe the behavior,
-answer a quiz before advancing, then see the explanation — and finishes with a
-**MITRE ATT&CK kill-chain recap**. Friendly, brilliant.org-style, with a dark theme.
+**MWS Cup 2026**（チーム Mochurin WaSeda）のための教育用 Web アプリです。
+**マルウェアが何をするのかを、1 ステージずつ順を追って**学べます。挙動を観察し、
+先に進む前にクイズに答え、そのあとで解説を読む——そして最後に
+**MITRE ATT&CK のキルチェーンとして全体を振り返ります**。
+brilliant.org のような親しみやすい UI と、ダークテーマを備えています。
 
-## Safety first
-This trainer **never runs malware.** Lessons are built from pre-captured sandbox
-behavior or clearly-labelled **synthetic** examples stored as JSON. Nothing is executed,
-downloaded, or detonated on your machine, and the MWS dataset is never bundled or run.
+## まず安全性について
+このトレーナーは**マルウェアを実行しません**。レッスンは、事前に取得済みの
+サンドボックス挙動、または**合成データ**であると明示した教材用の例を JSON として
+保存したものだけで構成されています。あなたのマシン上で何かが実行・ダウンロード・
+起爆されることはなく、MWS データセットを同梱することも実行することもありません。
 
-## Run it
-No install needed — it's a static site.
+## 起動方法
+インストールは不要です。静的サイトなので、そのまま動きます。
+
 ```bash
 cd MWS_MochurinWaSeda
-python3 -m http.server 8000
-# open http://localhost:8000
+python3 -m http.server 8000 --bind 127.0.0.1
+# ブラウザで http://localhost:8000 を開く
 ```
 
-## How lessons work
-Each lesson is a JSON file in `data/lessons/` (see `lesson-01.json`). A lesson has stages
-(surface → launch → recon → persistence → exfiltration), each with observed **events**
-(tagged with ATT&CK techniques) and a **quiz**, plus a **recap** kill-chain. Add a lesson
-by dropping a new JSON file in and listing it in `data/lessons/index.json`.
+停止するときは、そのターミナルで `Ctrl+C` を押してください。
 
-## Optional: real behavior traces (advanced, not required)
-The app ships working with synthetic lessons. To build a lesson from a *real* sample's
-behavior **without running anything locally**, look the sample up **by hash** on a cloud
-sandbox and turn its report into a lesson JSON:
-- **VirusTotal** free public API (hash lookup; 4 req/min, 500/day). Needs your own free API key.
-- Set the key in your environment only — **never commit it**. See `js/integrations.js`.
-- **Do not upload MWS dataset samples** anywhere (redistribution terms). Hash lookup only.
+- `--bind 127.0.0.1` は必ず付けたままにしてください。省略すると `0.0.0.0`
+  （すべてのネットワークインターフェース）で待ち受けるため、学内 Wi-Fi などでは
+  同じネットワーク上の第三者からプロジェクトフォルダが見えてしまいます。
+  この指定により、通信は自分のマシン内だけに限定されます。
+- `index.html` を直接ダブルクリックして開かないでください。本アプリは ES モジュールと
+  `fetch()` を使っており、`file://` ではブラウザがそれらの読み込みをブロックします
+  （エラーが出ずに画面が真っ白になるだけなので、原因に気づきにくいです）。
+  必ず上記のサーバー経由で開いてください。
 
-## Project layout
+## レッスンの仕組み
+各レッスンは `data/lessons/` 配下の JSON ファイル 1 つです（`lesson-01.json` 参照。
+スキーマはこのファイル自体が実例を兼ねています）。レッスンはステージ
+（surface → launch → recon → persistence → exfiltration）で構成され、各ステージは
+ATT&CK テクニックのタグが付いた観測**イベント**と**クイズ**を持ちます。
+そして全体の最後に、キルチェーンの**まとめ（recap）**が入ります。
+
+レッスンを追加するには、新しい JSON ファイルを置き、`data/lessons/index.json` に
+登録するだけです。
+
+## 補足：実際の挙動トレースを使う（上級者向け・必須ではありません）
+本アプリは合成レッスンだけで完結して動作します。*実際の*検体の挙動からレッスンを
+作りたい場合は、**ローカルでは一切実行せず**、クラウドサンドボックス上で検体を
+**ハッシュで照会**し、そのレポートをレッスン JSON に変換してください。
+
+- **VirusTotal** の無料 Public API（ハッシュ検索。4 リクエスト/分、500 件/日）。
+  利用には各自で取得した無料の API キーが必要です。
+- キーは自分の環境（環境変数など）にのみ設定し、**絶対にコミットしないでください**。
+  詳細は `js/integrations.js` を参照。
+- **MWS データセットの検体は、どこにもアップロードしないでください**
+  （再配布条件のため）。ハッシュによる照会のみとします。
+
+## ディレクトリ構成
 ```
-index.html          shell
-styles/design.css   design system (dark + light)
+index.html          シェル（土台となる HTML）
+styles/design.css   デザインシステム（ダーク + ライト）
 js/                 app, router, theme, data, home, player, quiz, recap, integrations
-data/lessons/       lesson JSON + index.json
+data/lessons/       レッスン JSON + index.json
 docs/               BUILD-CONTRACT.md, original-concept.png
 ```
