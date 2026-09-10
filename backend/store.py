@@ -23,6 +23,7 @@ import os
 import sqlite3
 import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 SCHEMA = """
@@ -82,8 +83,23 @@ class Store:
     def __init__(self, db_path: str):
         self.db_path = db_path
         os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
-        self._local = threading.local()
-        with self._conn() as c:
+        # ONE connection, guarded by a reentrant lock.
+        #
+        # The obvious alternative -- threading.local -- looks right and behaves
+        # badly here: the server speaks HTTP/1.0, so every request is a new
+        # connection and therefore a new thread, and each thread opened its own
+        # SQLite handle and re-ran the PRAGMAs (including a WAL switch that
+        # takes an exclusive lock). That was measured at 66 open descriptors on
+        # the database after light use, climbing under load.
+        self._lock = threading.RLock()
+        self._db = sqlite3.connect(db_path, check_same_thread=False, timeout=5.0)
+        self._db.row_factory = sqlite3.Row
+        for pragma in (
+            "journal_mode=WAL", "synchronous=NORMAL",
+            "foreign_keys=ON", "busy_timeout=5000",
+        ):
+            self._db.execute(f"PRAGMA {pragma}")
+        with self._tx() as c:
             c.executescript(SCHEMA)
         # 0600: the manifest records what is in the archives, which is not
         # secret, but it is not other users' business either.
@@ -92,42 +108,42 @@ class Store:
         except OSError:
             pass
 
-    def _conn(self) -> sqlite3.Connection:
-        """Per-thread connection. SQLite objects are not thread-portable, and
-        the alternative (`check_same_thread=False`) invites interleaved
-        transactions between request handlers and the integrity checker."""
-        conn = getattr(self._local, "conn", None)
-        if conn is None:
-            conn = sqlite3.connect(self.db_path, timeout=5.0)
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA synchronous=NORMAL")
-            conn.execute("PRAGMA foreign_keys=ON")
-            conn.execute("PRAGMA busy_timeout=5000")
-            self._local.conn = conn
-        return conn
+    @contextmanager
+    def _tx(self):
+        """A write transaction. The lock is held for its whole duration, so a
+        request handler and the integrity checker cannot interleave."""
+        with self._lock:
+            with self._db:
+                yield self._db
+
+    def _query(self, sql: str, params: tuple = ()) -> list[dict]:
+        with self._lock:
+            return [dict(r) for r in self._db.execute(sql, params)]
+
+    def close(self) -> None:
+        with self._lock:
+            self._db.close()
 
     # -- events -----------------------------------------------------------
     def log(self, kind: str, detail: str) -> None:
-        with self._conn() as c:
+        with self._tx() as c:
             c.execute(
                 "INSERT INTO event (at, kind, detail) VALUES (?, ?, ?)",
                 (time.time(), kind, detail),
             )
 
     def events(self, limit: int = 100) -> list[dict]:
-        cur = self._conn().execute(
+        return self._query(
             "SELECT at, kind, detail FROM event ORDER BY at DESC LIMIT ?",
             (min(int(limit), 1000),),
         )
-        return [dict(r) for r in cur]
 
     # -- archives ---------------------------------------------------------
     def record_archive(self, path: str, listing) -> int:
         """Hash an archive, store it and its members, return the archive id."""
         digest, size = sha256_file(path)
         now = time.time()
-        with self._conn() as c:
+        with self._tx() as c:
             cur = c.execute("SELECT id, sha256 FROM archive WHERE path = ?", (path,))
             row = cur.fetchone()
             if row is None:
@@ -175,26 +191,23 @@ class Store:
         return archive_id
 
     def archives(self) -> list[dict]:
-        cur = self._conn().execute(
+        return self._query(
             "SELECT a.id, a.path, a.sha256, a.size, a.last_verified, a.last_status,"
             " (SELECT COUNT(*) FROM member m WHERE m.archive_id = a.id) AS members"
             " FROM archive a ORDER BY a.path"
         )
-        return [dict(r) for r in cur]
 
     def members(self, archive_id: int) -> list[dict]:
-        cur = self._conn().execute(
+        return self._query(
             "SELECT idx, name, size, verdict, kind, warnings, container, caveat"
-            " FROM member"
-            " WHERE archive_id = ? ORDER BY id",
+            " FROM member WHERE archive_id = ? ORDER BY id",
             (int(archive_id),),
         )
-        return [dict(r) for r in cur]
 
     # -- generated lessons ------------------------------------------------
     def save_lesson(self, lesson: dict, source: str) -> None:
         import json as _json
-        with self._conn() as c:
+        with self._tx() as c:
             c.execute(
                 "INSERT OR REPLACE INTO lesson (id, title, body, made_at, source)"
                 " VALUES (?, ?, ?, ?, ?)",
@@ -203,18 +216,14 @@ class Store:
         self.log("lesson-generated", f"{lesson['id']} from {source}")
 
     def lessons(self) -> list[dict]:
-        cur = self._conn().execute(
+        return self._query(
             "SELECT id, title, made_at, source FROM lesson ORDER BY made_at DESC"
         )
-        return [dict(r) for r in cur]
 
     def lesson(self, lesson_id: str) -> dict | None:
         import json as _json
-        cur = self._conn().execute(
-            "SELECT body FROM lesson WHERE id = ?", (lesson_id,)
-        )
-        row = cur.fetchone()
-        return _json.loads(row["body"]) if row else None
+        rows = self._query("SELECT body FROM lesson WHERE id = ?", (lesson_id,))
+        return _json.loads(rows[0]["body"]) if rows else None
 
     # -- integrity --------------------------------------------------------
     def verify(self) -> list[IntegrityResult]:
@@ -248,7 +257,7 @@ class Store:
                     )
                     self.log("integrity-changed", path)
                     status = "changed"
-            with self._conn() as c:
+            with self._tx() as c:
                 c.execute(
                     "UPDATE archive SET last_verified=?, last_status=? WHERE path=?",
                     (now, status, path),
