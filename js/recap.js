@@ -14,67 +14,6 @@ export function renderRecap(mount, lesson, stats) {
   const root = document.createElement('section');
   root.className = 'recap';
 
-  // ---- Score heading ----
-  const eyebrow = document.createElement('p');
-  eyebrow.className = 'eyebrow';
-  eyebrow.textContent = '攻撃の流れの振り返り';
-  root.appendChild(eyebrow);
-
-  const heading = document.createElement('h1');
-  heading.textContent = `正解 ${correct} / ${total}`;
-  // Focus target for this view (see below): anchors focus after the mount swap.
-  heading.tabIndex = -1;
-  root.appendChild(heading);
-
-  // ---- Summary ----
-  if (recap.summary) {
-    const summary = document.createElement('p');
-    summary.className = 'muted';
-    summary.textContent = recap.summary;
-    root.appendChild(summary);
-  }
-
-  // ---- Kill chain ----
-  const chain = Array.isArray(recap.chain) ? recap.chain : [];
-  const killchain = document.createElement('div');
-  killchain.className = 'killchain';
-
-  chain.forEach((step) => {
-    const kc = document.createElement('div');
-    kc.className = 'kc-step';
-
-    const name = document.createElement('div');
-    name.className = 'kc-step__name';
-    name.textContent = step.stage ? `${step.stage}: ${step.name || ''}` : (step.name || '');
-    kc.appendChild(name);
-
-    if (step.desc) {
-      const desc = document.createElement('p');
-      desc.className = 'kc-step__desc';
-      desc.textContent = step.desc;
-      kc.appendChild(desc);
-    }
-
-    const techniques = Array.isArray(step.attck) ? step.attck : [];
-    techniques.forEach((t) => {
-      const badge = document.createElement('span');
-      badge.className = 'attck-badge';
-      badge.textContent = `${t.id} · ${t.name}`;
-      kc.appendChild(badge);
-    });
-
-    killchain.appendChild(kc);
-  });
-
-  root.appendChild(killchain);
-
-  // ---- Encouraging closing microcopy ----
-  const closing = document.createElement('p');
-  closing.className = 'muted center';
-  closing.textContent = correct === total && total > 0
-    ? 'すべて正解です。各段階を ATT&CK の技術に対応付けて読み解けました。'
-    : 'お疲れさまでした。ここで読み解いた各段階が、実際の分析で見分ける手がかりになります。';
-  root.appendChild(closing);
 
   // ---- Actions ----
   const nav = document.createElement('div');
