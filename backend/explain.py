@@ -267,7 +267,7 @@ def build_lesson(name: str, sources: dict[str, str], lesson_id: str) -> dict | N
         "family": "DFIR",
         "source": {
             "type": "generated",
-            "note": "データセットのログから自動生成した課です。内容を確認のうえ使用してください。",
+            "note": "データセットのログから自動生成した演習です。内容を確認のうえ使用してください。",
             "inputs": sorted(sources),
         },
         "recap": {

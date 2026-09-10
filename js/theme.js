@@ -3,8 +3,8 @@
 const STORAGE_KEY = "mws-theme";
 
 const LABELS = {
-  light: "☀ 明るい",
-  dark: "☾ 暗い",
+  light: "☀ ライト",
+  dark: "☾ ダーク",
 };
 
 function systemPrefersDark() {
@@ -39,7 +39,7 @@ function apply(mode, btn) {
   btn.textContent = LABELS[mode];
   btn.setAttribute(
     "aria-label",
-    `配色: ${mode === "dark" ? "暗い" : "明るい"}。押すと${mode === "dark" ? "明るい" : "暗い"}配色に切り替わります。`
+    `表示色: ${mode === "dark" ? "ダーク" : "ライト"}。押すと${mode === "dark" ? "ライト" : "ダーク"}に切り替わります。`
   );
 }
 
@@ -62,7 +62,7 @@ export function initTheme() {
     btn.textContent = LABELS[mode];
     btn.setAttribute(
       "aria-label",
-      `配色: ${mode === "dark" ? "暗い" : "明るい"}。押すと${mode === "dark" ? "明るい" : "暗い"}配色に切り替わります。`
+      `表示色: ${mode === "dark" ? "ダーク" : "ライト"}。押すと${mode === "dark" ? "ライト" : "ダーク"}に切り替わります。`
     );
   }
 
@@ -81,7 +81,7 @@ export function initTheme() {
         btn.textContent = LABELS[mode];
         btn.setAttribute(
           "aria-label",
-          `配色: ${mode === "dark" ? "暗い" : "明るい"}。押すと${mode === "dark" ? "明るい" : "暗い"}配色に切り替わります。`
+          `表示色: ${mode === "dark" ? "ダーク" : "ライト"}。押すと${mode === "dark" ? "ライト" : "ダーク"}に切り替わります。`
         );
       });
     } catch (e) {

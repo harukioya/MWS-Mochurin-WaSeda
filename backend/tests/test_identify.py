@@ -299,12 +299,20 @@ class TestEnumerate(unittest.TestCase):
         self.assertEqual(member.verdict, Verdict.OPAQUE_ENCRYPTED)
         self.assertFalse(member.materializable)
 
-    def test_applesingle_sidecar_is_flagged(self):
+    def test_applesingle_sidecar_gets_its_own_verdict(self):
+        """macOS の付随情報は「判別できない」ではない。何かは分かっている。
+
+        以前は unknown 扱いのうえ警告まで付けていたため、macOS で作った ZIP では多数の
+        超える付随ファイルが「注意が必要」に並び、本当に注意すべき数件が埋も
+        れていた。取り出しを許さない点は変えず、区別だけを付ける。
+        """
         path = self._write(
             _zip_bytes([("__MACOSX/._tools.zip", b"\x00\x05\x16\x07rubbish")])
         )
         member = enumerate_zip(path).members[0]
-        self.assertTrue(any("AppleDouble" in w for w in member.warnings))
+        self.assertEqual(member.verdict, Verdict.METADATA_SIDECAR)
+        self.assertFalse(member.materializable)
+        self.assertEqual(member.warnings, [], "警告を重ねない")
 
     def test_corrupt_archive_fails_closed(self):
         path = self._write(b"this is not a zip file at all")

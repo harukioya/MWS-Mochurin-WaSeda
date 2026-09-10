@@ -39,8 +39,8 @@ export async function renderHome(mount) {
   const inspect = document.createElement('button');
   inspect.type = 'button';
   inspect.className = 'btn btn-ghost btn-lg';
-  inspect.textContent = '書庫を検査する →';
-  inspect.setAttribute('aria-label', '書庫の検査画面を開く');
+  inspect.textContent = '圧縮ファイルを検査する →';
+  inspect.setAttribute('aria-label', '圧縮ファイルの検査画面を開く');
   inspect.addEventListener('click', () => {
     location.hash = '#/inspect';
   });
@@ -60,13 +60,13 @@ export async function renderHome(mount) {
     index = await loadIndex();
   } catch (err) {
     grid.remove();
-    renderMessage(mount, '課の一覧を読み込めませんでした。ページを再読み込みしてください。');
+    renderMessage(mount, '演習の一覧を読み込めませんでした。ページを再読み込みしてください。');
     return;
   }
 
   if (!Array.isArray(index) || index.length === 0) {
     grid.remove();
-    renderMessage(mount, '利用できる課はまだありません。');
+    renderMessage(mount, '利用できる演習はまだありません。');
     return;
   }
 
@@ -115,12 +115,12 @@ function buildCard(item) {
   el.className = 'lesson-card';
   el.type = 'button';
 
-  const title = String(item.title || '無題の課');
-  el.setAttribute('aria-label', `課を開始: ${title}`);
+  const title = String(item.title || '無題の演習');
+  el.setAttribute('aria-label', `演習を開始: ${title}`);
 
   const tag = document.createElement('span');
   tag.className = 'lesson-card__tag';
-  tag.textContent = item.difficulty || '課';
+  tag.textContent = item.difficulty || '演習';
 
   const titleEl = document.createElement('div');
   titleEl.className = 'lesson-card__title';

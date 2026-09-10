@@ -293,7 +293,7 @@ def enumerate_zip(path: str, depth: int = 0) -> Listing:
         return listing
     if st.st_size > MAX_ARCHIVE_BYTES:
         listing.warnings.append(
-            f"書庫の大きさ {st.st_size} バイトが上限 {MAX_ARCHIVE_BYTES} を超えています。"
+            f"ファイルの大きさ {st.st_size} バイトが上限 {MAX_ARCHIVE_BYTES} を超えています。"
         )
         return listing
 
@@ -307,7 +307,7 @@ def enumerate_zip(path: str, depth: int = 0) -> Listing:
         zipfile.BadZipFile, OSError, ValueError, EOFError,
         NotImplementedError, RuntimeError, struct.error,
     ) as exc:
-        listing.warnings.append(f"ZIP 書庫として開けません: {exc}")
+        listing.warnings.append(f"ZIPファイルとして開けません: {exc}")
         return listing
 
     with zf:
@@ -325,7 +325,7 @@ def _enumerate_open(zf: zipfile.ZipFile, depth: int = 0) -> Listing:
     infos = zf.infolist()
     if len(infos) > MAX_ENTRIES:
         listing.warnings.append(
-            f"書庫が {len(infos)} 件を宣言しています。先頭 "
+            f"この圧縮ファイルは {len(infos)} 件を宣言しています。先頭 "
             f"{MAX_ENTRIES} 件のみ確認しました。"
         )
         infos = infos[:MAX_ENTRIES]
@@ -383,12 +383,10 @@ def _enumerate_open(zf: zipfile.ZipFile, depth: int = 0) -> Listing:
         # AppleDouble sidecars carry xattrs, resource forks and exec bits.
         # A resource fork can hold a whole second payload that a data-fork
         # hash never sees, so they are called out rather than ignored.
+        # 付随情報であることは identify() が判定として返すので、ここで警告を
+        # 重ねない。警告を付けると画面上「注意が必要」に入り、60 件を超える
+        # macOS の付随ファイルが、本当に注意すべき数件を埋もれさせる。
         base = name.rsplit("/", 1)[-1]
-        if name.startswith("__MACOSX/") or base.startswith("._"):
-            warnings.append(
-                "AppleDouble の付随ファイルです。拡張属性やリソースフォークを"
-                "含む場合があり、本体のハッシュ値では確認できません。"
-            )
 
         if encrypted:
             # Fail closed. This is exactly where a live sample hides, and
@@ -397,7 +395,7 @@ def _enumerate_open(zf: zipfile.ZipFile, depth: int = 0) -> Listing:
                 "暗号化された項目",
                 Verdict.OPAQUE_ENCRYPTED,
                 "ZIP の暗号化指定があり、内容を読めません",
-                "パスワード付き書庫はマルウェアの一般的な配布形式です。"
+                "パスワード付きの圧縮ファイルはマルウェアの一般的な配布形式です。"
                 "判定できないため取り出しを禁止しています。",
             )
         else:
@@ -439,7 +437,7 @@ def _enumerate_open(zf: zipfile.ZipFile, depth: int = 0) -> Listing:
             if not (0 < parent.size <= MAX_NESTED_BYTES):
                 if parent.size > MAX_NESTED_BYTES:
                     parent.warnings.append(
-                        f"入れ子の書庫が {parent.size} バイトで上限 "
+                        f"入れ子の圧縮ファイルが {parent.size} バイトで上限 "
                         f"{MAX_NESTED_BYTES} を超えるため、"
                         "中身を確認していません。"
                     )
@@ -448,15 +446,15 @@ def _enumerate_open(zf: zipfile.ZipFile, depth: int = 0) -> Listing:
                 with zf.open(zf.infolist()[parent.index]) as fh:
                     blob = fh.read(MAX_NESTED_BYTES + 1)
             except Exception as exc:  # noqa: BLE001 - fail closed
-                parent.warnings.append(f"入れ子の書庫を読めません: {exc}")
+                parent.warnings.append(f"入れ子の圧縮ファイルを読めません: {exc}")
                 continue
             if len(blob) > MAX_NESTED_BYTES:
-                parent.warnings.append("入れ子の書庫が上限を超えました。")
+                parent.warnings.append("入れ子の圧縮ファイルが上限を超えました。")
                 continue
             try:
                 inner = zipfile.ZipFile(io.BytesIO(blob))
             except Exception as exc:  # noqa: BLE001 - fail closed
-                parent.warnings.append(f"入れ子の書庫を開けません: {exc}")
+                parent.warnings.append(f"入れ子の圧縮ファイルを開けません: {exc}")
                 continue
             with inner:
                 sub = _enumerate_open(inner, depth + 1)
@@ -465,13 +463,13 @@ def _enumerate_open(zf: zipfile.ZipFile, depth: int = 0) -> Listing:
                 m.name = f"{parent.name} :: {m.name}"
                 listing.members.append(m)
             for w in sub.warnings:
-                parent.warnings.append(f"この書庫の中: {w}")
+                parent.warnings.append(f"この圧縮ファイルの中: {w}")
 
     # An archive-level warning -- a flat bomb, a truncated listing -- is a
     # statement about every member in it. Without this, a member of an archive
     # positively identified as a zip bomb was still materializable.
     if listing.warnings:
-        note = "書庫全体の警告: " + listing.warnings[0]
+        note = "圧縮ファイル全体の警告: " + listing.warnings[0]
         for m in listing.members:
             m.warnings.append(note)
 

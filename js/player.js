@@ -34,11 +34,11 @@ export async function renderLesson(mount, lessonId) {
     lesson = await loadLesson(lessonId);
   } catch (err) {
     const panel = el('div', 'panel');
-    panel.appendChild(el('div', 'panel__label', '課を読み込めませんでした'));
-    panel.appendChild(el('p', 'muted', 'この課は読み込めませんでした。一覧に戻って別の課を選んでください。'));
-    const back = el('button', 'btn btn-ghost', '課の一覧に戻る');
+    panel.appendChild(el('div', 'panel__label', '演習を読み込めませんでした'));
+    panel.appendChild(el('p', 'muted', 'この演習は読み込めませんでした。一覧に戻って別の演習を選んでください。'));
+    const back = el('button', 'btn btn-ghost', '演習の一覧に戻る');
     back.type = 'button';
-    back.setAttribute('aria-label', '課の一覧に戻る');
+    back.setAttribute('aria-label', '演習の一覧に戻る');
     back.addEventListener('click', () => { location.hash = '#/'; });
     const nav = el('div', 'navbtns');
     nav.appendChild(back);
@@ -115,9 +115,9 @@ export async function renderLesson(mount, lessonId) {
     // --- Nav: Back to lessons (always) + Continue (after answering) ---
     const nav = el('div', 'navbtns');
 
-    const back = el('button', 'btn btn-ghost', '課の一覧に戻る');
+    const back = el('button', 'btn btn-ghost', '演習の一覧に戻る');
     back.type = 'button';
-    back.setAttribute('aria-label', '課の一覧に戻る');
+    back.setAttribute('aria-label', '演習の一覧に戻る');
     back.addEventListener('click', () => { location.hash = '#/'; });
     nav.appendChild(back);
 

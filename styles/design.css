@@ -296,3 +296,18 @@ a{color:var(--brand-ink)}
 /* The "working title" badge is the first thing to go on a narrow screen. */
 @media (max-width:400px){ .brand__wt{display:none} }
 .hero-cta{display:flex; justify-content:center; margin-top:20px}
+
+/* ---- 折りたたみ（安全なファイルの一覧） ---- */
+.fold{
+  margin-top:22px; background:var(--surface); border:1px solid var(--line-2);
+  border-radius:var(--r); padding:14px 18px;
+}
+.fold__head{
+  cursor:pointer; font-weight:700; list-style:none; display:flex;
+  align-items:center; gap:10px; padding:2px 0;
+}
+.fold__head::-webkit-details-marker{display:none}
+.fold__head::before{content:"▶"; color:var(--muted); font-size:.8em; transition:transform .15s}
+.fold[open] .fold__head::before{transform:rotate(90deg)}
+.fold__head:focus-visible{outline:2px solid var(--brand); outline-offset:3px; border-radius:var(--r-sm)}
+.fold > p{margin:8px 0 0}
