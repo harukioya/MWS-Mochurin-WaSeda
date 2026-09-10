@@ -77,7 +77,7 @@ function showError(mount, err) {
   const back = document.createElement("a");
   back.className = "btn btn-primary";
   back.href = "#/";
-  back.textContent = "課の一覧に戻る";
+  back.textContent = "演習の一覧に戻る";
   nav.appendChild(back);
 
   panel.append(label, msg, nav);

@@ -42,6 +42,8 @@ class Verdict(str, Enum):
     FORENSIC_IMAGE = "forensic-image"
     OPAQUE_ENCRYPTED = "opaque-encrypted"
     UNSUPPORTED_CONTAINER = "unsupported-container"
+    DOCUMENT_PASSIVE = "document-passive"
+    METADATA_SIDECAR = "metadata-sidecar"
     UNKNOWN = "unknown"
 
 
@@ -59,6 +61,8 @@ RUNNABLE = frozenset(
         Verdict.DOCUMENT_ACTIVE,
         Verdict.SHORTCUT_LAUNCHER,
         Verdict.SAMPLE_BEARING,
+        Verdict.DOCUMENT_PASSIVE,
+        Verdict.METADATA_SIDECAR,
         Verdict.UNKNOWN,  # default-deny: assume the worst about the unrecognised
     }
 )
@@ -108,15 +112,15 @@ _SIGNATURES: list[tuple[bytes, str, Verdict, str]] = [
     (b"dex\n", "Android DEX 中間コード", Verdict.BYTECODE_ARCHIVE,
      "先頭が DEX の識別子です"),
     # --- containers ---------------------------------------------------------
-    (b"PK\x03\x04", "ZIP 書庫", Verdict.CONTAINER,
+    (b"PK\x03\x04", "ZIP ファイル", Verdict.CONTAINER,
      "先頭が ZIP のファイルヘッダです"),
-    (b"PK\x05\x06", "ZIP 書庫（空）", Verdict.CONTAINER,
+    (b"PK\x05\x06", "ZIP ファイル（空）", Verdict.CONTAINER,
      "先頭が ZIP の終端レコードです"),
-    (b"PK\x07\x08", "ZIP 書庫（分割）", Verdict.CONTAINER,
-     "先頭が ZIP の分割書庫の印です"),
+    (b"PK\x07\x08", "ZIP ファイル（分割）", Verdict.CONTAINER,
+     "先頭が ZIP の分割圧縮ファイルの印です"),
     (b"\x1f\x8b", "gzip 圧縮データ", Verdict.CONTAINER, "先頭が gzip の識別子です"),
     # --- containers we cannot currently enumerate: hard block ---------------
-    (b"7z\xbc\xaf\x27\x1c", "7-Zip 書庫", Verdict.UNSUPPORTED_CONTAINER,
+    (b"7z\xbc\xaf\x27\x1c", "7-Zip ファイル", Verdict.UNSUPPORTED_CONTAINER,
      "先頭が 7-Zip の識別子です"),
     (b"\xfd7zXZ\x00", "xz 圧縮データ", Verdict.UNSUPPORTED_CONTAINER,
      "先頭が xz の識別子です"),
@@ -124,9 +128,9 @@ _SIGNATURES: list[tuple[bytes, str, Verdict, str]] = [
      "先頭が bzip2 の識別子です"),
     (b"\x28\xb5\x2f\xfd", "zstd 圧縮データ", Verdict.UNSUPPORTED_CONTAINER,
      "先頭が zstd の識別子です"),
-    (b"Rar!\x1a\x07", "RAR 書庫", Verdict.UNSUPPORTED_CONTAINER,
+    (b"Rar!\x1a\x07", "RAR ファイル", Verdict.UNSUPPORTED_CONTAINER,
      "先頭が RAR の識別子です"),
-    (b"MSCF", "Microsoft Cabinet 書庫", Verdict.UNSUPPORTED_CONTAINER,
+    (b"MSCF", "Microsoft Cabinet ファイル", Verdict.UNSUPPORTED_CONTAINER,
      "先頭が CAB の識別子です"),
     # --- documents that can carry executable content -----------------------
     (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", "OLE 複合文書（旧 Office 形式）",
@@ -161,8 +165,8 @@ _SIGNATURES: list[tuple[bytes, str, Verdict, str]] = [
      "先頭が pcap の識別子です"),
     (b"\x0a\x0d\x0d\x0a", "pcapng 通信記録", Verdict.SAMPLE_BEARING,
      "先頭が pcapng のブロックヘッダです"),
-    (b"\x00\x05\x16\x07", "AppleDouble 付随情報", Verdict.UNKNOWN,
-     "先頭が AppleDouble の識別子です。拡張属性やリソースフォークを含みます"),
+    (b"\x00\x05\x16\x07", "macOS の付随情報（AppleDouble）", Verdict.METADATA_SIDECAR,
+     "先頭が AppleDouble の識別子です"),
 ]
 
 # Sorted once: longest magic first, so `PK\x05\x06` cannot be shadowed by a
@@ -187,6 +191,8 @@ _SEVERITY: dict[Verdict, int] = {
     # it must LOSE to any positive identification: knowing a file is a script
     # is strictly more useful to the learner than knowing nothing about it, and
     # both are equally non-materializable, so gating is unaffected either way.
+    Verdict.DOCUMENT_PASSIVE: 2,
+    Verdict.METADATA_SIDECAR: 2,
     Verdict.UNKNOWN: 3,
     Verdict.OPAQUE_ENCRYPTED: 4,
     Verdict.UNSUPPORTED_CONTAINER: 4,
@@ -198,6 +204,20 @@ _SEVERITY: dict[Verdict, int] = {
     Verdict.NATIVE_EXECUTABLE: 8,
 }
 
+#: PDF が実際に「動作あり」かどうかを分ける印。形式として持てることと、その
+#: ファイルが実際に持っていることは別。全件を「動作あり」にすると、講義資料の
+#: PDF まで警告対象になり、警告そのものが読み飛ばされるようになる。
+_PDF_ACTIVE = [
+    (b"/JavaScript", "JavaScript"),
+    (b"/JS", "JavaScript"),
+    (b"/Launch", "外部プログラムの起動指定"),
+    (b"/OpenAction", "開いた時に動く指定"),
+    (b"/AA", "自動実行の指定"),
+    (b"/EmbeddedFile", "埋め込まれたファイル"),
+    (b"/RichMedia", "埋め込まれた動画・音声"),
+]
+
+
 # A shebang settles the question before any signature is consulted.
 _SHEBANG = re.compile(rb"^#!\s*\S")
 
@@ -207,9 +227,9 @@ _SHEBANG = re.compile(rb"^#!\s*\S")
 _EMBEDDED = [
     (b"PK\x05\x06", "ZIP の終端レコード"),
     (b"PK\x03\x04", "ZIP のファイルヘッダ"),
-    (b"7z\xbc\xaf\x27\x1c", "7-Zip 書庫"),
+    (b"7z\xbc\xaf\x27\x1c", "7-Zip ファイル"),
     (b"\xfd7zXZ\x00", "xz 圧縮データ"),
-    (b"Rar!\x1a\x07", "RAR 書庫"),
+    (b"Rar!\x1a\x07", "RAR ファイル"),
     (b"MZ\x90\x00", "PE 実行ファイルのヘッダ"),
     (b"\x7fELF", "ELF 実行ファイルのヘッダ"),
 ]
@@ -339,7 +359,7 @@ def _from_name(ext: str) -> Identification | None:
         )
     if ext in _BYTECODE_EXT:
         return Identification(
-            f"中間コード書庫（{ext}）", Verdict.BYTECODE_ARCHIVE,
+            f"実行可能な圧縮ファイル（{ext}）", Verdict.BYTECODE_ARCHIVE,
             f"拡張子が {ext} で、実行環境が動かす形式です",
             "`java -jar` などの実行環境で動きます。",
         )
@@ -397,9 +417,20 @@ def identify(head: bytes, name: str = "", size: int | None = None) -> Identifica
                         "Java の直列化データは任意の内容を含められます。信頼できない"
                         "データの復元処理そのものに危険があります。"
                     )
+            elif kind == "PDF 文書":
+                found = [d for m, d in _PDF_ACTIVE if m in head]
+                if found:
+                    caveat = f"この PDF には{found[0]}が含まれています。"
+                else:
+                    # 読み取った範囲に見当たらないだけで、無いとは限らない。
+                    verdict = Verdict.DOCUMENT_PASSIVE
+                    caveat = (
+                        "読み取った範囲には、開いた時に動作する指定は見当たりません"
+                        "でした。"
+                    )
             elif verdict is Verdict.UNSUPPORTED_CONTAINER:
                 caveat = (
-                    "この書庫形式はまだ一覧できないため、中身を確認できていません。"
+                    "この圧縮形式はまだ一覧できないため、中身を確認できていません。"
                     "安全とみなさず、取り出しを禁止しています。"
                 )
             result = Identification(kind, verdict, why, caveat)
@@ -424,8 +455,12 @@ def identify(head: bytes, name: str = "", size: int | None = None) -> Identifica
                 "安全と確認できないため、実行ファイルと同じ扱いにしています。",
             )
 
-    # (4) The name is consulted on EVERY branch, and can only escalate.
-    from_name = _from_name(ext)
+    # (4) 名前による格上げ。ただし macOS の付随ファイル（`._` で始まる、または
+    #     __MACOSX/ の下）の拡張子は、隣にある本体のものであって、この
+    #     ファイル自身の中身を表さない。
+    base = lowered.rsplit("/", 1)[-1]
+    is_sidecar = base.startswith("._") or lowered.startswith("__macosx/")
+    from_name = None if is_sidecar else _from_name(ext)
     if from_name is not None:
         result = _worse(result, from_name)
 
@@ -446,11 +481,20 @@ def identify(head: bytes, name: str = "", size: int | None = None) -> Identifica
     #     file as something else entirely.
     embedded = _polyglot(head)
     if embedded is not None and result.verdict is not Verdict.CONTAINER:
-        result = Identification(
-            result.kind, Verdict.UNKNOWN, result.why,
+        note = (
             f"途中の位置に{embedded}も含まれています。別のソフトはこのファイルを"
-            "そちらとして読む可能性があります。 " + result.caveat,
+            "そちらとして読む可能性があります。"
         )
+        # 重大度が上がるときだけ差し替える。UNKNOWN は「確かめられていない」と
+        # いう意味なので、確定した判定に上書きすると、分かっていることまで
+        # 「判別できません」と言ってしまう。
+        if _SEVERITY[Verdict.UNKNOWN] > _SEVERITY[result.verdict]:
+            result = Identification(result.kind, Verdict.UNKNOWN, result.why, note)
+        else:
+            result = Identification(
+                result.kind, result.verdict, result.why,
+                (note + " " + result.caveat).strip(),
+            )
 
     # (7) We only saw a prefix. Keep the classification -- it is the most
     #     useful thing we can tell the learner -- but mark it provisional so it

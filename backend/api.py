@@ -350,7 +350,7 @@ class Handler(BaseHTTPRequestHandler):
             "datasetDirs": STATE.dataset_dirs,
             "claims": {
                 "detects": [
-                    "登録済みの書庫の追加・変更・削除",
+                    "読み込んだZIPファイルが追加・変更・削除されたこと",
                 ],
                 "doesNotDetect": [
                     "ファイルの実行",
@@ -373,7 +373,7 @@ class Handler(BaseHTTPRequestHandler):
         archive_id, idx = int(archive_id), int(idx)
         rows = [a for a in STATE.store.archives() if a["id"] == archive_id]
         if not rows:
-            return self._error(404, "該当する書庫がありません")
+            return self._error(404, "そのZIPファイルは読み込まれていません")
         members = [m for m in STATE.store.members(archive_id) if m["idx"] == idx]
         if not members:
             return self._error(404, "該当する項目がありません")
@@ -382,7 +382,7 @@ class Handler(BaseHTTPRequestHandler):
         if member.get("container"):
             return self._json({
                 "member": member, "rows": [],
-                "note": "入れ子になった書庫内の項目のため、ここでは先頭バイトを表示できません。",
+                "note": "入れ子になった圧縮ファイル内の項目のため、ここでは先頭バイトを表示できません。",
             })
         if member["verdict"] in (
             Verdict.OPAQUE_ENCRYPTED.value,
@@ -402,7 +402,7 @@ class Handler(BaseHTTPRequestHandler):
         if current != rows[0]["sha256"]:
             return self._json({
                 "member": member, "rows": [],
-                "note": "この書庫は登録後に変更されています。再登録してから確認してください。",
+                "note": "このZIPファイルは読み込み後に変更されています。もう一度読み取ってから確認してください。",
             })
 
         try:
@@ -450,17 +450,17 @@ class Handler(BaseHTTPRequestHandler):
 
         rows = [a for a in STATE.store.archives() if a["id"] == archive_id]
         if not rows:
-            return self._error(404, "該当する書庫がありません")
+            return self._error(404, "そのZIPファイルは読み込まれていません")
         members = [m for m in STATE.store.members(archive_id) if m["idx"] == idx]
         if not members:
             return self._error(404, "該当する項目がありません")
         member = members[0]
         if member.get("container"):
-            return self._error(409, "入れ子になった書庫内の項目は書き出せません")
+            return self._error(409, "入れ子になった圧縮ファイル内の項目は書き出せません")
 
         current, _ = sha256_file(rows[0]["path"])
         if current != rows[0]["sha256"]:
-            return self._error(409, "書庫が登録後に変更されています。再登録してください")
+            return self._error(409, "このZIPファイルは読み込み後に変更されています。もう一度読み取ってください")
 
         with STATE.lock:
             try:
@@ -556,7 +556,7 @@ class Handler(BaseHTTPRequestHandler):
     def h_lesson(self, lesson_id: str):
         lesson = STATE.store.lesson(lesson_id)
         if lesson is None:
-            return self._error(404, "該当する課がありません")
+            return self._error(404, "該当する演習がありません")
         return self._json(lesson)
 
     def h_generate(self):
@@ -574,7 +574,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._error(400, '要求の書式が不正です（archive が必要です）')
         rows = [a for a in STATE.store.archives() if a["id"] == archive_id]
         if not rows:
-            return self._error(404, "該当する書庫がありません")
+            return self._error(404, "そのZIPファイルは読み込まれていません")
 
         sources: dict[str, str] = {}
         budget = 24 * 1024 * 1024
@@ -616,12 +616,12 @@ class Handler(BaseHTTPRequestHandler):
             with zipfile.ZipFile(rows[0]["path"]) as zf:
                 collect(zf)
         except Exception as exc:  # noqa: BLE001
-            return self._error(422, f"書庫を読み取れませんでした: {exc}")
+            return self._error(422, f"圧縮ファイルを読み取れませんでした: {exc}")
 
         if not sources:
             return self._error(
                 422,
-                "この書庫には読み取れるログファイルがありません。MWS データセットの "
+                "この圧縮ファイルには読み取れるログファイルがありません。MWS データセットの "
                 "DFIR ログの多くはパスワード付きで、暗号化された項目は読み取れません。",
             )
 
