@@ -205,7 +205,8 @@ a{color:var(--brand-ink)}
 /* reveal / explanation */
 .reveal{border-left:4px solid var(--accent); background:var(--surface-2); border-radius:0 var(--r) var(--r) 0; padding:16px 20px; margin-top:16px}
 .reveal__title{font:700 12px/1 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin-bottom:8px}
-.reveal p{margin:0}
+.reveal p{margin:0 0 .8em}
+.reveal p:last-child{margin-bottom:0}
 
 .navbtns{display:flex; gap:12px; justify-content:space-between; margin-top:22px}
 

@@ -81,7 +81,13 @@ export async function renderLesson(mount, lessonId) {
 
     // --- Optional stage intro (friendly framing) ---
     if (stage.intro) {
-      player.appendChild(el('p', 'muted', stage.intro));
+      // 空行で段落を分ける。textContent は改行を潰すので、まとめて入れると
+      // 説明が一続きの塊になって読みにくい。
+      String(stage.intro)
+        .split(/\n{2,}/)
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .forEach((t) => player.appendChild(el('p', 'muted', t)));
     }
 
     // --- Observed behavior panel ---
