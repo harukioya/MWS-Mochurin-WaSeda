@@ -110,7 +110,7 @@ a{color:var(--brand-ink)}
   position:sticky; top:0; z-index:30; background:color-mix(in srgb,var(--surface) 88%,transparent);
   backdrop-filter:saturate(1.4) blur(10px); border-bottom:1px solid var(--line);
 }
-.topbar__inner{max-width:1080px; margin:0 auto; padding:12px 20px; display:flex; align-items:center; gap:14px}
+.topbar__inner{max-width:1080px; margin:0 auto; padding:12px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap}
 .brand{display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:-.02em; font-size:1.05rem; color:var(--ink); text-decoration:none}
 .brand__mark{width:30px; height:30px; border-radius:9px; background:linear-gradient(135deg,var(--brand),var(--accent)); display:grid; place-items:center; color:#fff; font-weight:900; box-shadow:var(--shadow-sm)}
 .brand__wt{font:600 11px/1 "JetBrains Mono",monospace; color:var(--faint); letter-spacing:.08em; text-transform:uppercase; padding:3px 7px; border:1px solid var(--line-2); border-radius:var(--r-pill)}
@@ -230,3 +230,68 @@ a{color:var(--brand-ink)}
   .stage-head{flex-wrap:wrap} .progress{margin-left:0; width:100%}
   .navbtns .btn{flex:1; justify-content:center}
 }
+
+/* ---- Inspector: verdicts, member list, hexdump ---- */
+/* Colours come only from the tokens above, so dark mode follows for free. */
+
+.verdict{
+  display:inline-block; flex:0 0 auto; font:700 10px/1 "JetBrains Mono",monospace;
+  letter-spacing:.06em; text-transform:uppercase; padding:5px 9px;
+  border-radius:var(--r-pill); border:1px solid var(--line-2); color:var(--muted);
+}
+.verdict.is-ok{background:var(--ok-soft); color:var(--ok-ink); border-color:var(--ok)}
+.verdict.is-bad{background:var(--bad-soft); color:var(--bad-ink); border-color:var(--bad)}
+.verdict.is-warn{background:var(--bad-soft); color:var(--bad-ink); border-color:var(--accent)}
+.verdict.is-neutral{background:var(--surface-2)}
+
+.claims{margin:10px 0; border-left:3px solid var(--line-2); padding-left:12px}
+.claims__head{font:700 11px/1 "JetBrains Mono",monospace; letter-spacing:.08em;
+  text-transform:uppercase; margin-bottom:6px}
+.claims__head.is-ok{color:var(--ok-ink)}
+.claims__head.is-bad{color:var(--bad-ink)}
+.claims__item{color:var(--muted); font-size:.94rem; padding:2px 0}
+
+.member-list{display:flex; flex-direction:column; gap:10px; margin-top:18px}
+.member{
+  background:var(--surface); border:1px solid var(--line-2);
+  border-radius:var(--r); padding:14px 16px;
+}
+.member__bar{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.member__name{
+  flex:1 1 240px; min-width:0; font-size:.85rem; word-break:break-all;
+  /* A hostile name cannot reorder the surrounding UI. */
+  unicode-bidi:isolate;
+}
+.member__size{flex:0 0 auto; color:var(--muted); font-size:.78rem}
+.member__kind{margin-top:8px; font-weight:600}
+.member__plain{color:var(--muted); font-size:.92rem; margin-top:2px}
+.member__warn{
+  margin-top:8px; font-size:.86rem; color:var(--bad-ink);
+  background:var(--bad-soft); border-radius:var(--r-sm); padding:7px 10px;
+  unicode-bidi:isolate;
+}
+
+.btn-sm{padding:7px 13px; font-size:.82rem; margin-top:10px}
+
+.hexdump{
+  margin-top:10px; background:var(--surface-2); border-radius:var(--r-sm);
+  padding:12px 14px; overflow:auto; max-height:340px;
+  font-family:"JetBrains Mono",monospace; font-size:11.5px; line-height:1.65;
+}
+.hexdump:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+.hexdump__note{color:var(--muted); margin-bottom:8px; font-size:11px}
+.hexdump__row{display:flex; gap:14px; white-space:pre}
+.hexdump__off{color:var(--muted)}
+.hexdump__hex{color:var(--ink)}
+.hexdump__txt{color:var(--brand-ink)}
+
+.text-input{
+  width:100%; margin:10px 0 4px; padding:11px 13px; font:inherit; font-size:.9rem;
+  color:var(--ink); background:var(--surface-2); border:1px solid var(--line-2);
+  border-radius:var(--r-sm);
+}
+.text-input:focus-visible{outline:2px solid var(--brand); outline-offset:1px}
+
+/* The "working title" badge is the first thing to go on a narrow screen. */
+@media (max-width:400px){ .brand__wt{display:none} }
+.hero-cta{display:flex; justify-content:center; margin-top:20px}

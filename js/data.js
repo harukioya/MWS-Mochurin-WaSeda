@@ -36,6 +36,16 @@ export async function loadIndex() {
 export async function loadLesson(id) {
   if (!id) throw new Error("No lesson id was given.");
 
+  // Lessons generated from real dataset logs live in the backend's manifest,
+  // not on disk, so they are fetched rather than read from data/lessons/.
+  if (/^gen-[A-Za-z0-9_-]{1,60}$/.test(id)) {
+    const res = await fetch(`/api/lessons/${encodeURIComponent(id)}`, {
+      cache: "no-cache",
+    });
+    if (!res.ok) throw new Error(`Generated lesson "${id}" is not available.`);
+    return res.json();
+  }
+
   const index = await loadIndex();
   const entry = index.find((l) => l && l.id === id);
   if (!entry) {

@@ -2,6 +2,7 @@
 
 import { renderHome } from "./home.js";
 import { renderLesson } from "./player.js";
+import { renderArchive, renderInspect } from "./inspect.js";
 import { initTheme } from "./theme.js";
 
 const MOUNT_ID = "app";
@@ -23,6 +24,14 @@ function parseRoute() {
   if (parts[0] === "lesson" && parts[1]) {
     return { view: "lesson", id: decodeURIComponent(parts[1]) };
   }
+  if (parts[0] === "inspect") {
+    // Archive ids are integers from our own manifest; anything else is not a
+    // route we serve, so fall back rather than passing it to the backend.
+    if (parts[1] && /^\d{1,9}$/.test(parts[1])) {
+      return { view: "archive", id: parts[1] };
+    }
+    return { view: "inspect" };
+  }
   return { view: "home" };
 }
 
@@ -37,6 +46,10 @@ async function render() {
   try {
     if (route.view === "lesson") {
       await renderLesson(mount, route.id);
+    } else if (route.view === "inspect") {
+      await renderInspect(mount);
+    } else if (route.view === "archive") {
+      await renderArchive(mount, route.id);
     } else {
       await renderHome(mount);
     }
