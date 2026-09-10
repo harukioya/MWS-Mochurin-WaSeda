@@ -28,9 +28,9 @@ from identify import Verdict, identify  # noqa: E402
 class TestIdentify(unittest.TestCase):
     def test_native_executables_are_never_materializable(self):
         for head, expected in [
-            (b"MZ\x90\x00" + b"\x00" * 60, "PE executable (Windows)"),
-            (b"\x7fELF\x02\x01\x01", "ELF executable (Linux/Unix)"),
-            (b"\xcf\xfa\xed\xfe\x0c\x00\x00\x01", "Mach-O 64-bit (macOS)"),
+            (b"MZ\x90\x00" + b"\x00" * 60, "PE 実行ファイル（Windows）"),
+            (b"\x7fELF\x02\x01\x01", "ELF 実行ファイル（Linux/Unix）"),
+            (b"\xcf\xfa\xed\xfe\x0c\x00\x00\x01", "Mach-O 64ビット（macOS）"),
         ]:
             with self.subTest(expected=expected):
                 ident = identify(head, "harmless.bin")
@@ -102,7 +102,7 @@ class TestIdentify(unittest.TestCase):
         self.assertEqual(ident.verdict, Verdict.INERT_DATA)
         self.assertTrue(ident.provisional)
         self.assertFalse(ident.materializable)
-        self.assertIn("not read", ident.caveat)
+        self.assertIn("未確認", ident.caveat)
         # Same bytes, whole file seen -> inert.
         self.assertEqual(
             identify(head, "notes.txt", size=len(head)).verdict, Verdict.INERT_DATA
@@ -130,7 +130,7 @@ class TestIdentify(unittest.TestCase):
         ident = identify(head, "program.dll.gzf")
         self.assertEqual(ident.verdict, Verdict.SAMPLE_BEARING)
         self.assertIn("Ghidra", ident.kind)
-        self.assertIn("recoverable", ident.caveat)
+        self.assertIn("取り出せます", ident.caveat)
         self.assertFalse(ident.materializable)
         self.assertTrue(ident.runnable, "must be gated like a raw executable")
 
@@ -147,7 +147,7 @@ class TestIdentify(unittest.TestCase):
     def test_shebang_is_a_script_even_without_an_extension(self):
         ident = identify(b"#!/bin/sh\necho hello\n", "noextension")
         self.assertEqual(ident.verdict, Verdict.SCRIPT)
-        self.assertIn("execute bit", ident.caveat)
+        self.assertIn("実行権限", ident.caveat)
 
     def test_source_code_is_a_script_not_inert_text(self):
         ident = identify(b"print('hello')\n", "helper.py")
@@ -167,7 +167,7 @@ class TestIdentify(unittest.TestCase):
         head = b"%PDF-1.4\n" + b"A" * 64 + b"PK\x05\x06" + b"\x00" * 18
         ident = identify(head, "report.pdf")
         self.assertEqual(ident.verdict, Verdict.UNKNOWN)
-        self.assertIn("polyglot", ident.caveat)
+        self.assertIn("別のソフト", ident.caveat)
         self.assertFalse(ident.materializable)
 
     def test_jar_is_bytecode_archive_not_plain_container(self):
@@ -222,12 +222,12 @@ class TestNameInspection(unittest.TestCase):
 
     def test_absolute_path_is_flagged(self):
         raw = b"/etc/passwd"
-        self.assertTrue(any("absolute" in w for w in inspect_name(raw, raw.decode())))
+        self.assertTrue(any("絶対パス" in w for w in inspect_name(raw, raw.decode())))
 
     def test_rtl_override_is_flagged(self):
         name = "photo‮gnp.exe"
         self.assertTrue(
-            any("bidirectional" in w for w in inspect_name(name.encode(), name))
+            any("表示順" in w for w in inspect_name(name.encode(), name))
         )
 
 
@@ -282,7 +282,7 @@ class TestEnumerate(unittest.TestCase):
     def test_ratio_bomb_is_flagged(self):
         path = self._write(_zip_bytes([("ok.txt", b"hi\n")], ratio_bomb=True))
         bomb = [m for m in enumerate_zip(path).members if m.name == "bomb.bin"][0]
-        self.assertTrue(any("bomb" in w for w in bomb.warnings), bomb.warnings)
+        self.assertTrue(any("膨張" in w for w in bomb.warnings), bomb.warnings)
 
     def test_encrypted_member_is_opaque_never_inert(self):
         path = self._write(_zip_bytes([("secret.bin", b"whatever")]))
@@ -354,10 +354,10 @@ class TestFullStreamScan(unittest.TestCase):
         # The embedded archive is reported, and the file stays unwritable. The
         # verdict is NOT flattened to `unknown`: PDF is already the more severe
         # and more informative answer, and both block a write.
-        self.assertIn("whole-file scan found", ident.caveat.lower())
+        self.assertIn("ファイル全体の走査", ident.caveat)
         self.assertFalse(ident.materializable)
         self.assertFalse(ident.provisional, "the whole stream was read")
-        self.assertNotIn("only the first", ident.caveat.lower())
+        self.assertNotIn("先頭 ", ident.caveat)
         self.assertEqual(total, len(polyglot))
         self.assertEqual(len(digest), 64)
 

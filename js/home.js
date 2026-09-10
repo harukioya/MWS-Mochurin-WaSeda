@@ -20,14 +20,14 @@ export async function renderHome(mount) {
   eyebrow.textContent = 'Mochurin WaSeda · MWS Cup 2026';
 
   const h1 = document.createElement('h1');
-  h1.textContent = 'See what malware actually does';
+  h1.textContent = 'マルウェアの挙動を段階ごとに読み解く';
   // Focus target for this view: anchors keyboard/SR focus after a route change
   // (e.g. "Back to lessons") instead of dropping the user at <body>.
   h1.tabIndex = -1;
 
   const intro = document.createElement('p');
   intro.textContent =
-    'Walk through a real attack one stage at a time — read each move, guess before you advance, then see it explained on the MITRE ATT&CK map. No samples ever run; every trace is a safe, synthetic teaching example.';
+    '実際の攻撃を段階ごとに追い、挙動を読んで設問に答え、解説を確認します。最後に MITRE ATT&CK と対応付けて振り返ります。';
 
   // Entry point to the inspector. Kept next to the lessons because the two
   // halves answer the same question from different ends: the lessons explain
@@ -39,8 +39,8 @@ export async function renderHome(mount) {
   const inspect = document.createElement('button');
   inspect.type = 'button';
   inspect.className = 'btn btn-ghost btn-lg';
-  inspect.textContent = 'Inspect an archive →';
-  inspect.setAttribute('aria-label', 'Open the archive inspector');
+  inspect.textContent = '書庫を検査する →';
+  inspect.setAttribute('aria-label', '書庫の検査画面を開く');
   inspect.addEventListener('click', () => {
     location.hash = '#/inspect';
   });
@@ -60,13 +60,13 @@ export async function renderHome(mount) {
     index = await loadIndex();
   } catch (err) {
     grid.remove();
-    renderMessage(mount, 'We could not load the lessons just now. Please refresh and try again.');
+    renderMessage(mount, '課の一覧を読み込めませんでした。ページを再読み込みしてください。');
     return;
   }
 
   if (!Array.isArray(index) || index.length === 0) {
     grid.remove();
-    renderMessage(mount, 'No lessons are available yet — check back soon!');
+    renderMessage(mount, '利用できる課はまだありません。');
     return;
   }
 
@@ -81,8 +81,8 @@ export async function renderHome(mount) {
         const card = buildCard({
           id: l.id,
           title: l.title,
-          tagline: 'Generated from real log data — review before teaching.',
-          difficulty: 'Generated',
+          tagline: 'ログから自動生成しました。使用前に内容を確認してください。',
+          difficulty: '自動生成',
           family: l.source || 'DFIR',
         });
         grid.appendChild(card.el);
@@ -115,12 +115,12 @@ function buildCard(item) {
   el.className = 'lesson-card';
   el.type = 'button';
 
-  const title = String(item.title || 'Untitled lesson');
-  el.setAttribute('aria-label', `Start lesson: ${title}`);
+  const title = String(item.title || '無題の課');
+  el.setAttribute('aria-label', `課を開始: ${title}`);
 
   const tag = document.createElement('span');
   tag.className = 'lesson-card__tag';
-  tag.textContent = item.difficulty || 'Lesson';
+  tag.textContent = item.difficulty || '課';
 
   const titleEl = document.createElement('div');
   titleEl.className = 'lesson-card__title';
@@ -134,7 +134,7 @@ function buildCard(item) {
   meta.className = 'lesson-card__meta';
 
   const familyEl = document.createElement('span');
-  familyEl.textContent = item.family || 'Malware';
+  familyEl.textContent = item.family || 'マルウェア';
 
   const stagesEl = document.createElement('span');
   stagesEl.textContent = '';
@@ -150,7 +150,7 @@ function buildCard(item) {
   return {
     el,
     setStages(n) {
-      stagesEl.textContent = n === 1 ? '1 stage' : `${n} stages`;
+      stagesEl.textContent = `全 ${n} 段階`;
       stagesEl.hidden = false;
     },
   };

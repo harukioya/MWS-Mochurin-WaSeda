@@ -7,6 +7,18 @@ import { loadLesson } from './data.js';
 import { renderQuiz } from './quiz.js';
 import { renderRecap } from './recap.js';
 
+// 事象の種別（データ側のキー）を、画面表示用の日本語に対応させる。
+// データの値そのものは変更しない。
+const EVENT_TYPE = {
+  process: 'プロセス',
+  file: 'ファイル',
+  registry: 'レジストリ',
+  network: '通信',
+  api: 'API 呼び出し',
+  import: '取り込み',
+  string: '文字列',
+};
+
 const el = (tag, className, text) => {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -22,11 +34,11 @@ export async function renderLesson(mount, lessonId) {
     lesson = await loadLesson(lessonId);
   } catch (err) {
     const panel = el('div', 'panel');
-    panel.appendChild(el('div', 'panel__label', 'Could not load lesson'));
-    panel.appendChild(el('p', 'muted', 'This lesson could not be loaded. Please head back and pick another.'));
-    const back = el('button', 'btn btn-ghost', 'Back to lessons');
+    panel.appendChild(el('div', 'panel__label', '課を読み込めませんでした'));
+    panel.appendChild(el('p', 'muted', 'この課は読み込めませんでした。一覧に戻って別の課を選んでください。'));
+    const back = el('button', 'btn btn-ghost', '課の一覧に戻る');
     back.type = 'button';
-    back.setAttribute('aria-label', 'Back to lessons');
+    back.setAttribute('aria-label', '課の一覧に戻る');
     back.addEventListener('click', () => { location.hash = '#/'; });
     const nav = el('div', 'navbtns');
     nav.appendChild(back);
@@ -48,7 +60,7 @@ export async function renderLesson(mount, lessonId) {
 
     // --- Stage header: index pill, name, progress dots ---
     const head = el('div', 'stage-head');
-    head.appendChild(el('span', 'stage-index', `STAGE ${index + 1}/${total}`));
+    head.appendChild(el('span', 'stage-index', `段階 ${index + 1}/${total}`));
     const stageName = el('h2', 'stage-name', stage.name || '');
     // Focus target for this view: anchors keyboard focus and announces the new
     // stage to screen readers after the previous screen is torn down.
@@ -57,7 +69,7 @@ export async function renderLesson(mount, lessonId) {
 
     const progress = el('div', 'progress');
     progress.setAttribute('role', 'img');
-    progress.setAttribute('aria-label', `Stage ${index + 1} of ${total}`);
+    progress.setAttribute('aria-label', `全 ${total} 段階中 ${index + 1} 段階目`);
     for (let i = 0; i < total; i++) {
       const dot = el('span', 'progress__dot');
       if (i < index) dot.classList.add('is-done');
@@ -74,12 +86,13 @@ export async function renderLesson(mount, lessonId) {
 
     // --- Observed behavior panel ---
     const panel = el('div', 'panel');
-    panel.appendChild(el('div', 'panel__label', 'Observed behavior'));
+    panel.appendChild(el('div', 'panel__label', '観測された挙動'));
 
     const list = el('div', 'event-list');
     (stage.events || []).forEach((event) => {
       const row = el('div', 'event');
-      row.appendChild(el('span', 'event__type', String(event.type || '').toUpperCase()));
+      const t = String(event.type || '');
+      row.appendChild(el('span', 'event__type', EVENT_TYPE[t] || t.toUpperCase()));
 
       const body = el('div', 'event__body');
       body.appendChild(el('div', 'event__detail', event.detail || ''));
@@ -102,14 +115,14 @@ export async function renderLesson(mount, lessonId) {
     // --- Nav: Back to lessons (always) + Continue (after answering) ---
     const nav = el('div', 'navbtns');
 
-    const back = el('button', 'btn btn-ghost', 'Back to lessons');
+    const back = el('button', 'btn btn-ghost', '課の一覧に戻る');
     back.type = 'button';
-    back.setAttribute('aria-label', 'Back to lessons');
+    back.setAttribute('aria-label', '課の一覧に戻る');
     back.addEventListener('click', () => { location.hash = '#/'; });
     nav.appendChild(back);
 
     const isLast = index === total - 1;
-    const cont = el('button', 'btn btn-primary', isLast ? 'See recap' : 'Continue');
+    const cont = el('button', 'btn btn-primary', isLast ? '振り返りへ' : '次へ');
     cont.type = 'button';
     cont.hidden = true;
     cont.addEventListener('click', () => {

@@ -17,11 +17,11 @@ export function renderRecap(mount, lesson, stats) {
   // ---- Score heading ----
   const eyebrow = document.createElement('p');
   eyebrow.className = 'eyebrow';
-  eyebrow.textContent = 'Kill-chain recap';
+  eyebrow.textContent = '攻撃の流れの振り返り';
   root.appendChild(eyebrow);
 
   const heading = document.createElement('h1');
-  heading.textContent = `You scored ${correct} / ${total}`;
+  heading.textContent = `正解 ${correct} / ${total}`;
   // Focus target for this view (see below): anchors focus after the mount swap.
   heading.tabIndex = -1;
   root.appendChild(heading);
@@ -72,8 +72,8 @@ export function renderRecap(mount, lesson, stats) {
   const closing = document.createElement('p');
   closing.className = 'muted center';
   closing.textContent = correct === total && total > 0
-    ? 'Flawless read. You traced every move to its ATT&CK technique — that is exactly how analysts talk.'
-    : 'Nicely done. Every stage you walked through is one more pattern you will recognise in the wild.';
+    ? 'すべて正解です。各段階を ATT&CK の技術に対応付けて読み解けました。'
+    : 'お疲れさまでした。ここで読み解いた各段階が、実際の分析で見分ける手がかりになります。';
   root.appendChild(closing);
 
   // ---- Actions ----
@@ -83,8 +83,8 @@ export function renderRecap(mount, lesson, stats) {
   const back = document.createElement('button');
   back.type = 'button';
   back.className = 'btn btn-ghost';
-  back.textContent = 'Back to lessons';
-  back.setAttribute('aria-label', 'Back to the lesson list');
+  back.textContent = '課の一覧に戻る';
+  back.setAttribute('aria-label', '課の一覧に戻る');
   back.addEventListener('click', () => {
     location.hash = '#/';
   });
@@ -93,8 +93,8 @@ export function renderRecap(mount, lesson, stats) {
   const replay = document.createElement('button');
   replay.type = 'button';
   replay.className = 'btn btn-primary';
-  replay.textContent = 'Replay';
-  replay.setAttribute('aria-label', 'Replay this lesson from the start');
+  replay.textContent = 'もう一度';
+  replay.setAttribute('aria-label', 'この課を最初からやり直す');
   replay.addEventListener('click', () => {
     const target = `#/lesson/${lesson.id}`;
     if (location.hash === target) {

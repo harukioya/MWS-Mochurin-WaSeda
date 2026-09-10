@@ -11,19 +11,19 @@ export async function loadIndex() {
   try {
     res = await fetch(INDEX_URL, { cache: "no-cache" });
   } catch (err) {
-    throw new Error(`Could not load the lesson index (network error): ${err.message}`);
+    throw new Error(`課の一覧を読み込めませんでした（通信エラー）: ${err.message}`);
   }
   if (!res.ok) {
-    throw new Error(`Could not load the lesson index (HTTP ${res.status}).`);
+    throw new Error(`課の一覧を読み込めませんでした (HTTP ${res.status})。`);
   }
   let data;
   try {
     data = await res.json();
   } catch (err) {
-    throw new Error(`The lesson index is not valid JSON: ${err.message}`);
+    throw new Error(`課の一覧が正しい JSON ではありません: ${err.message}`);
   }
   if (!Array.isArray(data)) {
-    throw new Error("The lesson index must be an array of lessons.");
+    throw new Error("課の一覧は配列である必要があります。");
   }
   return data;
 }
@@ -34,7 +34,7 @@ export async function loadIndex() {
  * @returns {Promise<object>} the lesson object
  */
 export async function loadLesson(id) {
-  if (!id) throw new Error("No lesson id was given.");
+  if (!id) throw new Error("課の id が指定されていません。");
 
   // Lessons generated from real dataset logs live in the backend's manifest,
   // not on disk, so they are fetched rather than read from data/lessons/.
@@ -42,17 +42,17 @@ export async function loadLesson(id) {
     const res = await fetch(`/api/lessons/${encodeURIComponent(id)}`, {
       cache: "no-cache",
     });
-    if (!res.ok) throw new Error(`Generated lesson "${id}" is not available.`);
+    if (!res.ok) throw new Error(`自動生成された課 "${id}" は利用できません。`);
     return res.json();
   }
 
   const index = await loadIndex();
   const entry = index.find((l) => l && l.id === id);
   if (!entry) {
-    throw new Error(`No lesson found with id "${id}".`);
+    throw new Error(`id "${id}" の課は見つかりません。`);
   }
   if (!entry.file) {
-    throw new Error(`Lesson "${id}" has no file listed in the index.`);
+    throw new Error(`課 "${id}" のファイルが一覧に記載されていません。`);
   }
 
   // Resolve the lesson file relative to the lessons directory.
@@ -62,16 +62,16 @@ export async function loadLesson(id) {
   try {
     res = await fetch(url, { cache: "no-cache" });
   } catch (err) {
-    throw new Error(`Could not load lesson "${id}" (network error): ${err.message}`);
+    throw new Error(`課 "${id}" を読み込めませんでした（通信エラー）: ${err.message}`);
   }
   if (!res.ok) {
-    throw new Error(`Could not load lesson "${id}" (HTTP ${res.status}).`);
+    throw new Error(`課 "${id}" を読み込めませんでした (HTTP ${res.status})。`);
   }
   let lesson;
   try {
     lesson = await res.json();
   } catch (err) {
-    throw new Error(`Lesson "${id}" is not valid JSON: ${err.message}`);
+    throw new Error(`課 "${id}" が正しい JSON ではありません: ${err.message}`);
   }
   return lesson;
 }

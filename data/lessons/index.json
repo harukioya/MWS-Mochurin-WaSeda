@@ -1,18 +1,1 @@
-[
-  {
-    "id": "lesson-01",
-    "title": "Anatomy of an Infostealer",
-    "tagline": "Follow a credential-stealer from first look to phone-home — and learn to read each move.",
-    "difficulty": "Beginner",
-    "family": "Infostealer",
-    "file": "lesson-01.json"
-  },
-  {
-    "id": "lesson-02",
-    "title": "Anatomy of Ransomware",
-    "tagline": "Watch a crypto-locker go from a phishing attachment to encrypted files and a ransom note — and learn each move.",
-    "difficulty": "Intermediate",
-    "family": "Ransomware",
-    "file": "lesson-02.json"
-  }
-]
+[]
