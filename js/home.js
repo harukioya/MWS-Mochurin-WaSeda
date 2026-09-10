@@ -40,7 +40,7 @@ export async function renderHome(mount) {
   inspect.type = 'button';
   inspect.className = 'btn btn-ghost btn-lg';
   inspect.textContent = 'ZIPファイルの中身を調べる →';
-  inspect.setAttribute('aria-label', '圧縮ファイルの検査画面を開く');
+  inspect.setAttribute('aria-label', 'ZIPファイルの中身を調べる画面を開く');
   inspect.addEventListener('click', () => {
     location.hash = '#/inspect';
   });
