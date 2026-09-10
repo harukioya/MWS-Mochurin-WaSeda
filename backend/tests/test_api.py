@@ -152,3 +152,46 @@ class TestNetworkIsolation(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestRoleLoading(unittest.TestCase):
+    """The default must be usable; anything malformed must fail closed."""
+
+    def setUp(self):
+        self.tmp = os.path.join(
+            os.environ.get("TMPDIR", "/tmp"), f"mws-role-{os.getpid()}"
+        )
+        self._orig = api.ROLE_FILE
+        api.ROLE_FILE = self.tmp
+        self.addCleanup(lambda: setattr(api, "ROLE_FILE", self._orig))
+        self.addCleanup(lambda: os.path.exists(self.tmp) and os.remove(self.tmp))
+
+    def _write(self, text, mode=0o600):
+        with open(self.tmp, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        os.chmod(self.tmp, mode)
+
+    def test_default_is_usable_when_no_config_exists(self):
+        """Defaulting to `student` made the tool a dead end on first run."""
+        self.assertEqual(api.DEFAULT_ROLE, "instructor")
+        self.assertFalse(os.path.exists(self.tmp))
+        self.assertEqual(api.load_role(), "instructor")
+
+    def test_student_is_an_explicit_opt_in(self):
+        self._write("student")
+        self.assertEqual(api.load_role(), "student")
+
+    def test_unknown_role_fails_closed(self):
+        for text in ("admin", "root", "", "INSTRUCTOR", "instructor extra"):
+            with self.subTest(text=text):
+                self._write(text)
+                self.assertEqual(api.load_role(), "student")
+
+    def test_group_writable_config_is_ignored(self):
+        """A config anyone can edit is not evidence of anything."""
+        self._write("instructor", mode=0o666)
+        self.assertEqual(api.load_role(), "student")
+
+    def test_trailing_whitespace_is_tolerated(self):
+        self._write("  student \n")
+        self.assertEqual(api.load_role(), "student")

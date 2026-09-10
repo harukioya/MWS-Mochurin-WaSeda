@@ -125,28 +125,45 @@ ROUTES = [
 ]
 
 
+ROLE_FILE = os.path.expanduser("~/.config/mws/role")
+DEFAULT_ROLE = "instructor"
+
+
 def load_role() -> str:
     """Read the role from a config file outside the repo.
 
-    Honest framing (BUILD-CONTRACT): this is an anti-footgun control, not
-    containment. A student running as their own uid can edit this file or run
-    their own copy of the server. It stops accidents and it limits the blast
-    radius of a hostile web page driving the API; it does not restrain a
-    motivated student, and the UI must not claim otherwise.
+    The default is `instructor`, deliberately. Whoever launches this server is
+    running it on their own machine against their own dataset -- they ARE the
+    instructor -- and defaulting to `student` made the tool a dead end on first
+    run: nothing indexed, and no capability to index anything. `student` is an
+    opt-in downgrade for when the app is handed to a learner.
+
+    That is not a weakened boundary, because `student` was never a boundary.
+    Honest framing (BUILD-CONTRACT): it is an anti-footgun control, not
+    containment. Someone running as their own uid can edit this file or start
+    their own copy of the server. It prevents accidents and limits what a
+    hostile web page could drive through the API; it does not restrain a
+    motivated student, and the UI must not claim otherwise. The controls that
+    do carry weight -- the Host allowlist, the token on every mutation, and
+    intake being off unless MWS_INTAKE_ENABLED=1 -- are unaffected by the role.
     """
-    path = os.path.expanduser("~/.config/mws/role")
     try:
-        with open(path, encoding="utf-8") as fh:
+        with open(ROLE_FILE, encoding="utf-8") as fh:
             role = fh.read().strip()
-        if role in ROLE_CAPS:
-            st = os.stat(path)
-            if st.st_mode & 0o022:
-                print(f"[warn] {path} is group/other-writable; ignoring it", file=sys.stderr)
-                return "student"
-            return role
     except OSError:
-        pass
-    return "student"
+        return DEFAULT_ROLE
+    if role not in ROLE_CAPS:
+        print(f"[warn] {ROLE_FILE} names an unknown role {role!r}; "
+              "falling back to student", file=sys.stderr)
+        return "student"  # a malformed file fails CLOSED, not open
+    try:
+        if os.stat(ROLE_FILE).st_mode & 0o022:
+            print(f"[warn] {ROLE_FILE} is group/other-writable; ignoring it",
+                  file=sys.stderr)
+            return "student"
+    except OSError:
+        return "student"
+    return role
 
 
 class State:
@@ -691,7 +708,14 @@ def main() -> None:
     # launching this from a script or a log redirect would otherwise show
     # nothing at all -- including the port number you need to open the app.
     print(f"  MWS inspector  ->  http://127.0.0.1:{port}/", flush=True)
-    print(f"  role: {STATE.role}   (set ~/.config/mws/role to change)", flush=True)
+    if STATE.role == "instructor":
+        print("  role: instructor  (full access - this is your own machine)", flush=True)
+        print(f"        hand it to a learner with:  "
+              f"mkdir -p {os.path.dirname(ROLE_FILE)} && "
+              f"echo student > {ROLE_FILE}", flush=True)
+    else:
+        print(f"  role: {STATE.role}  (read-only; delete {ROLE_FILE} to restore "
+              "full access)", flush=True)
     print("  Ctrl+C to stop.", flush=True)
     try:
         httpd.serve_forever()
