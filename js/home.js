@@ -39,7 +39,7 @@ export async function renderHome(mount) {
   const inspect = document.createElement('button');
   inspect.type = 'button';
   inspect.className = 'btn btn-ghost btn-lg';
-  inspect.textContent = '圧縮ファイルを検査する →';
+  inspect.textContent = 'ZIPファイルの中身を調べる →';
   inspect.setAttribute('aria-label', '圧縮ファイルの検査画面を開く');
   inspect.addEventListener('click', () => {
     location.hash = '#/inspect';
@@ -55,42 +55,46 @@ export async function renderHome(mount) {
   grid.className = 'home-grid';
   mount.appendChild(grid);
 
-  let index;
-  try {
-    index = await loadIndex();
-  } catch (err) {
+  // 静的な演習と、ログから自動生成した演習の両方を集めてから判断する。
+  // 以前はここで静的な一覧だけを見て、空なら早期に抜けていたため、自動生成
+  // した演習があっても「まだありません」と表示されていた。
+  const [staticLessons, generated] = await Promise.all([
+    loadIndex().catch(() => null),
+    fetch('/api/lessons')
+      .then((r) => (r.ok ? r.json() : { lessons: [] }))
+      .then((d) => d.lessons)
+      // サーバーを動かしていない場合。静的な演習だけで成り立つので黙って続ける。
+      .catch(() => []),
+  ]);
+
+  if (staticLessons === null && !generated.length) {
     grid.remove();
     renderMessage(mount, '演習の一覧を読み込めませんでした。ページを再読み込みしてください。');
     return;
   }
 
-  if (!Array.isArray(index) || index.length === 0) {
+  const index = Array.isArray(staticLessons) ? staticLessons : [];
+
+  if (!index.length && !generated.length) {
     grid.remove();
-    renderMessage(mount, '利用できる演習はまだありません。');
+    renderMessage(
+      mount,
+      'まだ演習がありません。「ZIPファイルの中身を調べる」から、ログを含むZIPを読み込んで演習を作ってください。'
+    );
     return;
   }
 
-  // Build cards immediately (fast, no stage count yet), then fill stage counts
-  // as each lesson resolves so the grid never blocks on a slow load.
-  // Lessons generated from real MWS logs, if the backend is running. The
-  // static site works without it, so a failure here is silent by design.
-  fetch('/api/lessons')
-    .then((r) => (r.ok ? r.json() : { lessons: [] }))
-    .then(({ lessons }) => {
-      lessons.forEach((l) => {
-        const card = buildCard({
-          id: l.id,
-          title: l.title,
-          tagline: 'MWS Cup のログから自動生成しました。使用前に内容を確認してください。',
-          difficulty: '自動生成',
-          family: l.source || 'DFIR',
-        });
-        grid.appendChild(card.el);
-      });
-    })
-    .catch(() => {
-      /* no backend: the static lessons stand on their own */
-    });
+  generated.forEach((l) => {
+    grid.appendChild(
+      buildCard({
+        id: l.id,
+        title: l.title,
+        tagline: 'MWS Cup のログから自動生成しました。使用前に内容を確認してください。',
+        difficulty: '自動生成',
+        family: l.source || 'DFIR',
+      }).el
+    );
+  });
 
   index.forEach((item) => {
     const card = buildCard(item);
