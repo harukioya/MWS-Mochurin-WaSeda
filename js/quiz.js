@@ -121,11 +121,17 @@ export function renderQuiz(container, quiz, onAnswered) {
     title.className = 'reveal__title';
     title.textContent = '解説';
 
-    const explain = document.createElement('p');
-    explain.textContent = quiz.explain;
-
     reveal.appendChild(title);
-    reveal.appendChild(explain);
+    // 解説も空行で段落を分ける。長い説明が一塊になると読み通されない。
+    String(quiz.explain || '')
+      .split(/\n{2,}/)
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .forEach((t) => {
+        const para = document.createElement('p');
+        para.textContent = t;
+        reveal.appendChild(para);
+      });
     quizEl.appendChild(reveal);
 
     document.removeEventListener('keydown', onKey);
