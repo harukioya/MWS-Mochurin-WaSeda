@@ -304,10 +304,13 @@ export async function renderArchive(mount, archiveId) {
 
   const summary = el('div', 'panel');
   summary.append(el('div', 'panel__label', 'Summary'));
-  const line = `${members.length} ${members.length === 1 ? 'entry' : 'entries'}. ` +
+  const plural = (n, one, many) => (n === 1 ? one : many);
+  const line =
+    `${members.length} ${plural(members.length, 'entry', 'entries')}. ` +
     `${runnable} could run on some system, ` +
-    `${unrecognised} were not recognised and are treated just as strictly. ` +
-    `${blocked} ${blocked === 1 ? 'is' : 'are'} blocked from being written to disk.`;
+    `${unrecognised} ${plural(unrecognised, 'was', 'were')} not recognised and ` +
+    `${plural(unrecognised, 'is', 'are')} treated just as strictly. ` +
+    `${blocked} ${plural(blocked, 'is', 'are')} blocked from being written to disk.`;
   summary.append(el('p', null, line));
   summary.append(
     el(
