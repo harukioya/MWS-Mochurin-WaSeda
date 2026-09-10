@@ -8,3 +8,17 @@ node_modules/
 *.gzf
 *.vir
 samples/
+
+# internal design contract - local only, never push (collaborative repo)
+docs/BUILD-CONTRACT.md
+docs/THREAT-MODEL.md
+
+# stray screenshots
+Screenshot*.png
+
+# local runtime state (manifest DB) - never commit
+.mws-state/
+
+# Python bytecode
+__pycache__/
+*.py[cod]

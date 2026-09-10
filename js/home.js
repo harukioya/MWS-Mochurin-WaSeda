@@ -29,7 +29,24 @@ export async function renderHome(mount) {
   intro.textContent =
     'Walk through a real attack one stage at a time — read each move, guess before you advance, then see it explained on the MITRE ATT&CK map. No samples ever run; every trace is a safe, synthetic teaching example.';
 
-  hero.append(eyebrow, h1, intro);
+  // Entry point to the inspector. Kept next to the lessons because the two
+  // halves answer the same question from different ends: the lessons explain
+  // what malware does, the inspector explains what a file in front of you is.
+  const cta = document.createElement('div');
+  // Not .navbtns: that is space-between, which left-aligns a lone child inside
+  // this centred hero.
+  cta.className = 'hero-cta';
+  const inspect = document.createElement('button');
+  inspect.type = 'button';
+  inspect.className = 'btn btn-ghost btn-lg';
+  inspect.textContent = 'Inspect an archive →';
+  inspect.setAttribute('aria-label', 'Open the archive inspector');
+  inspect.addEventListener('click', () => {
+    location.hash = '#/inspect';
+  });
+  cta.appendChild(inspect);
+
+  hero.append(eyebrow, h1, intro, cta);
   mount.appendChild(hero);
   h1.focus({ preventScroll: true });
 
@@ -55,6 +72,26 @@ export async function renderHome(mount) {
 
   // Build cards immediately (fast, no stage count yet), then fill stage counts
   // as each lesson resolves so the grid never blocks on a slow load.
+  // Lessons generated from real logs, if the backend is running. The
+  // static site works without it, so a failure here is silent by design.
+  fetch('/api/lessons')
+    .then((r) => (r.ok ? r.json() : { lessons: [] }))
+    .then(({ lessons }) => {
+      lessons.forEach((l) => {
+        const card = buildCard({
+          id: l.id,
+          title: l.title,
+          tagline: 'Generated from real log data — review before teaching.',
+          difficulty: 'Generated',
+          family: l.source || 'DFIR',
+        });
+        grid.appendChild(card.el);
+      });
+    })
+    .catch(() => {
+      /* no backend: the static lessons stand on their own */
+    });
+
   index.forEach((item) => {
     const card = buildCard(item);
     grid.appendChild(card.el);
