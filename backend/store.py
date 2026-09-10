@@ -237,21 +237,21 @@ class Store:
         for row in self.archives():
             path = row["path"]
             if not os.path.exists(path):
-                results.append(IntegrityResult(path, False, "file is missing", now))
+                results.append(IntegrityResult(path, False, "ファイルが見つかりません", now))
                 self.log("integrity-missing", path)
                 status = "missing"
             else:
                 digest, size = sha256_file(path)
                 if digest == row["sha256"]:
                     results.append(
-                        IntegrityResult(path, True, "unchanged since last check", now)
+                        IntegrityResult(path, True, "前回の点検から変化ありません", now)
                     )
                     status = "ok"
                 else:
                     results.append(
                         IntegrityResult(
                             path, False,
-                            f"content changed: {row['sha256'][:12]} -> {digest[:12]}",
+                            f"内容が変化しました: {row['sha256'][:12]} → {digest[:12]}",
                             now,
                         )
                     )

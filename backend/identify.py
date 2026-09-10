@@ -94,75 +94,75 @@ class Identification:
 
 _SIGNATURES: list[tuple[bytes, str, Verdict, str]] = [
     # --- native executables -------------------------------------------------
-    (b"MZ", "PE executable (Windows)", Verdict.NATIVE_EXECUTABLE,
-     "starts with the DOS header 'MZ'"),
-    (b"\x7fELF", "ELF executable (Linux/Unix)", Verdict.NATIVE_EXECUTABLE,
-     "starts with the ELF magic"),
-    (b"\xcf\xfa\xed\xfe", "Mach-O 64-bit (macOS)", Verdict.NATIVE_EXECUTABLE,
-     "starts with the Mach-O 64-bit magic"),
-    (b"\xce\xfa\xed\xfe", "Mach-O 32-bit (macOS)", Verdict.NATIVE_EXECUTABLE,
-     "starts with the Mach-O 32-bit magic"),
-    (b"\xbe\xba\xfe\xca", "Mach-O fat binary (macOS)", Verdict.NATIVE_EXECUTABLE,
-     "starts with the Mach-O fat magic"),
+    (b"MZ", "PE 実行ファイル（Windows）", Verdict.NATIVE_EXECUTABLE,
+     "先頭が DOS ヘッダ MZ です"),
+    (b"\x7fELF", "ELF 実行ファイル（Linux/Unix）", Verdict.NATIVE_EXECUTABLE,
+     "先頭が ELF の識別子です"),
+    (b"\xcf\xfa\xed\xfe", "Mach-O 64ビット（macOS）", Verdict.NATIVE_EXECUTABLE,
+     "先頭が Mach-O 64ビットの識別子です"),
+    (b"\xce\xfa\xed\xfe", "Mach-O 32ビット（macOS）", Verdict.NATIVE_EXECUTABLE,
+     "先頭が Mach-O 32ビットの識別子です"),
+    (b"\xbe\xba\xfe\xca", "Mach-O 統合バイナリ（macOS）", Verdict.NATIVE_EXECUTABLE,
+     "先頭が Mach-O 統合形式の識別子です"),
     # --- bytecode / archive-that-runs --------------------------------------
-    (b"dex\n", "Android DEX bytecode", Verdict.BYTECODE_ARCHIVE,
-     "starts with the DEX magic"),
+    (b"dex\n", "Android DEX 中間コード", Verdict.BYTECODE_ARCHIVE,
+     "先頭が DEX の識別子です"),
     # --- containers ---------------------------------------------------------
-    (b"PK\x03\x04", "ZIP archive", Verdict.CONTAINER,
-     "starts with the ZIP local-file header"),
-    (b"PK\x05\x06", "ZIP archive (empty)", Verdict.CONTAINER,
-     "starts with the ZIP end-of-central-directory record"),
-    (b"PK\x07\x08", "ZIP archive (spanned)", Verdict.CONTAINER,
-     "starts with the ZIP spanned-archive marker"),
-    (b"\x1f\x8b", "gzip stream", Verdict.CONTAINER, "starts with the gzip magic"),
+    (b"PK\x03\x04", "ZIP 書庫", Verdict.CONTAINER,
+     "先頭が ZIP のファイルヘッダです"),
+    (b"PK\x05\x06", "ZIP 書庫（空）", Verdict.CONTAINER,
+     "先頭が ZIP の終端レコードです"),
+    (b"PK\x07\x08", "ZIP 書庫（分割）", Verdict.CONTAINER,
+     "先頭が ZIP の分割書庫の印です"),
+    (b"\x1f\x8b", "gzip 圧縮データ", Verdict.CONTAINER, "先頭が gzip の識別子です"),
     # --- containers we cannot currently enumerate: hard block ---------------
-    (b"7z\xbc\xaf\x27\x1c", "7-Zip archive", Verdict.UNSUPPORTED_CONTAINER,
-     "starts with the 7-Zip magic"),
-    (b"\xfd7zXZ\x00", "xz stream", Verdict.UNSUPPORTED_CONTAINER,
-     "starts with the xz magic"),
-    (b"BZh", "bzip2 stream", Verdict.UNSUPPORTED_CONTAINER,
-     "starts with the bzip2 magic"),
-    (b"\x28\xb5\x2f\xfd", "zstd stream", Verdict.UNSUPPORTED_CONTAINER,
-     "starts with the zstd magic"),
-    (b"Rar!\x1a\x07", "RAR archive", Verdict.UNSUPPORTED_CONTAINER,
-     "starts with the RAR magic"),
-    (b"MSCF", "Microsoft Cabinet", Verdict.UNSUPPORTED_CONTAINER,
-     "starts with the CAB magic"),
+    (b"7z\xbc\xaf\x27\x1c", "7-Zip 書庫", Verdict.UNSUPPORTED_CONTAINER,
+     "先頭が 7-Zip の識別子です"),
+    (b"\xfd7zXZ\x00", "xz 圧縮データ", Verdict.UNSUPPORTED_CONTAINER,
+     "先頭が xz の識別子です"),
+    (b"BZh", "bzip2 圧縮データ", Verdict.UNSUPPORTED_CONTAINER,
+     "先頭が bzip2 の識別子です"),
+    (b"\x28\xb5\x2f\xfd", "zstd 圧縮データ", Verdict.UNSUPPORTED_CONTAINER,
+     "先頭が zstd の識別子です"),
+    (b"Rar!\x1a\x07", "RAR 書庫", Verdict.UNSUPPORTED_CONTAINER,
+     "先頭が RAR の識別子です"),
+    (b"MSCF", "Microsoft Cabinet 書庫", Verdict.UNSUPPORTED_CONTAINER,
+     "先頭が CAB の識別子です"),
     # --- documents that can carry executable content -----------------------
-    (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", "OLE compound document (legacy Office)",
-     Verdict.DOCUMENT_ACTIVE, "starts with the OLE compound-file magic"),
+    (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", "OLE 複合文書（旧 Office 形式）",
+     Verdict.DOCUMENT_ACTIVE, "先頭が OLE 複合文書の識別子です"),
     # --- launchers ----------------------------------------------------------
-    (b"L\x00\x00\x00\x01\x14\x02\x00", "Windows shortcut (.lnk)",
-     Verdict.SHORTCUT_LAUNCHER, "starts with the Windows shell-link header"),
+    (b"L\x00\x00\x00\x01\x14\x02\x00", "Windows ショートカット（.lnk）",
+     Verdict.SHORTCUT_LAUNCHER, "先頭が Windows ショートカットのヘッダです"),
     # --- sample-bearing analysis databases ----------------------------------
-    (b"\xac\xed\x00\x05", "Java serialized object stream", Verdict.SAMPLE_BEARING,
-     "starts with the Java serialization magic (0xACED0005)"),
+    (b"\xac\xed\x00\x05", "Java 直列化データ", Verdict.SAMPLE_BEARING,
+     "先頭が Java 直列化の識別子（0xACED0005）です"),
     # --- forensic images ----------------------------------------------------
-    (b"EVF\x09\x0d\x0a\xff\x00", "EnCase/EWF forensic image", Verdict.FORENSIC_IMAGE,
-     "starts with the EWF magic"),
-    (b"AFF", "AFF forensic image", Verdict.FORENSIC_IMAGE,
-     "starts with the AFF magic"),
+    (b"EVF\x09\x0d\x0a\xff\x00", "EnCase/EWF 保全イメージ", Verdict.FORENSIC_IMAGE,
+     "先頭が EWF の識別子です"),
+    (b"AFF", "AFF 保全イメージ", Verdict.FORENSIC_IMAGE,
+     "先頭が AFF の識別子です"),
     # --- inert -------------------------------------------------------------
     # PDF is NOT inert: /Launch, /JavaScript and /EmbeddedFile are part of the
     # format, and BUILD-CONTRACT rule 5 does not list it in the inert allowlist.
-    (b"%PDF", "PDF document", Verdict.DOCUMENT_ACTIVE,
-     "starts with the PDF magic — PDFs can carry /Launch and /JavaScript actions"),
-    (b"\x89PNG\r\n\x1a\n", "PNG image", Verdict.INERT_DATA,
-     "starts with the PNG magic"),
-    (b"\xff\xd8\xff", "JPEG image", Verdict.INERT_DATA, "starts with the JPEG magic"),
-    (b"GIF87a", "GIF image", Verdict.INERT_DATA, "starts with the GIF magic"),
-    (b"GIF89a", "GIF image", Verdict.INERT_DATA, "starts with the GIF magic"),
+    (b"%PDF", "PDF 文書", Verdict.DOCUMENT_ACTIVE,
+     "先頭が PDF の識別子です。PDF は /Launch や /JavaScript の動作を持てます"),
+    (b"\x89PNG\r\n\x1a\n", "PNG 画像", Verdict.INERT_DATA,
+     "先頭が PNG の識別子です"),
+    (b"\xff\xd8\xff", "JPEG 画像", Verdict.INERT_DATA, "先頭が JPEG の識別子です"),
+    (b"GIF87a", "GIF 画像", Verdict.INERT_DATA, "先頭が GIF の識別子です"),
+    (b"GIF89a", "GIF 画像", Verdict.INERT_DATA, "先頭が GIF の識別子です"),
     # A capture of a malware download carries the sample verbatim in its
     # payload -- recoverable with Wireshark's "Export Objects". Same reasoning
     # that makes a Ghidra .gzf sample-bearing rather than inert.
-    (b"\xd4\xc3\xb2\xa1", "pcap capture", Verdict.SAMPLE_BEARING,
-     "starts with the pcap magic"),
-    (b"\xa1\xb2\xc3\xd4", "pcap capture (big-endian)", Verdict.SAMPLE_BEARING,
-     "starts with the pcap magic"),
-    (b"\x0a\x0d\x0d\x0a", "pcapng capture", Verdict.SAMPLE_BEARING,
-     "starts with the pcapng block header"),
-    (b"\x00\x05\x16\x07", "AppleDouble resource header", Verdict.UNKNOWN,
-     "starts with the AppleDouble magic — carries xattrs and resource forks"),
+    (b"\xd4\xc3\xb2\xa1", "pcap 通信記録", Verdict.SAMPLE_BEARING,
+     "先頭が pcap の識別子です"),
+    (b"\xa1\xb2\xc3\xd4", "pcap 通信記録（ビッグエンディアン）", Verdict.SAMPLE_BEARING,
+     "先頭が pcap の識別子です"),
+    (b"\x0a\x0d\x0d\x0a", "pcapng 通信記録", Verdict.SAMPLE_BEARING,
+     "先頭が pcapng のブロックヘッダです"),
+    (b"\x00\x05\x16\x07", "AppleDouble 付随情報", Verdict.UNKNOWN,
+     "先頭が AppleDouble の識別子です。拡張属性やリソースフォークを含みます"),
 ]
 
 # Sorted once: longest magic first, so `PK\x05\x06` cannot be shadowed by a
@@ -205,13 +205,13 @@ _SHEBANG = re.compile(rb"^#!\s*\S")
 # search starts at offset 1, not at len(magic): a 7-Zip magic sitting at
 # offset 4 of a PDF was previously invisible because the scan began at 6.
 _EMBEDDED = [
-    (b"PK\x05\x06", "a ZIP end-of-central-directory record"),
-    (b"PK\x03\x04", "a ZIP local-file header"),
-    (b"7z\xbc\xaf\x27\x1c", "a 7-Zip archive"),
-    (b"\xfd7zXZ\x00", "an xz stream"),
-    (b"Rar!\x1a\x07", "a RAR archive"),
-    (b"MZ\x90\x00", "a PE executable header"),
-    (b"\x7fELF", "an ELF executable header"),
+    (b"PK\x05\x06", "ZIP の終端レコード"),
+    (b"PK\x03\x04", "ZIP のファイルヘッダ"),
+    (b"7z\xbc\xaf\x27\x1c", "7-Zip 書庫"),
+    (b"\xfd7zXZ\x00", "xz 圧縮データ"),
+    (b"Rar!\x1a\x07", "RAR 書庫"),
+    (b"MZ\x90\x00", "PE 実行ファイルのヘッダ"),
+    (b"\x7fELF", "ELF 実行ファイルのヘッダ"),
 ]
 
 # Formats whose magic does not sit at offset 0. Each carries a validator,
@@ -231,12 +231,12 @@ def _valid_riff(head: bytes) -> bool:
 
 
 _OFFSET_SIGNATURES = [
-    (4, b"ftyp", "MP4/QuickTime video", Verdict.INERT_DATA,
-     "carries a valid ISO base-media 'ftyp' box at offset 4", _valid_ftyp),
-    (8, b"WAVE", "WAV audio", Verdict.INERT_DATA,
-     "is a RIFF container declaring WAVE", _valid_riff),
-    (8, b"AVI ", "AVI video", Verdict.INERT_DATA,
-     "is a RIFF container declaring AVI", _valid_riff),
+    (4, b"ftyp", "MP4/QuickTime 動画", Verdict.INERT_DATA,
+     "4バイト目に ISO 基本メディアの ftyp 領域があります", _valid_ftyp),
+    (8, b"WAVE", "WAV 音声", Verdict.INERT_DATA,
+     "RIFF 形式で WAVE を宣言しています", _valid_riff),
+    (8, b"AVI ", "AVI 動画", Verdict.INERT_DATA,
+     "RIFF 形式で AVI を宣言しています", _valid_riff),
 ]
 
 # Extensions that make a file runnable somewhere WITHOUT an execute bit.
@@ -264,14 +264,14 @@ _INERT_TEXT_EXT = {
 
 # Text that betrays executable intent regardless of its extension.
 _ACTIVE_MARKERS = [
-    (b"@echo off", "a Windows batch script"),
-    (b"<?php", "PHP source"),
-    (b"CreateObject(", "VBScript automation"),
-    (b"do shell script", "an AppleScript shell invocation"),
-    (b"<plist", "a property list — LaunchAgents run these with no execute bit"),
-    (b"Invoke-Expression", "a PowerShell dynamic-execution call"),
-    (b"IEX(", "a PowerShell dynamic-execution call"),
-    (b"<script", "embedded script markup"),
+    (b"@echo off", "Windows のバッチ命令"),
+    (b"<?php", "PHP のソース"),
+    (b"CreateObject(", "VBScript の自動実行呼び出し"),
+    (b"do shell script", "AppleScript からのシェル呼び出し"),
+    (b"<plist", "設定ファイル形式。自動起動の登録に使われ、実行権限がなくても動きます"),
+    (b"Invoke-Expression", "PowerShell の動的実行呼び出し"),
+    (b"IEX(", "PowerShell の動的実行呼び出し"),
+    (b"<script", "埋め込まれたスクリプト記述"),
 ]
 
 
@@ -327,27 +327,26 @@ def _from_name(ext: str) -> Identification | None:
     """A reading based only on the name. May escalate, never soften."""
     if ext in _LAUNCHER_EXT:
         return Identification(
-            f"launcher ({ext})", Verdict.SHORTCUT_LAUNCHER,
-            f"the name ends in {ext}, which the operating system treats as "
-            "something to launch",
-            "Needs no execute bit: opening it is enough.",
+            f"起動用ファイル（{ext}）", Verdict.SHORTCUT_LAUNCHER,
+            f"拡張子が {ext} で、基本ソフトが起動対象として扱う形式です",
+            "実行権限は不要です。開くだけで動作します。",
         )
     if ext in _SCRIPT_EXT:
         return Identification(
-            f"script ({ext})", Verdict.SCRIPT,
-            f"the name ends in {ext}, which an interpreter will run",
-            "Runs without an execute bit, e.g. `python3 file` or `sh file`.",
+            f"スクリプト（{ext}）", Verdict.SCRIPT,
+            f"拡張子が {ext} で、解釈実行される形式です",
+            "実行権限は不要です。`python3 ファイル` や `sh ファイル` で動きます。",
         )
     if ext in _BYTECODE_EXT:
         return Identification(
-            f"bytecode archive ({ext})", Verdict.BYTECODE_ARCHIVE,
-            f"the name ends in {ext}, which a runtime will execute",
-            "Runs with `java -jar` or an equivalent runtime.",
+            f"中間コード書庫（{ext}）", Verdict.BYTECODE_ARCHIVE,
+            f"拡張子が {ext} で、実行環境が動かす形式です",
+            "`java -jar` などの実行環境で動きます。",
         )
     if ext in _MACRO_DOC_EXT:
         return Identification(
-            f"macro-enabled document ({ext})", Verdict.DOCUMENT_ACTIVE,
-            f"the name ends in {ext}, a macro-enabled Office format",
+            f"マクロ付き文書（{ext}）", Verdict.DOCUMENT_ACTIVE,
+            f"拡張子が {ext} で、マクロを含められる Office 形式です",
         )
     return None
 
@@ -361,8 +360,8 @@ def identify(head: bytes, name: str = "", size: int | None = None) -> Identifica
     """
     if not head:
         return Identification(
-            "empty", Verdict.UNKNOWN, "the file has no content to classify",
-            "An empty member may be a placeholder, or a truncated extraction.",
+            "空のファイル", Verdict.UNKNOWN, "内容がないため判定できません",
+            "場所取りの空ファイルか、取り出しが途中で切れた可能性があります。",
         )
 
     lowered = name.lower()
@@ -375,9 +374,9 @@ def identify(head: bytes, name: str = "", size: int | None = None) -> Identifica
     if _SHEBANG.match(head):
         interp = head.split(b"\n", 1)[0].decode("utf-8", "replace").lstrip("#!").strip()
         result = Identification(
-            "script with a shebang", Verdict.SCRIPT,
-            f"starts with '#!' naming the interpreter {interp!r}",
-            "Runs without an execute bit: an interpreter reads it as data.",
+            "実行指定付きスクリプト", Verdict.SCRIPT,
+            f"先頭の #! で解釈実行の対象 {interp!r} を指定しています",
+            "実行権限は不要です。指定された処理系がデータとして読み込んで動かします。",
         )
     else:
         # (2) What the bytes say.
@@ -387,22 +386,21 @@ def identify(head: bytes, name: str = "", size: int | None = None) -> Identifica
             caveat = ""
             if verdict is Verdict.SAMPLE_BEARING:
                 if lowered.endswith(".gzf") or b"Program" in head:
-                    kind = "Ghidra packed program database (.gzf)"
+                    kind = "Ghidra 解析データベース（.gzf）"
                     caveat = (
-                        "The original sample's bytes are recoverable from this file "
-                        "with Ghidra (Export Program -> Original File). The operating "
-                        "system cannot run it as it stands, but it is not a derived "
-                        "artifact — treat it as carrying the sample itself."
+                        "Ghidra の Export Program → Original File で、元の検体そのものを"
+                        "取り出せます。この形式のままでは基本ソフトは実行できませんが、"
+                        "検体を内包していると考えてください。"
                     )
                 else:
                     caveat = (
-                        "A Java object stream can carry arbitrary embedded data, and "
-                        "deserializing an untrusted stream is itself an execution risk."
+                        "Java の直列化データは任意の内容を含められます。信頼できない"
+                        "データの復元処理そのものに危険があります。"
                     )
             elif verdict is Verdict.UNSUPPORTED_CONTAINER:
                 caveat = (
-                    "This container cannot be enumerated yet, so its contents are "
-                    "unverified. It is blocked rather than assumed safe."
+                    "この書庫形式はまだ一覧できないため、中身を確認できていません。"
+                    "安全とみなさず、取り出しを禁止しています。"
                 )
             result = Identification(kind, verdict, why, caveat)
         elif _looks_like_utf8_text(head):
@@ -410,24 +408,20 @@ def identify(head: bytes, name: str = "", size: int | None = None) -> Identifica
             #     is not safety: `sh notes.txt` executes notes.txt.
             if ext in _INERT_TEXT_EXT:
                 result = Identification(
-                    "plain UTF-8 text", Verdict.INERT_DATA,
-                    "is valid UTF-8 with no NUL bytes, and carries an extension "
-                    "on the inert allowlist",
+                    "文字データ（UTF-8）", Verdict.INERT_DATA,
+                    "正しい UTF-8 で、動作を伴わない拡張子です",
                 )
             else:
                 result = Identification(
-                    "text with an unrecognised extension", Verdict.UNKNOWN,
-                    f"is valid UTF-8 text, but {ext or 'no extension'} is not on "
-                    "the inert allowlist",
-                    "Text is not automatically safe — an interpreter will run it "
-                    "if asked, with no execute bit required.",
+                    "文字データ（拡張子が対象外）", Verdict.UNKNOWN,
+                    f"正しい UTF-8 ですが、拡張子 {ext or 'なし'} は安全と確認できていません",
+                    "文字データでも安全とは限りません。処理系に渡せば実行権限なしで動きます。",
                 )
         else:
             result = Identification(
-                "unrecognised binary", Verdict.UNKNOWN,
-                "matches no known signature and is not valid UTF-8 text",
-                "Treated as strictly as an executable, because it has not been "
-                "ruled out.",
+                "判別できない内容", Verdict.UNKNOWN,
+                "既知のどの形式にも一致せず、文字データでもありません",
+                "安全と確認できないため、実行ファイルと同じ扱いにしています。",
             )
 
     # (4) The name is consulted on EVERY branch, and can only escalate.
@@ -442,8 +436,8 @@ def identify(head: bytes, name: str = "", size: int | None = None) -> Identifica
                 result,
                 Identification(
                     result.kind, Verdict.SCRIPT,
-                    f"contains {desc}",
-                    "Runs without an execute bit.",
+                    f"{desc}を含んでいます",
+                    "実行権限がなくても動きます。",
                 ),
             )
             break
@@ -454,9 +448,8 @@ def identify(head: bytes, name: str = "", size: int | None = None) -> Identifica
     if embedded is not None and result.verdict is not Verdict.CONTAINER:
         result = Identification(
             result.kind, Verdict.UNKNOWN, result.why,
-            f"Also contains {embedded} at a non-zero offset — this file is a "
-            "polyglot and a different tool may read it as that instead. "
-            + result.caveat,
+            f"途中の位置に{embedded}も含まれています。別のソフトはこのファイルを"
+            "そちらとして読む可能性があります。 " + result.caveat,
         )
 
     # (7) We only saw a prefix. Keep the classification -- it is the most
@@ -465,8 +458,8 @@ def identify(head: bytes, name: str = "", size: int | None = None) -> Identifica
     if truncated:
         unread = size - len(head)
         extra = (
-            f"Only the first {len(head)} bytes were examined; {unread} bytes were "
-            "not read, so this describes the header, not the whole file."
+            f"先頭 {len(head)} バイトのみを確認しており、{unread} バイトは未確認です。"
+            "この判定はファイル全体についてのものではありません。"
         )
         result = Identification(
             result.kind, result.verdict, result.why,

@@ -258,11 +258,11 @@ class Handler(BaseHTTPRequestHandler):
             if not STATE.can(route.capability):
                 return self._error(
                     403,
-                    f"role '{STATE.role}' lacks the '{route.capability}' capability",
+                    f"権限 '{STATE.role}' ではこの操作（{route.capability}）は許可されていません",
                 )
             return getattr(self, route.handler)(*m.groups())
 
-        return self._error(404, "no such endpoint")
+        return self._error(404, "該当する API はありません")
 
     def do_GET(self):
         self._dispatch("GET")
@@ -279,12 +279,12 @@ class Handler(BaseHTTPRequestHandler):
         """
         origin = self.headers.get("Origin")
         if origin is not None and origin.split("//", 1)[-1] not in ALLOWED_HOSTS:
-            self._error(403, "bad origin")
+            self._error(403, "送信元が不正です")
             return False
         if not secrets.compare_digest(
             self.headers.get("X-MWS-Token") or "", STATE.token
         ):
-            self._error(403, "missing or invalid token")
+            self._error(403, "トークンがないか無効です")
             return False
         return True
 
@@ -293,17 +293,17 @@ class Handler(BaseHTTPRequestHandler):
         try:
             n = int(self.headers.get("Content-Length") or 0)
         except ValueError:
-            self._error(400, "bad Content-Length")
+            self._error(400, "Content-Length が不正です")
             return None
         # A negative length previously slipped past the cap and made
         # rfile.read(-1) drain the socket to EOF.
         if not 0 <= n <= MAX_BODY:
-            self._error(413, "body too large")
+            self._error(413, "要求本文が大きすぎます")
             return None
         try:
             return json.loads(self.rfile.read(n) or b"{}")
         except (json.JSONDecodeError, UnicodeDecodeError):
-            self._error(400, "invalid JSON")
+            self._error(400, "JSON が不正です")
             return None
 
     # -- static -----------------------------------------------------------
@@ -323,21 +323,21 @@ class Handler(BaseHTTPRequestHandler):
     def _static(self, path: str):
         parts = [p for p in path.split("/") if p]
         if not parts or parts[0] not in STATIC_DIRS or any(p == ".." for p in parts):
-            return self._error(404, "not found")
+            return self._error(404, "見つかりません")
         ext = os.path.splitext(parts[-1])[1]
         if ext not in STATIC_EXT:
-            return self._error(404, "not found")
+            return self._error(404, "見つかりません")
 
         target = os.path.realpath(os.path.join(REPO_ROOT, *parts))
         # Re-check containment AFTER realpath: a symlink inside the repo could
         # otherwise point anywhere on disk.
         if not target.startswith(os.path.realpath(REPO_ROOT) + os.sep):
-            return self._error(404, "not found")
+            return self._error(404, "見つかりません")
         try:
             with open(target, "rb") as fh:
                 body = fh.read()
         except OSError:
-            return self._error(404, "not found")
+            return self._error(404, "見つかりません")
         self._send(200, body, STATIC_EXT[ext] + "; charset=utf-8")
 
     # -- api handlers -----------------------------------------------------
@@ -350,12 +350,12 @@ class Handler(BaseHTTPRequestHandler):
             "datasetDirs": STATE.dataset_dirs,
             "claims": {
                 "detects": [
-                    "a tracked archive being added, changed, or removed",
+                    "登録済みの書庫の追加・変更・削除",
                 ],
                 "doesNotDetect": [
-                    "execution of any file",
-                    "network activity or data leaving this machine",
-                    "changes made while this server is not running",
+                    "ファイルの実行",
+                    "通信や、この端末からのデータの持ち出し",
+                    "サーバー停止中に行われた変更",
                 ],
             },
         })
@@ -373,17 +373,16 @@ class Handler(BaseHTTPRequestHandler):
         archive_id, idx = int(archive_id), int(idx)
         rows = [a for a in STATE.store.archives() if a["id"] == archive_id]
         if not rows:
-            return self._error(404, "no such archive")
+            return self._error(404, "該当する書庫がありません")
         members = [m for m in STATE.store.members(archive_id) if m["idx"] == idx]
         if not members:
-            return self._error(404, "no such member")
+            return self._error(404, "該当する項目がありません")
         member = members[0]
 
         if member.get("container"):
             return self._json({
                 "member": member, "rows": [],
-                "note": "This entry lives inside a nested archive, so it has no "
-                        "position in the outer file and cannot be previewed here.",
+                "note": "入れ子になった書庫内の項目のため、ここでは先頭バイトを表示できません。",
             })
         if member["verdict"] in (
             Verdict.OPAQUE_ENCRYPTED.value,
@@ -391,7 +390,7 @@ class Handler(BaseHTTPRequestHandler):
         ):
             return self._json({
                 "member": member, "rows": [],
-                "note": "This member cannot be read, so there is nothing to preview.",
+                "note": "この項目は読み取れないため、表示できる内容がありません。",
             })
 
         # The archive may have been replaced since it was indexed; pairing a
@@ -399,12 +398,11 @@ class Handler(BaseHTTPRequestHandler):
         try:
             current, _ = sha256_file(rows[0]["path"])
         except OSError as exc:
-            return self._json({"member": member, "rows": [], "note": f"Unreadable: {exc}"})
+            return self._json({"member": member, "rows": [], "note": f"読み取れません: {exc}"})
         if current != rows[0]["sha256"]:
             return self._json({
                 "member": member, "rows": [],
-                "note": "This archive has changed on disk since it was indexed. "
-                        "Re-index it before trusting anything shown here.",
+                "note": "この書庫は登録後に変更されています。再登録してから確認してください。",
             })
 
         try:
@@ -414,13 +412,12 @@ class Handler(BaseHTTPRequestHandler):
                     data = fh.read(PREVIEW_BYTES)
         except (OSError, zipfile.BadZipFile, RuntimeError, IndexError, ValueError) as exc:
             return self._json(
-                {"member": member, "rows": [], "note": f"Could not read: {exc}"}
+                {"member": member, "rows": [], "note": f"読み取れませんでした: {exc}"}
             )
         return self._json({
             "member": member,
             "rows": hexdump(data),
-            "note": f"First {len(data)} bytes, rendered as hex. Raw bytes are "
-                    "never served in a form the browser will execute.",
+            "note": f"先頭 {len(data)} バイトの16進表示",
         })
 
     def h_verify(self):
@@ -449,21 +446,21 @@ class Handler(BaseHTTPRequestHandler):
             archive_id = int(payload.get("archive"))
             idx = int(payload.get("member"))
         except (TypeError, ValueError):
-            return self._error(400, 'expected {"archive": int, "member": int}')
+            return self._error(400, '要求の書式が不正です（archive と member が必要です）')
 
         rows = [a for a in STATE.store.archives() if a["id"] == archive_id]
         if not rows:
-            return self._error(404, "no such archive")
+            return self._error(404, "該当する書庫がありません")
         members = [m for m in STATE.store.members(archive_id) if m["idx"] == idx]
         if not members:
-            return self._error(404, "no such member")
+            return self._error(404, "該当する項目がありません")
         member = members[0]
         if member.get("container"):
-            return self._error(409, "members of nested archives cannot be written out")
+            return self._error(409, "入れ子になった書庫内の項目は書き出せません")
 
         current, _ = sha256_file(rows[0]["path"])
         if current != rows[0]["sha256"]:
-            return self._error(409, "archive changed on disk since indexing; re-scan first")
+            return self._error(409, "書庫が登録後に変更されています。再登録してください")
 
         with STATE.lock:
             try:
@@ -472,11 +469,11 @@ class Handler(BaseHTTPRequestHandler):
                     with zf.open(info) as fh:
                         scanned = scan_stream_full(fh, member["name"], info.file_size)
             except (OSError, zipfile.BadZipFile, RuntimeError, IndexError, ValueError) as exc:
-                return self._error(422, f"could not read the member: {exc}")
+                return self._error(422, f"項目を読み取れませんでした: {exc}")
 
             if scanned is None:
                 return self._error(
-                    413, "member is too large to verify end to end, so it is refused"
+                    413, "項目が大きすぎて全体を検証できないため、書き出しを拒否しました"
                 )
             ident, digest, total = scanned
             if not ident.materializable:
@@ -484,7 +481,7 @@ class Handler(BaseHTTPRequestHandler):
                                 f"{member['name'][:80]} -> {ident.verdict.value}")
                 return self._error(
                     403,
-                    f"refused: the whole-file scan says {ident.verdict.value}. "
+                    f"拒否: 全体の走査による判定は {ident.verdict.value} です。"
                     f"{ident.caveat or ident.why}",
                 )
 
@@ -508,7 +505,7 @@ class Handler(BaseHTTPRequestHandler):
                     os.close(fd)
                 if st.st_mode & 0o111:
                     os.unlink(dest)
-                    return self._error(500, "refusing: file landed with an execute bit")
+                    return self._error(500, "拒否: 書き出したファイルに実行権限が付いていました")
             STATE.store.log("materialize", f"{digest[:12]} {member['name'][:80]}")
 
         return self._json({
@@ -516,8 +513,7 @@ class Handler(BaseHTTPRequestHandler):
             "sha256": digest,
             "bytes": total,
             "verdict": ident.verdict.value,
-            "note": "Written read-only, named by content hash. The archive's own "
-                    "name was not used for any part of the path.",
+            "note": "保存しました。",
         })
 
     def h_fetch(self):
@@ -527,17 +523,13 @@ class Handler(BaseHTTPRequestHandler):
             return None
         url = payload.get("url")
         if not isinstance(url, str) or not url:
-            return self._error(400, 'expected {"url": "..."}')
+            return self._error(400, '要求の書式が不正です（url が必要です）')
         if not net.intake_enabled():
-            return self._error(403, (
-                "Acquisition is disabled on this machine (BUILD-CONTRACT rule 2). "
-                "The code path exists and is tested, but downloading is not "
-                "permitted here. Set MWS_INTAKE_ENABLED=1 only where it is."
-            ))
+            return self._error(403, "この環境では URL からの取得は無効になっています。")
         try:
             net.validate_url(url)
         except net.IntakeRefused as exc:
-            return self._error(400, f"refused: {exc}")
+            return self._error(400, f"拒否: {exc}")
 
         os.makedirs(BLOB_DIR, mode=0o700, exist_ok=True)
         tmp = os.path.join(BLOB_DIR, f".incoming-{secrets.token_hex(8)}")
@@ -547,7 +539,7 @@ class Handler(BaseHTTPRequestHandler):
                 result = net.fetch(url, sink)
         except (net.IntakeRefused, net.IntakeDisabled, OSError) as exc:
             os.unlink(tmp)
-            return self._error(400, f"refused: {exc}")
+            return self._error(400, f"拒否: {exc}")
         dest = blob_path(BLOB_DIR, result.sha256)
         os.makedirs(os.path.dirname(dest), mode=0o700, exist_ok=True)
         os.replace(tmp, dest)
@@ -555,7 +547,7 @@ class Handler(BaseHTTPRequestHandler):
         return self._json({
             "sha256": result.sha256, "bytes": result.size,
             "written": os.path.relpath(dest, REPO_ROOT),
-            "note": "Stored by content hash; the URL never named the file.",
+            "note": "保存しました。",
         })
 
     def h_lessons(self):
@@ -564,7 +556,7 @@ class Handler(BaseHTTPRequestHandler):
     def h_lesson(self, lesson_id: str):
         lesson = STATE.store.lesson(lesson_id)
         if lesson is None:
-            return self._error(404, "no such lesson")
+            return self._error(404, "該当する課がありません")
         return self._json(lesson)
 
     def h_generate(self):
@@ -579,10 +571,10 @@ class Handler(BaseHTTPRequestHandler):
         try:
             archive_id = int(payload.get("archive"))
         except (TypeError, ValueError):
-            return self._error(400, 'expected {"archive": int}')
+            return self._error(400, '要求の書式が不正です（archive が必要です）')
         rows = [a for a in STATE.store.archives() if a["id"] == archive_id]
         if not rows:
-            return self._error(404, "no such archive")
+            return self._error(404, "該当する書庫がありません")
 
         sources: dict[str, str] = {}
         budget = 24 * 1024 * 1024
@@ -624,20 +616,19 @@ class Handler(BaseHTTPRequestHandler):
             with zipfile.ZipFile(rows[0]["path"]) as zf:
                 collect(zf)
         except Exception as exc:  # noqa: BLE001
-            return self._error(422, f"could not read the archive: {exc}")
+            return self._error(422, f"書庫を読み取れませんでした: {exc}")
 
         if not sources:
             return self._error(
                 422,
-                "No readable log files in this archive. The DFIR logs in several "
-                "MWS sets are password-protected, and encrypted members are "
-                "skipped rather than guessed at.",
+                "この書庫には読み取れるログファイルがありません。MWS データセットの "
+                "DFIR ログの多くはパスワード付きで、暗号化された項目は読み取れません。",
             )
 
         base = os.path.basename(rows[0]["path"]).rsplit(".", 1)[0]
-        lesson = build_lesson(f"{base} — DFIR timeline", sources, f"gen-{archive_id}")
+        lesson = build_lesson(f"{base} — DFIR 時系列", sources, f"gen-{archive_id}")
         if lesson is None:
-            return self._error(422, "logs were readable but no events could be parsed")
+            return self._error(422, "ログは読み取れましたが、事象を解析できませんでした")
         STATE.store.save_lesson(lesson, base)
         return self._json({
             "id": lesson["id"], "title": lesson["title"],
@@ -655,12 +646,12 @@ class Handler(BaseHTTPRequestHandler):
             return None
         directory = payload.get("dir")
         if not isinstance(directory, str) or not directory:
-            return self._error(400, 'expected {"dir": "..."}')
+            return self._error(400, '要求の書式が不正です（dir が必要です）')
         if "\x00" in directory:
-            return self._error(400, "invalid path")
+            return self._error(400, "パスが不正です")
         directory = os.path.realpath(os.path.expanduser(directory))
         if not os.path.isdir(directory):
-            return self._error(404, "no such directory")
+            return self._error(404, "該当するフォルダがありません")
 
         found = []
         with STATE.lock:
@@ -670,7 +661,7 @@ class Handler(BaseHTTPRequestHandler):
                 full = os.path.join(directory, name)
                 try:
                     if not stat.S_ISREG(os.lstat(full).st_mode):
-                        found.append({"name": name, "skipped": "not a regular file"})
+                        found.append({"name": name, "skipped": "通常のファイルではありません"})
                         continue
                 except OSError:
                     continue

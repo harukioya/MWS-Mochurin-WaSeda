@@ -110,7 +110,7 @@ def events_from_itm2(records: list[dict]) -> list[dict]:
                 continue
             seen.add(key)
             events.append(
-                _event("process", f'{host}: started {path}', _PROCESS_ATTCK.get(exe))
+                _event("process", f"{host}: {path} を起動", _PROCESS_ATTCK.get(exe))
             )
         elif evt == "file" and sub in ("create", "write"):
             path = r.get("path", "")
@@ -118,7 +118,7 @@ def events_from_itm2(records: list[dict]) -> list[dict]:
             if key in seen or not path:
                 continue
             seen.add(key)
-            events.append(_event("file", f"{host}: wrote {path}"))
+            events.append(_event("file", f"{host}: {path} に書き込み"))
         elif evt == "reg":
             path = r.get("path", "")
             if not path or f"reg:{path}" in seen:
@@ -127,7 +127,7 @@ def events_from_itm2(records: list[dict]) -> list[dict]:
             attck = None
             if "CurrentVersion\\Run" in path:
                 attck = ("T1547.001", "Boot or Logon Autostart: Registry Run Keys")
-            events.append(_event("registry", f"{host}: set {path}", attck))
+            events.append(_event("registry", f"{host}: {path} を設定", attck))
     return events
 
 
@@ -172,35 +172,33 @@ def build_lesson(name: str, sources: dict[str, str], lesson_id: str) -> dict | N
         if procs:
             stages.append({
                 "id": "endpoint",
-                "name": "Endpoint — what ran",
+                "name": "端末 — 何が実行されたか",
                 "intro": (
-                    f"{len(itm2)} endpoint records across "
-                    f"{len(hosts)} host(s). These are the distinct programs the "
-                    "monitoring agent saw start."
+                    f"端末ログ {len(itm2)} 件、対象ホスト {len(hosts)} 台。"
+                    "監視エージェントが起動を記録したプログラムの一覧です。"
                 ),
                 "events": procs[:8],
                 "quiz": {
-                    "q": "Which of these observations is the strongest lead for an analyst?",
+                    "q": "これらの観測のうち、分析者にとって最も有力な手がかりはどれですか。",
                     "options": [
-                        "The number of hosts reporting",
+                        "報告しているホストの台数",
                         (
-                            f"A scripting interpreter starting ({tagged[0]['detail'].split('started ')[-1].rsplit(chr(92),1)[-1]})"
-                            if tagged else "A signed system binary starting"
+                            f"スクリプト実行環境の起動（{tagged[0]['detail'].rsplit(' を起動', 1)[0].rsplit(chr(92), 1)[-1]}）"
+                            if tagged else "署名付きのシステムプログラムの起動"
                         ),
-                        "The timestamps being in +0900",
-                        "The log format being ITM2",
+                        "時刻表記が +0900 であること",
+                        "ログの書式が ITM2 であること",
                     ],
                     "correct": 1,
                     "explain": (
-                        "Interpreters and proxy-execution binaries are how attackers "
-                        "run code without shipping an executable. They are normal on a "
-                        "Windows host, which is exactly why they are worth following: "
-                        "the question is never 'did it run' but 'what did it run, and "
-                        "who started it'."
+                        "スクリプト実行環境や代理実行に使われるシステムプログラムは、"
+                        "攻撃者が実行ファイルを持ち込まずにコードを動かす手段です。"
+                        "Windows では日常的に動くものだからこそ追う価値があり、"
+                        "問うべきは「動いたか」ではなく「何を実行し、誰が起動したか」です。"
                     ) if tagged else (
-                        "Process starts are the spine of a host timeline: everything "
-                        "else — files written, keys set, connections made — hangs off "
-                        "some process that was running at the time."
+                        "プロセスの起動は端末の時系列の背骨です。ファイルの書き込み、"
+                        "レジストリの設定、通信の確立はいずれも、そのとき動いていた"
+                        "プロセスに紐づきます。"
                     ),
                 },
             })
@@ -208,23 +206,23 @@ def build_lesson(name: str, sources: dict[str, str], lesson_id: str) -> dict | N
         if files:
             stages.append({
                 "id": "files",
-                "name": "Files — what changed on disk",
-                "intro": "Files the agent recorded being created or written.",
+                "name": "ファイル — ディスク上で何が変わったか",
+                "intro": "監視エージェントが作成または書き込みを記録したファイルです。",
                 "events": files[:8],
                 "quiz": {
-                    "q": "Why does an analyst care where a file was written, not just that it was?",
+                    "q": "分析者が「書き込まれたか」だけでなく「どこに書き込まれたか」を気にするのはなぜですか。",
                     "options": [
-                        "Deeper paths take longer to read",
-                        "Location implies intent: a startup folder or a system directory means persistence or privilege, a temp directory means staging",
-                        "Windows sorts files by path",
-                        "The path determines the file's size",
+                        "深い階層のパスは読むのに時間がかかるから",
+                        "場所が意図を示すから。スタートアップフォルダやシステムディレクトリなら常駐化や権限、一時フォルダなら準備段階を意味する",
+                        "Windows はファイルをパス順に並べるから",
+                        "パスがファイルの大きさを決めるから",
                     ],
                     "correct": 1,
                     "explain": (
-                        "The same bytes mean different things in different places. In "
-                        "%TEMP% they are probably staging; under a Run key or a startup "
-                        "folder they are persistence; in System32 they are a privilege "
-                        "problem. Path is evidence of intent."
+                        "同じ内容のファイルでも、置かれた場所によって意味が変わります。"
+                        "%TEMP% にあれば準備段階、Run キーやスタートアップフォルダに"
+                        "あれば常駐化、System32 にあれば権限の問題です。"
+                        "パスは意図を示す証拠です。"
                     ),
                 },
             })
@@ -233,30 +231,27 @@ def build_lesson(name: str, sources: dict[str, str], lesson_id: str) -> dict | N
         ext = network[:8]
         stages.append({
             "id": "network",
-            "name": "Network — what left the host",
+            "name": "ネットワーク — 外部へ何が出ていったか",
             "intro": (
-                f"{len(proxy)} proxy records; {len(network)} distinct external "
-                "destinations. These are deliberately shown WITHOUT technique "
-                "tags — most of them are ordinary traffic, and telling which is "
-                "which is the analytical work this stage is about."
+                f"プロキシログ {len(proxy)} 件、外部宛先 {len(network)} 箇所。"
+                "多くは通常の通信です。どれが怪しいかを見分けるのがこの段階の課題です。"
             ),
             "events": ext,
             "quiz": {
-                "q": "None of these destinations is labelled. What actually separates a suspicious one from ordinary traffic here?",
+                "q": "怪しい宛先と通常の通信を分けるものは何ですか。",
                 "options": [
-                    "The HTTP method — POST means data is leaving",
-                    "Nothing in a single line does; it takes the pattern across many lines — repetition, timing, and whether the destination fits this host's normal behaviour",
-                    "Any address outside the local network is suspicious",
-                    "HTTPS is suspicious because the proxy cannot read it",
+                    "HTTP メソッド。POST ならデータが外に出ている",
+                    "1 行だけでは判断できない。繰り返し、間隔、そのホストの普段の挙動に合うかといった、複数行にわたる傾向で判断する",
+                    "内部ネットワーク以外の宛先はすべて怪しい",
+                    "プロキシが中身を読めない HTTPS は怪しい",
                 ],
                 "correct": 1,
                 "explain": (
-                    "A POST to a vendor telemetry endpoint is not exfiltration, and a "
-                    "CONNECT to a CDN is not command-and-control. One line is almost "
-                    "never enough. What gives beaconing away is the pattern — regular "
-                    "intervals, one destination, traffic that does not match what this "
-                    "host does the rest of the time. A tool that labelled each line for "
-                    "you would be guessing, and would teach you to trust the guess."
+                    "製品の利用状況送信先への POST は情報の持ち出しではなく、"
+                    "CDN への CONNECT は指令通信（C2）ではありません。"
+                    "1 行だけで判断できることはほとんどありません。"
+                    "定期通信の手がかりは傾向にあります。一定の間隔、単一の宛先、"
+                    "そのホストの普段の通信と合わない動きです。"
                 ),
             },
         })
@@ -267,31 +262,24 @@ def build_lesson(name: str, sources: dict[str, str], lesson_id: str) -> dict | N
     return {
         "id": lesson_id,
         "title": name,
-        "tagline": "Generated from real MWS Cup log data — review before teaching.",
-        "difficulty": "Intermediate",
+        "tagline": "MWS Cup のログから自動生成しました。使用前に内容を確認してください。",
+        "difficulty": "中級",
         "family": "DFIR",
         "source": {
             "type": "generated",
-            "note": (
-                "Built automatically from log records in the MWS dataset. ATT&CK "
-                "tags are attached only where the log field says so outright; "
-                "anything less certain is left untagged. Treat this as a draft to "
-                "review, not as ground truth."
-            ),
+            "note": "MWS データセットのログから自動生成した課です。内容を確認のうえ使用してください。",
             "inputs": sorted(sources),
         },
         "recap": {
             "summary": (
-                "You read a real incident the way an analyst does: what ran on the "
-                "endpoints, what changed on disk, and what left the network. No "
-                "sample was executed to produce any of it — every observation here "
-                "came from logs that were already recorded."
+                "実際の事案を、端末で何が実行されたか、ディスク上で何が変わったか、"
+                "ネットワークへ何が出ていったかの順に読み解きました。"
             ),
             "chain": [
                 {
                     "stage": s["name"].split(" — ")[0],
                     "name": s["name"].split(" — ")[-1],
-                    "desc": f"{len(s['events'])} observed events.",
+                    "desc": f"観測事象 {len(s['events'])} 件。",
                     "attck": [e["attck"] for e in s["events"] if "attck" in e][:3],
                 }
                 for s in stages

@@ -167,28 +167,28 @@ def inspect_name(raw: bytes, decoded: str, encoding: str = "cp932") -> list[str]
     ambiguous = sorted(byte_seps & trail_positions)
     if ambiguous:
         warnings.append(
-            "Name is ambiguous: byte offset "
+            "名前の解釈が一致しません。バイト位置 "
             + ", ".join(str(o) for o in ambiguous[:4])
-            + " is part of a Japanese character, but a byte-level extractor "
-            "would read it as a path separator (Shift_JIS traversal pattern)."
+            + " は日本語一文字の一部ですが、バイト単位で扱うソフトは"
+            "区切り文字として読みます（Shift_JIS を悪用した位置ずらしの手口）。"
         )
 
     if decoded.startswith("/") or (len(decoded) > 1 and decoded[1] == ":"):
-        warnings.append("Name is an absolute path — a naive extractor would ignore the destination.")
+        warnings.append("名前が絶対パスです。取り出し先を無視するソフトがあります。")
 
     parts = decoded.replace("\\", "/").split("/")
     if ".." in parts:
-        warnings.append("Name contains '..' — path traversal if extracted by another tool.")
+        warnings.append("名前に .. が含まれます。別のソフトで取り出すと想定外の場所に書かれます。")
 
     if any(ord(c) < 0x20 for c in decoded):
-        warnings.append("Name contains control characters.")
+        warnings.append("名前に制御文字が含まれます。")
 
     # Right-to-left override and friends reverse how a name renders, so
     # `photo_gpj.exe` can display as `photo_exe.jpg`.
     if any(c in decoded for c in "‪‫‬‭‮⁦⁧⁨⁩"):
         warnings.append(
-            "Name contains bidirectional-override characters — what you see is "
-            "not the real order of the name."
+            "名前に表示順を反転させる文字が含まれます。見えている並びは"
+            "実際の並びと異なります。"
         )
 
     return warnings
@@ -255,8 +255,8 @@ def scan_stream_full(fh, name: str, declared_size: int):
         # sample recoverable" and start saying "unrecognised". Both block a
         # write either way, so there is nothing to gain by flattening it.
         note = (
-            f"A whole-file scan found {embedded} at a non-zero offset, so another "
-            "tool may read this file as that instead."
+            f"ファイル全体の走査で、途中の位置に{embedded}が見つかりました。"
+            "別のソフトはこのファイルをそちらとして読む可能性があります。"
         )
         if _SEVERITY[Verdict.UNKNOWN] > _SEVERITY[ident.verdict]:
             ident = Identification(ident.kind, Verdict.UNKNOWN, ident.why, note)
@@ -269,7 +269,7 @@ def scan_stream_full(fh, name: str, declared_size: int):
         # The header looked like text but the body is not.
         ident = Identification(
             ident.kind, Verdict.UNKNOWN, ident.why,
-            "The header looks inert but the rest of the file is not valid text.",
+            "先頭は無害に見えますが、残りの部分は正しい文字データではありません。",
         )
     return ident, digest.hexdigest(), total
 
@@ -284,16 +284,16 @@ def enumerate_zip(path: str, depth: int = 0) -> Listing:
     try:
         st = os.lstat(path)
     except OSError as exc:
-        listing.warnings.append(f"Cannot stat: {exc}")
+        listing.warnings.append(f"情報を取得できません: {exc}")
         return listing
     if not stat.S_ISREG(st.st_mode):
         listing.warnings.append(
-            "Not a regular file (symlink, FIFO, or device) — refused without reading."
+            "通常のファイルではありません（連結・特殊ファイル）。読まずに拒否しました。"
         )
         return listing
     if st.st_size > MAX_ARCHIVE_BYTES:
         listing.warnings.append(
-            f"Archive is {st.st_size} bytes, over the {MAX_ARCHIVE_BYTES} limit."
+            f"書庫の大きさ {st.st_size} バイトが上限 {MAX_ARCHIVE_BYTES} を超えています。"
         )
         return listing
 
@@ -307,7 +307,7 @@ def enumerate_zip(path: str, depth: int = 0) -> Listing:
         zipfile.BadZipFile, OSError, ValueError, EOFError,
         NotImplementedError, RuntimeError, struct.error,
     ) as exc:
-        listing.warnings.append(f"Cannot open as a ZIP archive: {exc}")
+        listing.warnings.append(f"ZIP 書庫として開けません: {exc}")
         return listing
 
     with zf:
@@ -325,8 +325,8 @@ def _enumerate_open(zf: zipfile.ZipFile, depth: int = 0) -> Listing:
     infos = zf.infolist()
     if len(infos) > MAX_ENTRIES:
         listing.warnings.append(
-            f"Archive declares {len(infos)} entries; only the first "
-            f"{MAX_ENTRIES} were inspected."
+            f"書庫が {len(infos)} 件を宣言しています。先頭 "
+            f"{MAX_ENTRIES} 件のみ確認しました。"
         )
         infos = infos[:MAX_ENTRIES]
         listing.truncated = True
@@ -338,8 +338,8 @@ def _enumerate_open(zf: zipfile.ZipFile, depth: int = 0) -> Listing:
     repeated = {off: n for off, n in offsets.items() if n > 1}
     if repeated:
         listing.warnings.append(
-            f"{sum(repeated.values())} entries share {len(repeated)} local "
-            "header offset(s) — the hallmark of a flat 'zip bomb'."
+            f"{sum(repeated.values())} 件が {len(repeated)} 個の同じ位置を"
+            "指しています。展開すると膨張する細工の特徴です。"
         )
 
     total = 0
@@ -359,15 +359,15 @@ def _enumerate_open(zf: zipfile.ZipFile, depth: int = 0) -> Listing:
         warnings = inspect_name(raw, name, encoding)
         if warn_dir:
             warnings.append(
-                'Name ends in a path separator but the entry carries content — it is not really a directory.'
+                '名前が区切り文字で終わっていますが中身があります。実際には入れ物ではありません。'
             )
 
         encrypted = bool(info.flag_bits & 0x1)
         total += info.file_size
         if total > MAX_TOTAL_UNCOMPRESSED:
             listing.warnings.append(
-                "Total declared uncompressed size exceeds the budget; "
-                "inspection stopped early."
+                "展開後の合計が上限を超えたため、"
+                "確認を途中で打ち切りました。"
             )
             listing.truncated = True
             break
@@ -376,8 +376,8 @@ def _enumerate_open(zf: zipfile.ZipFile, depth: int = 0) -> Listing:
         # is falsy and previously skipped this check altogether.
         if info.file_size / max(info.compress_size, 1) > MAX_RATIO:
             warnings.append(
-                f"Compression ratio {info.file_size // max(info.compress_size, 1)}:1 "
-                "— possible decompression bomb."
+                f"圧縮率が {info.file_size // max(info.compress_size, 1)}:1 です。"
+                "展開すると膨張する細工の可能性があります。"
             )
 
         # AppleDouble sidecars carry xattrs, resource forks and exec bits.
@@ -386,19 +386,19 @@ def _enumerate_open(zf: zipfile.ZipFile, depth: int = 0) -> Listing:
         base = name.rsplit("/", 1)[-1]
         if name.startswith("__MACOSX/") or base.startswith("._"):
             warnings.append(
-                "AppleDouble sidecar: carries extended attributes and possibly "
-                "a resource fork, which a data-fork hash would not cover."
+                "AppleDouble の付随ファイルです。拡張属性やリソースフォークを"
+                "含む場合があり、本体のハッシュ値では確認できません。"
             )
 
         if encrypted:
             # Fail closed. This is exactly where a live sample hides, and
             # we cannot see a single byte of it.
             ident = Identification(
-                "encrypted archive member",
+                "暗号化された項目",
                 Verdict.OPAQUE_ENCRYPTED,
-                "the ZIP encryption flag is set, so the content cannot be read",
-                "Password-protected archives are the standard way malware is "
-                "distributed. Blocked because it cannot be classified.",
+                "ZIP の暗号化指定があり、内容を読めません",
+                "パスワード付き書庫はマルウェアの一般的な配布形式です。"
+                "判定できないため取り出しを禁止しています。",
             )
         else:
             try:
@@ -409,11 +409,11 @@ def _enumerate_open(zf: zipfile.ZipFile, depth: int = 0) -> Listing:
                 # Includes "compression method not supported" and the
                 # local-vs-central header mismatch check. Never inert.
                 ident = Identification(
-                    "unreadable archive member",
+                    "読み取れない項目",
                     Verdict.UNKNOWN,
-                    f"the member could not be read: {exc}",
-                    "Blocked because it could not be classified, not because "
-                    "it is known to be dangerous.",
+                    f"この項目を読めませんでした: {exc}",
+                    "危険と判明したためではなく、"
+                    "判定できないため禁止しています。",
                 )
 
         listing.members.append(
@@ -439,24 +439,24 @@ def _enumerate_open(zf: zipfile.ZipFile, depth: int = 0) -> Listing:
             if not (0 < parent.size <= MAX_NESTED_BYTES):
                 if parent.size > MAX_NESTED_BYTES:
                     parent.warnings.append(
-                        f"Nested archive is {parent.size} bytes, over the "
-                        f"{MAX_NESTED_BYTES} recursion limit — its contents "
-                        "were NOT inspected."
+                        f"入れ子の書庫が {parent.size} バイトで上限 "
+                        f"{MAX_NESTED_BYTES} を超えるため、"
+                        "中身を確認していません。"
                     )
                 continue
             try:
                 with zf.open(zf.infolist()[parent.index]) as fh:
                     blob = fh.read(MAX_NESTED_BYTES + 1)
             except Exception as exc:  # noqa: BLE001 - fail closed
-                parent.warnings.append(f"Could not read nested archive: {exc}")
+                parent.warnings.append(f"入れ子の書庫を読めません: {exc}")
                 continue
             if len(blob) > MAX_NESTED_BYTES:
-                parent.warnings.append("Nested archive exceeded the recursion limit.")
+                parent.warnings.append("入れ子の書庫が上限を超えました。")
                 continue
             try:
                 inner = zipfile.ZipFile(io.BytesIO(blob))
             except Exception as exc:  # noqa: BLE001 - fail closed
-                parent.warnings.append(f"Nested archive could not be opened: {exc}")
+                parent.warnings.append(f"入れ子の書庫を開けません: {exc}")
                 continue
             with inner:
                 sub = _enumerate_open(inner, depth + 1)
@@ -465,13 +465,13 @@ def _enumerate_open(zf: zipfile.ZipFile, depth: int = 0) -> Listing:
                 m.name = f"{parent.name} :: {m.name}"
                 listing.members.append(m)
             for w in sub.warnings:
-                parent.warnings.append(f"Inside this archive: {w}")
+                parent.warnings.append(f"この書庫の中: {w}")
 
     # An archive-level warning -- a flat bomb, a truncated listing -- is a
     # statement about every member in it. Without this, a member of an archive
     # positively identified as a zip bomb was still materializable.
     if listing.warnings:
-        note = "Archive-level warning: " + listing.warnings[0]
+        note = "書庫全体の警告: " + listing.warnings[0]
         for m in listing.members:
             m.warnings.append(note)
 

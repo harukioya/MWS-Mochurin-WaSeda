@@ -19,7 +19,7 @@ export function renderQuiz(container, quiz, onAnswered) {
   if (!quiz || typeof quiz.q !== 'string' || !Array.isArray(quiz.options) || quiz.options.length === 0) {
     const note = document.createElement('p');
     note.className = 'muted';
-    note.textContent = 'No question for this stage — read the behavior above, then continue.';
+    note.textContent = 'この段階には設問がありません。上の挙動を読んで次へ進んでください。';
     container.appendChild(note);
     if (typeof onAnswered === 'function') onAnswered(false);
     return null;
@@ -36,7 +36,7 @@ export function renderQuiz(container, quiz, onAnswered) {
   const optionsEl = document.createElement('div');
   optionsEl.className = 'options';
   optionsEl.setAttribute('role', 'group');
-  optionsEl.setAttribute('aria-label', 'Answer options');
+  optionsEl.setAttribute('aria-label', '選択肢');
 
   const buttons = quiz.options.map((label, i) => {
     const btn = document.createElement('button');
@@ -81,16 +81,16 @@ export function renderQuiz(container, quiz, onAnswered) {
         btn.classList.add('is-correct');
         const mark = document.createElement('span');
         mark.className = 'mono faint';
-        mark.textContent = '✓ correct answer';
+        mark.textContent = '✓ 正解';
         btn.appendChild(mark);
-        btn.setAttribute('aria-label', `${baseLabel} (correct answer)`);
+        btn.setAttribute('aria-label', `${baseLabel}（正解）`);
       } else if (i === chosen && !isCorrect) {
         btn.classList.add('is-wrong');
         const mark = document.createElement('span');
         mark.className = 'mono faint';
-        mark.textContent = '✗ your choice';
+        mark.textContent = '✗ あなたの選択';
         btn.appendChild(mark);
-        btn.setAttribute('aria-label', `${baseLabel} (your answer — incorrect)`);
+        btn.setAttribute('aria-label', `${baseLabel}（あなたの回答 — 不正解）`);
       }
     });
 
@@ -106,8 +106,8 @@ export function renderQuiz(container, quiz, onAnswered) {
 
     const msg = document.createElement('span');
     msg.textContent = isCorrect
-      ? 'Correct — nice read.'
-      : 'Not quite — here is the right answer.';
+      ? '正解です。'
+      : '不正解です。正解は次のとおりです。';
 
     feedback.appendChild(icon);
     feedback.appendChild(msg);
@@ -119,7 +119,7 @@ export function renderQuiz(container, quiz, onAnswered) {
 
     const title = document.createElement('div');
     title.className = 'reveal__title';
-    title.textContent = 'Why';
+    title.textContent = '解説';
 
     const explain = document.createElement('p');
     explain.textContent = quiz.explain;

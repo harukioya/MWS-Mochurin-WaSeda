@@ -66,7 +66,7 @@ function showError(mount, err) {
 
   const label = document.createElement("div");
   label.className = "panel__label";
-  label.textContent = "Something went wrong";
+  label.textContent = "問題が発生しました";
 
   const msg = document.createElement("p");
   msg.className = "muted";
@@ -77,7 +77,7 @@ function showError(mount, err) {
   const back = document.createElement("a");
   back.className = "btn btn-primary";
   back.href = "#/";
-  back.textContent = "Back to lessons";
+  back.textContent = "課の一覧に戻る";
   nav.appendChild(back);
 
   panel.append(label, msg, nav);
