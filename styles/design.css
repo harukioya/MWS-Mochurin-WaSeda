@@ -209,6 +209,10 @@ a{color:var(--brand-ink)}
 .reveal p:last-child{margin-bottom:0}
 
 .navbtns{display:flex; gap:12px; justify-content:space-between; margin-top:22px}
+/* 「ホームに戻る」は次の要素のすぐ上に来るので、その分だけ下に余白を足す。 */
+.navbtns--home{padding-bottom:18px}
+/* 候補フォルダのように、数が決まらない押しボタンを並べるとき。 */
+.navbtns--wrap{flex-wrap:wrap; justify-content:flex-start; margin-top:12px}
 
 /* ---- Recap / kill-chain ---- */
 .recap{padding:20px 0 90px}
@@ -297,6 +301,37 @@ a{color:var(--brand-ink)}
 /* The "working title" badge is the first thing to go on a narrow screen. */
 @media (max-width:400px){ .brand__wt{display:none} }
 .hero-cta{display:flex; justify-content:center; margin-top:20px}
+
+/* ---- ページ内フォルダ選択 ----
+   OSのダイアログは別アプリの窓なので、全画面のブラウザからだと別スペースへ
+   飛ばされる。同じことをページの中で済ませるための部品。 */
+.browser{margin-top:14px}
+.browser__quick{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px}
+.browser__bar{display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap}
+.browser__path{
+  flex:1 1 200px; min-width:0; font-size:.8rem; color:var(--muted);
+  word-break:break-all; unicode-bidi:isolate;
+}
+.browser__list{
+  display:flex; flex-direction:column; max-height:320px; overflow-y:auto;
+  border:1px solid var(--line-2); border-radius:var(--r-sm); background:var(--surface-2);
+}
+.browser__row{
+  display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+  padding:9px 12px; font:inherit; font-size:.9rem; color:var(--ink);
+  background:none; border:0; border-bottom:1px solid var(--line); cursor:pointer;
+}
+.browser__row:last-child{border-bottom:0}
+.browser__row:hover{background:var(--brand-soft)}
+.browser__row:focus-visible{outline:2px solid var(--brand); outline-offset:-2px}
+.browser__icon{flex:0 0 auto}
+.browser__name{flex:1 1 auto; min-width:0; word-break:break-all; unicode-bidi:isolate}
+.browser__count{
+  flex:0 0 auto; font:700 10px/1 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  padding:4px 8px; border-radius:var(--r-pill);
+  background:var(--brand-soft); color:var(--brand-ink);
+}
+.browser__list > p{padding:12px}
 
 /* ---- 折りたたみ（安全なファイルの一覧） ---- */
 .fold{
