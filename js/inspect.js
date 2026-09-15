@@ -166,11 +166,16 @@ export async function renderInspect(mount, notice) {
   let canScan = false;
   try {
     const [status, list] = await Promise.all([api('/api/status'), api('/api/archives')]);
+    // 応答を待つ間に別の画面へ移られていたら、ここから先は描かない。
+    // ルーターが器ごと差し替えているので書いても見えないが、続きの通信まで
+    // 無駄に走らせない。
+    if (!mount.isConnected) return;
     role = status.role;
     claims = status.claims;
     archives = list.archives;
     canScan = (status.capabilities || []).includes('scan');
   } catch (err) {
+    if (!mount.isConnected) return;
     const panel = el('div', 'panel');
     panel.append(el('div', 'panel__label', 'サーバーに接続できません'));
     panel.append(
@@ -187,7 +192,7 @@ export async function renderInspect(mount, notice) {
   // ただし読み取る権限がないとき（student）は出さない。出しても操作はすべて
   // 403 になり、拒否の赤字を読ませるだけで終わるため。
   if (canScan) {
-    mount.append(await renderScanPrompt(mount, archives.length > 0));
+    await renderScanPrompt(mount, archives.length > 0);
   } else if (!archives.length) {
     mount.append(
       el(
@@ -354,8 +359,14 @@ async function renderScanPrompt(mount, hasArchives) {
   };
 
   // ---- ページ内フォルダ選択 ---------------------------------------------
+  // 続けて別のフォルダを押すと要求が重なる。応答の戻る順は要求した順とは限ら
+  // ないので、最後に要求したものだけを採用する。これがないと、遅れて返った
+  // 古い応答が、今見ているフォルダの一覧を上書きする。
+  let browseSeq = 0;
+
   /** 一覧を描き直す。dir を省略するとホームから始める。 */
   const openDir = async (dir) => {
+    const seq = ++browseSeq;
     browser.textContent = '';
     browser.append(el('p', 'muted', '読み込んでいます…'));
     let d;
@@ -365,10 +376,13 @@ async function renderScanPrompt(mount, hasArchives) {
         body: JSON.stringify({ dir: dir || '' }),
       });
     } catch (err) {
+      if (seq !== browseSeq || !browser.isConnected) return;
       browser.textContent = '';
       browser.append(el('p', 'feedback is-bad', err.message));
       return;
     }
+    // 追い越された、または画面から離れた。描かずに捨てる。
+    if (seq !== browseSeq || !browser.isConnected) return;
     browser.textContent = '';
 
     // 近道。探し始める場所は数えるほどしかない。
@@ -403,13 +417,23 @@ async function renderScanPrompt(mount, hasArchives) {
     d.entries.forEach((e) => {
       const row = el('button', 'browser__row');
       row.type = 'button';
+      const countLabel = e.zipsPartial
+        ? `ZIP ${e.zips} 個以上`
+        : e.zips && `ZIP ${e.zips} 個`;
       row.setAttribute(
         'aria-label',
-        e.zips ? `${e.name} を開く（ZIP ${e.zips} 個）` : `${e.name} を開く`
+        countLabel ? `${e.name} を開く（${countLabel}）` : `${e.name} を開く`
       );
       row.append(el('span', 'browser__icon', '📁'));
       row.append(el('span', 'browser__name', e.name));
-      if (e.zips) {
+      // 子フォルダの件数はサーバー側で打ち切られることがある。打ち切られた
+      // 数をそのまま出すと過少に見え、0 のときは「無い」と誤読させるので、
+      // 確定していないことが分かる形にする。
+      if (e.zipsPartial) {
+        row.append(
+          el('span', 'browser__count', e.zips ? `ZIP ${e.zips}+` : 'ZIP ?')
+        );
+      } else if (e.zips) {
         row.append(el('span', 'browser__count', `ZIP ${e.zips}`));
       }
       row.addEventListener('click', () => openDir(e.path));
@@ -538,9 +562,13 @@ async function renderScanPrompt(mount, hasArchives) {
     await scan(dir);
   });
 
+  // 最初のフォルダ一覧を取りに行く前に、panel を画面へ入れておく。openDir は
+  // 「離脱済みなら描かない」を isConnected で判断するので、未接続のまま呼ぶと
+  // 初回の一覧が描かれないまま「読み込んでいます…」で止まる。
+  mount.append(panel);
+
   // 最初はホームから。押しボタンを一つ挟まず、開いた時点で選べる状態にする。
   await openDir();
-  return panel;
 }
 
 function archiveCard(a) {
