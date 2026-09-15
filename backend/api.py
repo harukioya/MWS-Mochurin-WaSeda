@@ -222,16 +222,21 @@ def count_zips(directory: str, limit: int | None = None) -> tuple[int, bool]:
     Returns (count, complete). `complete` is False when `limit` stopped the
     walk early, and the caller MUST NOT then treat the count as the truth --
     least of all as "this folder has no archives", since scandir order is
-    arbitrary and every archive could lie past the cut.
+    arbitrary and every archive could lie past the cut. A capped zero means
+    "unknown", never "none".
+
+    Every caller that runs while someone is browsing passes a limit. Opening a
+    folder is a plain click, and the folder may sit on a network share, in
+    iCloud, behind FUSE, or on slow external media, where an unbounded walk of
+    a few hundred thousand entries stalls the page. Local APFS timings do not
+    generalise to those, so the bound is kept rather than argued away. The
+    authoritative count is the scan itself, which the person asks for
+    explicitly and which reads the directory in full.
 
     scandir rather than listdir + lstat: the entry's type usually arrives with
     the directory read itself, so this costs roughly one syscall per directory
     instead of one per file. Listing ~/Library was measured at 5.9s with the
     lstat form and 0.1s with this one -- the kind of pause that reads as a hang.
-
-    `limit` is for counting across many sibling folders at once. A folder the
-    person actually opened is counted in full: it is one directory, and the
-    read button's enabled state hangs on the answer.
     """
     n = 0
     seen = 0
@@ -262,9 +267,15 @@ MAX_BROWSE_ENTRIES = 500
 def browse_dir(directory: str) -> dict:
     """List the subfolders of one directory, for the in-page folder chooser.
 
-    Names and counts only -- never bytes. Symlinked directories are listed but
-    not descended into by the counter, so a link back up the tree cannot turn a
-    glance at a folder into an unbounded walk.
+    Returns folder names, archive counts, and the paths needed to keep moving
+    around -- this folder's, its parent's, its children's. No file is opened
+    and no file content is returned.
+
+    Symlinked directories are left out of the listing entirely
+    (`follow_symlinks=False`): a link pointing back up its own tree would
+    otherwise offer a path that walks in circles, and one pointing at a slow
+    mount would put that cost behind an ordinary click. Someone who really
+    means to browse through a link can still type its path.
     """
     entries: list[dict] = []
     truncated = False
@@ -304,15 +315,19 @@ def browse_dir(directory: str) -> dict:
 
     entries.sort(key=lambda e: e["name"].lower())
     parent = os.path.dirname(directory)
-    # The folder that is open is counted in full, with no cap. The read button
-    # is enabled from this number, so a capped count could disable the main
-    # path to a folder that does hold archives.
-    here, _complete = count_zips(directory)
+    # Capped like the rest. Merely opening a folder must never start an
+    # unbounded walk: this runs on a plain click, and the folder could sit on a
+    # network share, in iCloud, behind FUSE, or on slow external media, where a
+    # directory of a few hundred thousand entries stalls the page for as long
+    # as it takes. `partial` is what keeps the cap honest -- the caller must not
+    # read a capped zero as "no archives here".
+    here, complete = count_zips(directory, MAX_COUNT_SCAN)
     return {
         "path": directory,
         "parent": None if parent == directory else parent,
         "entries": entries,
         "zips": here,
+        "zipsPartial": not complete,
         "truncated": truncated,
     }
 
@@ -361,12 +376,15 @@ def subdirs_with_zips(directory: str) -> list[dict]:
                 continue
         except OSError:
             continue
-        # Exact: this hint is the recovery path out of "nothing here", so an
-        # undercount could hide the very folder the person was looking for. It
-        # only runs when a scan found nothing at all, which is rare.
-        n, _complete = count_zips(full)
+        # Capped, like every other count taken while browsing. This walks one
+        # directory per sibling folder, so leaving it unbounded would put the
+        # same stall behind a mis-selected parent folder. A hint that misses a
+        # folder is a worse hint; a hint that hangs is a worse product.
+        n, complete = count_zips(full, MAX_COUNT_SCAN)
         if n:
-            out.append({"name": name, "path": full, "zips": n})
+            out.append(
+                {"name": name, "path": full, "zips": n, "zipsPartial": not complete}
+            )
         if len(out) >= MAX_SUBDIR_HINTS:
             break
     return out
@@ -1004,7 +1022,8 @@ class Handler(BaseHTTPRequestHandler):
         and drawing the chooser in the page keeps the whole job in one window.
 
         No new exposure: the same capability already reads any directory it is
-        pointed at via /api/scan, and this returns names and counts only.
+        pointed at via /api/scan. What comes back is folder names, archive
+        counts, and the folder paths needed to navigate -- never file content.
         """
         payload = self._body()
         if payload is None:
@@ -1046,8 +1065,15 @@ class Handler(BaseHTTPRequestHandler):
                 "unavailable": True,
                 "detail": "選ばれた場所がフォルダではありませんでした",
             })
-        chosen_zips, _complete = count_zips(directory)
-        return self._json({"dir": directory, "zips": chosen_zips})
+        # Capped: the OS dialog can land on any folder at all, including one on
+        # a slow mount, and this reply is only a hint printed alongside the
+        # path. The authoritative count comes from the scan that follows.
+        chosen_zips, chosen_complete = count_zips(directory, MAX_COUNT_SCAN)
+        return self._json({
+            "dir": directory,
+            "zips": chosen_zips,
+            "zipsPartial": not chosen_complete,
+        })
 
     def h_scan(self):
         payload = self._body()

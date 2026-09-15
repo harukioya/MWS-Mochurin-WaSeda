@@ -449,15 +449,27 @@ async function renderScanPrompt(mount, hasArchives) {
       );
     }
 
-    // いまのフォルダを読み取る。ZIPの有無を押す前に伝える。
+    // いまのフォルダを読み取る。
+    //
+    // 個数はサーバー側で打ち切られることがあるので、「無い」と確定したとき
+    // だけ押せなくする。打ち切られた 0 は「不明」であって「無い」ではない。
+    // 数え切ってから有効にすると、遅い場所にあるフォルダで主経路が塞がる。
+    // 全件の確認は、押されたあとの読み取りが行う。
+    const noneForSure = !d.zips && !d.zipsPartial;
+    let takeLabel;
+    if (d.zips) {
+      takeLabel = d.zipsPartial
+        ? `このフォルダを読み取る（ZIP ${d.zips} 個以上）`
+        : `このフォルダを読み取る（ZIP ${d.zips} 個）`;
+    } else if (d.zipsPartial) {
+      takeLabel = 'このフォルダを読み取る（ZIPの有無は読み取り時に確認）';
+    } else {
+      takeLabel = 'このフォルダにZIPはありません';
+    }
     const act = el('div', 'navbtns navbtns--wrap');
-    const take = el(
-      'button',
-      d.zips ? 'btn btn-primary' : 'btn btn-ghost',
-      d.zips ? `このフォルダを読み取る（ZIP ${d.zips} 個）` : 'このフォルダにZIPはありません'
-    );
+    const take = el('button', noneForSure ? 'btn btn-ghost' : 'btn btn-primary', takeLabel);
     take.type = 'button';
-    take.disabled = !d.zips;
+    take.disabled = noneForSure;
     take.addEventListener('click', () => scan(d.path));
     act.append(take);
     browser.append(act);
@@ -495,7 +507,7 @@ async function renderScanPrompt(mount, hasArchives) {
             const b = el(
               'button',
               'btn btn-ghost btn-sm',
-              `${d.name}（${d.zips} 個）`
+              d.zipsPartial ? `${d.name}（${d.zips} 個以上）` : `${d.name}（${d.zips} 個）`
             );
             b.type = 'button';
             b.setAttribute('aria-label', `${d.name} を読み取る`);
