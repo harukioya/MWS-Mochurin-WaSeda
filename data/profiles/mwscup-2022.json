@@ -1,0 +1,60 @@
+{
+  "id": "mwscup-2022-dfir",
+  "year": 2022,
+  "label": "MWS Cup 2022 DFIR",
+  "note": "パスパターンと役割の対応のみ。実データ・正解・パスワードは含めない。",
+  "match": {
+    "requiredPathPatterns": [
+      "*/DFIR/*"
+    ],
+    "optionalNamePatterns": [
+      "mwscup2022/*",
+      "*/DFIR/logs.zip",
+      "*/DFIR/log_sample_2022.zip",
+      "*/DFIR/Tools/example.log",
+      "*/DFIR/問題文.md"
+    ]
+  },
+  "roles": {
+    "ignore": [
+      "__MACOSX/*",
+      "*/__MACOSX/*",
+      "._*",
+      "*/._*",
+      "* :: __MACOSX/*",
+      "* :: ._*",
+      "* :: */._*"
+    ],
+    "tool": [
+      "*/DFIR/Tools/*",
+      "*/DFIR/Tools/* :: *"
+    ],
+    "challenge": [
+      "*/DFIR/logs.zip",
+      "*/DFIR/logs.zip :: *"
+    ],
+    "baseline": [
+      "*/DFIR/log_sample*.zip",
+      "*/DFIR/log_sample*.zip :: *"
+    ],
+    "narrative": [
+      "*/DFIR/*.md",
+      "*/DFIR/*.pdf",
+      "*/DFIR/*.png",
+      "*/DFIR/*.txt"
+    ],
+    "unrelated": [
+      "*/Surface/*",
+      "*/Hackathon/*",
+      "*/Static/*"
+    ]
+  },
+  "passwordHintPatterns": [
+    "*/DFIR/*.md",
+    "*/DFIR/*.txt"
+  ],
+  "parsers": [
+    "itm2",
+    "proxy"
+  ]
+}

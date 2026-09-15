@@ -24,6 +24,7 @@ Security decisions, in the order they are enforced:
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import os
@@ -46,6 +47,7 @@ from archive import (  # noqa: E402
     raw_name_bytes,
     scan_stream_full,
 )
+import dataset  # noqa: E402
 from explain import build_lesson  # noqa: E402
 from identify import HEAD_BYTES, Verdict  # noqa: E402
 import net  # noqa: E402
@@ -122,6 +124,7 @@ ROUTES = [
     Route("GET", r"/api/status", Capability.READ, "h_status"),
     Route("GET", r"/api/archives", Capability.READ, "h_archives"),
     Route("GET", r"/api/events", Capability.READ, "h_events"),
+    Route("GET", r"/api/archives/(\d{1,9})/dataset", Capability.READ, "h_dataset"),
     Route("GET", r"/api/archives/(\d{1,9})/members", Capability.READ, "h_members"),
     Route("GET", r"/api/archives/(\d{1,9})/members/(\d{1,9})/preview",
           Capability.READ, "h_preview"),
@@ -997,23 +1000,149 @@ class Handler(BaseHTTPRequestHandler):
             return self._error(404, "該当する演習がありません")
         return self._json(lesson)
 
-    def h_generate(self):
-        """Build a draft lesson from the readable logs in one archive.
-
-        Reads log text in memory only -- nothing is extracted to disk. Encrypted
-        and oversized members are skipped rather than guessed at.
-        """
-        payload = self._body()
-        if payload is None:
-            return None
-        try:
-            archive_id = int(payload.get("archive"))
-        except (TypeError, ValueError):
-            return self._error(400, '要求の書式が不正です（archive が必要です）')
+    def _archive_row(self, archive_id: int):
         rows = [a for a in STATE.store.archives() if a["id"] == archive_id]
-        if not rows:
-            return self._error(404, "そのZIPファイルは読み込まれていません")
+        return rows[0] if rows else None
 
+    def _still_the_same_file(self, row) -> bool:
+        """Has the archive on disk changed since it was indexed?
+
+        The classification and the bytes come from two different moments: the
+        roles are decided from member names recorded at scan time, while the
+        logs are read from whatever sits at that path now. Without this check
+        someone could index archive A, drop archive B at the same path, and get
+        B's contents taught under A's classification -- with the manifest still
+        showing A's hash. `h_preview` already refuses on drift for exactly this
+        reason; reading whole logs deserves at least the same care.
+
+        Checks by path, so there is a window between this and a later open.
+        Use `_open_verified` wherever the file is about to be read.
+        """
+        try:
+            current, _ = sha256_file(row["path"])
+        except OSError:
+            return False
+        return current == row["sha256"]
+
+    @staticmethod
+    def _hash_descriptor(fh) -> str | None:
+        """SHA-256 of everything behind an open descriptor, then rewind it."""
+        try:
+            fh.seek(0)
+            digest = hashlib.sha256()
+            for block in iter(lambda: fh.read(1024 * 1024), b""):
+                digest.update(block)
+            fh.seek(0)
+            return digest.hexdigest()
+        except OSError:
+            return None
+
+    def _open_verified(self, row):
+        """Open the archive and verify it through the descriptor that will read it.
+
+        Checking a path and then re-opening that path are two separate name
+        lookups, and the file can be replaced in between. Hashing and reading
+        through ONE descriptor removes that window for the common case: if the
+        directory entry is swapped for a different file afterwards, this
+        descriptor still refers to the bytes that were verified.
+
+        It is NOT a complete defence, and the limit is worth stating plainly.
+        A descriptor follows the inode, so rewriting the SAME file in place
+        (`open(path, "w")` truncates rather than replaces) is still visible
+        through it. `_recheck` is what covers that: re-hashing the same
+        descriptor after the read, before anything is saved or returned.
+
+        Returns an open binary file positioned at 0, or None on a mismatch.
+        """
+        try:
+            fh = open(row["path"], "rb")
+        except OSError:
+            return None
+        if self._hash_descriptor(fh) != row["sha256"]:
+            fh.close()
+            return None
+        return fh
+
+    def _recheck(self, fh, row) -> bool:
+        """Confirm the bytes are still the verified ones, after reading them.
+
+        Guards the case `_open_verified` cannot: an in-place rewrite while the
+        read was in progress. Catching it here means a tampered archive can
+        still waste the work, but it can never be saved as teaching material or
+        reported as a success -- which is the outcome that matters.
+        """
+        return self._hash_descriptor(fh) == row["sha256"]
+
+    STALE_ARCHIVE = (
+        "このZIPファイルは読み込み後に変更されています。"
+        "もう一度読み取ってから実行してください。"
+    )
+
+    def _dataset_for(self, archive_id: int, force_profile: str | None = None):
+        """Classify one indexed archive as MWS Cup teaching material.
+
+        Reads nothing from disk: the member names are already in the manifest,
+        and the year/role decision is made from those names alone.
+        """
+        rows = STATE.store.members(archive_id)
+        view = dataset.detect([r["name"] for r in rows], force_id=force_profile)
+        return view, rows
+
+    def h_dataset(self, archive_id: str):
+        """Report what this archive looks like as a MWS Cup exercise.
+
+        Read-only, and deliberately says only whether a password hint EXISTS.
+        The candidate strings never leave the process: putting them in a
+        response would park a working key in the browser's memory, in any
+        proxy log, and in whatever the page later caches (BUILD-CONTRACT-style
+        rule from 仕様書 12.1).
+        """
+        archive_id = int(archive_id)
+        row = self._archive_row(archive_id)
+        if row is None:
+            return self._error(404, "そのZIPファイルは読み込まれていません")
+        # The hint scan reads the file, so verify and read through one
+        # descriptor rather than checking the path and opening it again.
+        fh = self._open_verified(row)
+        if fh is None:
+            return self._error(409, self.STALE_ARCHIVE)
+
+        view, member_rows = self._dataset_for(archive_id)
+        body = dataset.summarise(view, member_rows)
+
+        # Only a boolean crosses this boundary.
+        try:
+            with fh:
+                body["passwordHint"] = bool(
+                    dataset.find_password_candidates(fh, view)
+                )
+                # 生成ほど重大ではない（何も保存しない）が、古い分類と
+                # 書き換わったあとの中身を混ぜた応答を返さないよう、ここでも
+                # 読み取り後に照合する。
+                if not self._recheck(fh, row):
+                    return self._error(409, self.STALE_ARCHIVE)
+        except OSError:
+            body["passwordHint"] = False
+        body["archive"] = archive_id
+        return self._json(body)
+
+    def _generate_generic(self, archive_id: int, row, fh):
+        """The pre-profile behaviour, kept for archives no profile claims.
+
+        This is what `POST /api/generate {"archive": N}` did before year
+        profiles existed: walk the archive, read whatever `.log` files are not
+        encrypted, and build a lesson from those. It is still the only thing
+        that can be done for an ordinary ZIP, so removing it would break
+        callers that the spec promises to keep working.
+
+        It is NOT used when a profile matched. There, "any readable .log"
+        reliably picks the tool's bundled sample over the real incident logs,
+        which is the defect this whole layer exists to remove.
+
+        Reads through the caller's already-verified descriptor. Re-opening the
+        path here would hand back the TOCTOU window the caller just closed, and
+        would leak the descriptor it opened.
+        """
         sources: dict[str, str] = {}
         budget = 24 * 1024 * 1024
 
@@ -1022,9 +1151,6 @@ class Handler(BaseHTTPRequestHandler):
             for info in zf.infolist():
                 if info.is_dir() or budget <= 0:
                     continue
-                # Decode the name the same way the enumerator does. Using
-                # info.filename directly yields cp437 mojibake for the CP932/
-                # UTF-8 names in this dataset.
                 decoded, _enc = decode_name(
                     raw_name_bytes(info), bool(info.flag_bits & 0x800)
                 )
@@ -1051,10 +1177,15 @@ class Handler(BaseHTTPRequestHandler):
                         collect(nested, name + " :: ", depth + 1)
 
         try:
-            with zipfile.ZipFile(rows[0]["path"]) as zf:
+            fh.seek(0)
+            with zipfile.ZipFile(fh) as zf:
                 collect(zf)
         except Exception as exc:  # noqa: BLE001
             return self._error(422, f"圧縮ファイルを読み取れませんでした: {exc}")
+
+        # 読み終えたあとの再照合。プロファイル経路と同じ扱いにする。
+        if not self._recheck(fh, row):
+            return self._error(409, self.STALE_ARCHIVE)
 
         if not sources:
             return self._error(
@@ -1063,10 +1194,180 @@ class Handler(BaseHTTPRequestHandler):
                 "DFIR ログの多くはパスワード付きで、暗号化された項目は読み取れません。",
             )
 
-        base = os.path.basename(rows[0]["path"]).rsplit(".", 1)[0]
-        lesson = build_lesson(f"{base} — DFIR 時系列", sources, f"gen-{archive_id}")
+        base = os.path.basename(row["path"]).rsplit(".", 1)[0]
+        ordered = {k: sources[k] for k in sorted(sources)}
+        lesson = build_lesson(f"{base} — DFIR 時系列", ordered, f"gen-{archive_id}")
         if lesson is None:
             return self._error(422, "ログは読み取れましたが、事象を解析できませんでした")
+        lesson["dataset"] = {
+            "year": None, "profile": None, "label": "年度不明（汎用DFIRモード）",
+            "challengeInputs": sorted(ordered), "baselineIdentified": [],
+            "truncated": False, "unreadable": [], "incomplete": False, "draft": True,
+        }
+        STATE.store.save_lesson(lesson, base)
+        return self._json({
+            "id": lesson["id"], "title": lesson["title"],
+            "stages": len(lesson["stages"]),
+            "events": sum(len(s["events"]) for s in lesson["stages"]),
+            "tagged": sum(
+                1 for s in lesson["stages"] for e in s["events"] if "attck" in e
+            ),
+            "sources": sorted(ordered),
+            "dataset": lesson["dataset"],
+        })
+
+    def h_generate(self):
+        """Build a draft lesson from the CHALLENGE logs in one archive.
+
+        What changed, and why it matters: the previous version walked the whole
+        archive for anything ending in `.log` and skipped every encrypted entry.
+        In the real MWS Cup sets that is exactly backwards -- the genuine
+        incident logs are the encrypted ones, so what actually got taught was
+        `Tools/example.log`, a sample shipped with the viewer utility. Lessons
+        are now built from members the profile calls `challenge`, and from
+        nothing else.
+
+        `baseline` is identified but never substituted for the real logs. A
+        quiet fallback to the quiet-period logs would reintroduce the same
+        failure in a form that is harder to notice.
+
+        Reads in memory only; nothing is written to disk. The password, if one
+        is used, is held for the duration of the call and never stored, logged
+        or echoed.
+        """
+        payload = self._body()
+        if payload is None:
+            return None
+        try:
+            archive_id = int(payload.get("archive"))
+        except (TypeError, ValueError):
+            return self._error(400, '要求の書式が不正です（archive が必要です）')
+        row = self._archive_row(archive_id)
+        if row is None:
+            return self._error(404, "そのZIPファイルは読み込まれていません")
+
+        # 検証済みの記述子を 1 本だけ開き、この関数を抜けるまでに必ず閉じる。
+        # 途中の妥当性検査で早期に返る経路がいくつもあり、それぞれで閉じるのは
+        # 抜けが出る。実際、汎用生成へ分岐する経路と引数不正の経路で、
+        # リクエストごとに記述子が漏れていた。
+        archive_fh = self._open_verified(row)
+        if archive_fh is None:
+            return self._error(409, self.STALE_ARCHIVE)
+        try:
+            return self._generate_with(payload, archive_id, row, archive_fh)
+        finally:
+            archive_fh.close()
+
+    def _generate_with(self, payload, archive_id, row, archive_fh):
+        """h_generate の本体。記述子の解放は呼び出し側が受け持つ。"""
+        credential = payload.get("credential") or {}
+        if not isinstance(credential, dict):
+            return self._error(400, "要求の書式が不正です（credential）")
+        mode = credential.get("mode") or "none"
+
+        requested = payload.get("profile")
+        if requested is not None and not isinstance(requested, str):
+            return self._error(400, "要求の書式が不正です（profile）")
+
+        try:
+            view, _rows = self._dataset_for(archive_id, requested)
+        except dataset.UnknownProfile as exc:
+            return self._error(400, str(exc))
+
+        if not view.named("challenge"):
+            # A profile matched but named no challenge logs: refuse. Falling
+            # back to "any readable .log" here is precisely the old behaviour
+            # that taught `Tools/example.log`.
+            if view.profile is not None:
+                return self._error(
+                    422,
+                    f"{view.profile.label} と判定しましたが、本番の問題ログが"
+                    "見つかりませんでした。",
+                )
+            # No profile matched at all. This is an ordinary archive that the
+            # old endpoint could still make something of, and callers that
+            # never asked for a profile are entitled to that behaviour.
+            if requested:
+                return self._error(
+                    422, "指定されたプロファイルでは問題ログを特定できませんでした。"
+                )
+            return self._generate_generic(archive_id, row, archive_fh)
+
+        # 鍵はここで組み立て、この呼び出しの間だけ持つ。保存も記録もしない。
+        passwords: list[str] = []
+        if mode == "embedded":
+            passwords = dataset.find_password_candidates(archive_fh, view)
+            if not passwords:
+                return self._error(
+                    422, "同梱の案内からパスワード候補を見つけられませんでした。"
+                )
+        elif mode == "manual":
+            value = credential.get("value")
+            if not isinstance(value, str) or not value:
+                return self._error(400, "パスワードが空です。")
+            passwords = [value]
+        elif mode != "none":
+            return self._error(400, "credential.mode が不正です。")
+
+        try:
+            read = dataset.read_logs(archive_fh, view, "challenge", passwords)
+        except dataset.DatasetError as exc:
+            return self._error(422, str(exc))
+
+        # 読み終えた「あと」にもう一度照合する。記述子は inode を追うので、
+        # 読んでいる最中に同じファイルが上書きされると内容が変わりうる。
+        # ここで気づけば、差し替わった内容が教材として保存されることはない。
+        if not self._recheck(archive_fh, row):
+            return self._error(409, self.STALE_ARCHIVE)
+
+        sources = read.as_mapping
+        if not sources:
+            needs = [f for f in read.failures if f["reason"] == "password-required"]
+            rejected = [f for f in read.failures if f["reason"] == "password-rejected"]
+            unsupported = [
+                f for f in read.failures if f["reason"] == "unsupported-encryption"
+            ]
+            if unsupported:
+                return self._error(
+                    422, "問題ログが未対応の暗号方式（AES）のため読み取れません。"
+                )
+            if rejected:
+                return self._json(
+                    {"error": "パスワードが合いませんでした。もう一度入力してください。",
+                     "needsCredential": True}, 422,
+                )
+            if needs:
+                return self._json(
+                    {"error": "問題ログは暗号化されています。パスワードが必要です。",
+                     "needsCredential": True}, 422,
+                )
+            return self._error(422, "問題ログを読み取れませんでした。")
+
+        base = os.path.basename(row["path"]).rsplit(".", 1)[0]
+        title = f"{view.profile.label} — DFIR 時系列" if view.profile else f"{base} — DFIR 時系列"
+        lesson = build_lesson(title, sources, f"gen-{archive_id}")
+        if lesson is None:
+            return self._error(422, "ログは読み取れましたが、事象を解析できませんでした")
+
+        # 採用した入力を教材側にも残す。どのファイルから作られたのかを、後から
+        # 画面だけでなく教材そのものからも辿れるようにするため。
+        # 読めなかった問題ログは黙って落とさない。6 本中 2 本だけで作った教材
+        # が「正常に完成」と見えるのが、いちばん困る失敗の仕方であるため。
+        unreadable = [
+            {"name": f["name"], "reason": f["reason"], "detail": f["detail"]}
+            for f in read.failures
+        ]
+        lesson["dataset"] = {
+            "year": view.year,
+            "profile": (view.profile.id if view.profile else None),
+            "label": (view.profile.label if view.profile else "年度不明"),
+            "challengeInputs": sorted(sources),
+            "baselineIdentified": view.named("baseline"),
+            "truncated": read.truncated,
+            "unreadable": unreadable,
+            "incomplete": bool(unreadable) or read.truncated,
+            "draft": True,
+        }
         STATE.store.save_lesson(lesson, base)
         return self._json({
             "id": lesson["id"], "title": lesson["title"],
@@ -1076,6 +1377,7 @@ class Handler(BaseHTTPRequestHandler):
                 1 for s in lesson["stages"] for e in s["events"] if "attck" in e
             ),
             "sources": sorted(sources),
+            "dataset": lesson["dataset"],
         })
 
     def h_browse(self):

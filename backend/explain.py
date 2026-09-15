@@ -95,6 +95,27 @@ def _event(kind: str, detail: str, attck: tuple[str, str] | None = None) -> dict
     return ev
 
 
+#: 1 段階に載せる事象の数。
+STAGE_EVENTS = 8
+
+
+def _pick(events: list[dict], limit: int = STAGE_EVENTS) -> list[dict]:
+    """段階に載せる事象を選ぶ。根拠の付いたものを先に取る。
+
+    単純な先頭 n 件だと、実データでは起動直後のシステムプロセス
+    （smss.exe、csrss.exe、winlogon.exe …）だけで埋まる。本番の問題ログは
+    時系列で始まるため、調査対象になる事象は必ず後ろにあり、先頭を切り取る
+    と教材から丸ごと抜け落ちる。
+
+    ATT&CK の対応が付いた事象は「根拠を説明できる」と判断済みのものなので、
+    それを優先する。各群の中では元の時系列を保つので、同じ入力からは同じ
+    並びになる。
+    """
+    tagged = [e for e in events if "attck" in e]
+    rest = [e for e in events if "attck" not in e]
+    return (tagged + rest)[:limit]
+
+
 def events_from_itm2(records: list[dict]) -> list[dict]:
     """Turn parsed records into lesson events, most interesting first."""
     events: list[dict] = []
@@ -227,7 +248,7 @@ def _stage_endpoint(itm2: list[dict], procs: list[dict], hosts: Counter) -> dict
             "大半は Windows 自身が動かすもので、その中から注意すべきものを"
             "見分けるのがここでの課題です。"
         ),
-        "events": procs[:8],
+        "events": _pick(procs),
         "quiz": quiz,
     }
 
@@ -246,7 +267,7 @@ def _stage_files(files: list[dict]) -> dict:
             "自動起動の設定に関わる場所にあれば、再起動後も動き続けるための仕込みです。"
             "システムの中枢にあれば、それを書き込めた権限そのものが問題になります。"
         ),
-        "events": files[:8],
+        "events": _pick(files),
         "quiz": {
             "q": (
                 f"たとえば {sample[:60]} のような記録から、"
@@ -286,7 +307,7 @@ def _stage_network(proxy: list[dict], network: list[dict]) -> dict:
             "この中のどれが業務上の通常の通信で、どれがそうでないかは、"
             "一行ずつ見ても決まりません。"
         ),
-        "events": network[:8],
+        "events": _pick(network),
         "quiz": {
             "q": (
                 "上の宛先のうち、どれが調査に値するかを判断したいとします。"

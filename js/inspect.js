@@ -693,25 +693,196 @@ export async function renderArchive(mount, archiveId) {
     ));
   }
 
+  // MWS Cup の教材としての見え方。安全性の分類とは別の軸なので、別の欄に出す。
+  const datasetPanel = el('div', 'panel');
+  page.append(datasetPanel);
+  await renderDataset(datasetPanel, archiveId);
+
   const nav = el('div', 'navbtns');
   nav.append(back);
+  page.append(nav);
+}
 
-  const gen = el('button', 'btn btn-primary', 'このZIPのログから演習を作る');
-  gen.type = 'button';
-  const genOut = el('div', 'panel');
-  genOut.hidden = true;
-  gen.addEventListener('click', async () => {
-    gen.disabled = true;
-    gen.textContent = 'ログを読んでいます…';
-    genOut.textContent = '';
-    genOut.hidden = false;
+/** 役割ごとの短い説明。画面の言葉と役割キーの対応をここに集める。 */
+const ROLE_LABEL = {
+  challenge: '問題ログ（本番）',
+  baseline: '平常時・サンプルログ',
+  narrative: '問題文・資料',
+  tool: '同梱ツール',
+  artifact: '静的解析の対象',
+  unrelated: 'DFIR以外',
+  unknown: '判定できなかったもの',
+};
+
+const ROLE_NOTE = {
+  challenge: '実際に攻撃が記録されたログです。教材はここから作ります。',
+  baseline: '平常時の記録です。比較には使えますが、問題ログの代わりにはしません。',
+  narrative: '問題文や説明資料です。パスワードの案内もここにあります。',
+  tool: '大会が配ったツールと、その動作確認用のサンプルです。教材の材料にはしません。',
+  artifact: '静的解析の対象です。実行はしません。',
+  unrelated: 'DFIR以外の課題や発表資料です。',
+  unknown: 'この年度の決まりに当てはまらなかったものです。',
+};
+
+/**
+ * データセット確認欄。MWS Cup の年度と役割を表示し、教材生成まで導く。
+ * @param {HTMLElement} mount
+ * @param {string} archiveId
+ */
+async function renderDataset(mount, archiveId) {
+  mount.textContent = '';
+  mount.append(el('div', 'panel__label', 'MWS Cup の過去問として読む'));
+  mount.append(el('p', 'muted', '判定しています…'));
+
+  let d;
+  try {
+    d = await api(`/api/archives/${encodeURIComponent(archiveId)}/dataset`);
+  } catch (err) {
+    mount.textContent = '';
+    mount.append(el('div', 'panel__label', 'MWS Cup の過去問として読む'));
+    mount.append(el('p', 'feedback is-bad', err.message));
+    return;
+  }
+  if (!mount.isConnected) return;
+
+  mount.textContent = '';
+  mount.append(el('div', 'panel__label', 'MWS Cup の過去問として読む'));
+
+  // ---- 推定年度 ----
+  const head = el('div', 'browser__bar');
+  head.append(el('span', 'verdict ' + (d.generic ? 'is-warn' : 'is-ok'), d.label));
+  if (!d.generic) {
+    head.append(el('span', 'browser__path mono', `${d.profile} · 一致度 ${Math.round(d.confidence * 100)}%`));
+  }
+  mount.append(head);
+
+  if (d.generic) {
+    mount.append(
+      el('p', null, '年度を特定できませんでした。本番の問題ログを言い当てられないため、この画面からの教材生成は行いません。')
+    );
+  }
+  (d.warnings || []).forEach((w) => mount.append(el('div', 'member__warn', `⚠ ${w}`)));
+
+  // ---- 役割ごとの一覧 ----
+  const order = ['challenge', 'narrative', 'baseline', 'tool', 'artifact', 'unrelated', 'unknown'];
+  order.forEach((role) => {
+    const items = (d.members && d.members[role]) || [];
+    if (!items.length) return;
+    const openByDefault = role === 'challenge';
+    const box = document.createElement('details');
+    box.className = 'fold';
+    box.open = openByDefault;
+    const summary = document.createElement('summary');
+    summary.className = 'fold__head';
+    summary.textContent = `${ROLE_LABEL[role] || role}（${items.length} 個）`;
+    box.append(summary);
+    box.append(el('p', 'muted', ROLE_NOTE[role] || ''));
+    const list = el('div', 'browser__list');
+    items.forEach((m) => {
+      const row = el('div', 'browser__row');
+      row.append(el('span', 'browser__name mono', m.name));
+      if (m.encrypted) row.append(el('span', 'browser__count', '暗号化'));
+      list.append(row);
+    });
+    box.append(list);
+    mount.append(box);
+  });
+
+  if (d.generic) return;
+
+  // ---- 教材生成 ----
+  const gen = el('div', 'panel');
+  gen.append(el('div', 'panel__label', 'この問題ログから演習を作る'));
+
+  const challenge = (d.members && d.members.challenge) || [];
+  const logs = challenge.filter((m) => m.name.toLowerCase().endsWith('.log'));
+  gen.append(
+    el('p', null, `教材の材料にするのは、上の問題ログ ${logs.length} 個だけです。平常時ログと同梱ツールは使いません。`)
+  );
+
+  const out = el('div');
+  const setOut = (cls, title, body) => {
+    out.textContent = '';
+    if (title) out.append(el('div', 'panel__label', title));
+    if (body) out.append(el('p', cls, body));
+  };
+
+  const manual = document.createElement('details');
+  manual.className = 'fold';
+  const manualHead = document.createElement('summary');
+  manualHead.className = 'fold__head';
+  manualHead.textContent = 'パスワードを手入力する';
+  manual.append(manualHead);
+  const pw = el('input', 'text-input');
+  pw.type = 'password';
+  pw.autocomplete = 'off';
+  pw.placeholder = '問題文に記載されているパスワード';
+  pw.setAttribute('aria-label', '問題ログのパスワード');
+  manual.append(pw);
+  manual.append(
+    el('p', 'muted', '入力した値はこの画面を離れると消えます。保存も記録もしません。')
+  );
+
+  /** 生成を実行する。credential は呼び出しごとに組み立て、保持しない。 */
+  const run = async (credential, button, busyText, idleText) => {
+    button.disabled = true;
+    button.textContent = busyText;
+    setOut('muted', null, '問題ログを読み取っています…');
     try {
-      const r = await api('/api/generate', {
-        method: 'POST',
-        body: JSON.stringify({ archive: Number(archiveId) }),
+      const body = { archive: Number(archiveId), profile: d.profile };
+      if (credential) body.credential = credential;
+      const r = await api('/api/generate', { method: 'POST', body: JSON.stringify(body) });
+      if (!out.isConnected) return;
+      out.textContent = '';
+      out.append(el('div', 'panel__label', '演習ができました'));
+      out.append(
+        el('p', null, `${r.stages} 段階・${r.events} 件の記録から作りました（うち ${r.tagged} 件に ATT&CK の対応を付けています）。`)
+      );
+      out.append(el('p', 'muted', '自動生成した下書きです。使う前に内容を確認してください。'));
+
+      // 何を材料にしたかを、生成後にも必ず見せる。
+      const used = document.createElement('details');
+      used.className = 'fold';
+      const usedHead = document.createElement('summary');
+      usedHead.className = 'fold__head';
+      const inputs = (r.dataset && r.dataset.challengeInputs) || [];
+      usedHead.textContent = `教材に使ったファイル（${inputs.length} 個）`;
+      used.append(usedHead);
+      const ul = el('div', 'browser__list');
+      inputs.forEach((n) => {
+        const row = el('div', 'browser__row');
+        row.append(el('span', 'browser__name mono', n));
+        ul.append(row);
       });
-      genOut.append(el('div', 'panel__label', '演習ができました'));
-      genOut.append(el('p', null, `${r.stages} 段階・${r.events} 件の記録から作りました。`));
+      used.append(ul);
+      const skipped = (r.dataset && r.dataset.baselineIdentified) || [];
+      if (skipped.length) {
+        used.append(
+          el('p', 'muted', `平常時ログ ${skipped.length} 個は、比較用として区別し、教材には使っていません。`)
+        );
+      }
+      if (r.dataset && r.dataset.truncated) {
+        used.append(el('div', 'member__warn', '⚠ 上限に達したため、一部のログを最後まで読んでいません。'));
+      }
+      out.append(used);
+
+      // 読めなかったログは必ず前面に出す。一部だけで作った教材が「正常に
+      // 完成」と見えるのが、いちばん困る失敗の仕方なので、畳まずに出す。
+      const unread = (r.dataset && r.dataset.unreadable) || [];
+      if (unread.length) {
+        const warn = el('div', 'panel');
+        warn.append(
+          el('div', 'panel__label', `読み取れなかった問題ログが ${unread.length} 個あります`)
+        );
+        warn.append(
+          el('p', null, 'この教材は、読み取れた分だけで作られています。内容が不完全です。')
+        );
+        unread.forEach((u) =>
+          warn.append(el('div', 'member__warn', `⚠ ${u.name} — ${u.detail || u.reason}`))
+        );
+        out.append(warn);
+      }
+
       const open = el('button', 'btn btn-primary', '演習を開く');
       open.type = 'button';
       open.addEventListener('click', () => {
@@ -719,18 +890,60 @@ export async function renderArchive(mount, archiveId) {
       });
       const row = el('div', 'navbtns');
       row.append(open);
-      genOut.append(row);
+      out.append(row);
     } catch (err) {
-      genOut.append(el('div', 'panel__label', '演習を作れませんでした'));
-      genOut.append(el('p', null, err.message));
+      if (!out.isConnected) return;
+      setOut('feedback is-bad', '演習を作れませんでした', err.message);
+      // パスワードが要る／違う場合は、その場で入れ直せるようにする。
+      if (/パスワード/.test(err.message)) {
+        manual.open = true;
+        pw.value = '';
+        pw.focus();
+      }
     } finally {
-      gen.disabled = false;
-      gen.textContent = 'このZIPのログから演習を作る';
+      button.disabled = false;
+      button.textContent = idleText;
     }
+  };
+
+  const actions = el('div', 'navbtns navbtns--wrap');
+  if (d.passwordHint) {
+    gen.append(
+      el('p', 'muted', '同梱の問題文にパスワードの案内が見つかりました。下の押しボタンを押したときだけ使います。')
+    );
+    const useHint = el('button', 'btn btn-primary', '同梱の案内を使って読み取る');
+    useHint.type = 'button';
+    useHint.addEventListener('click', () =>
+      run({ mode: 'embedded' }, useHint, '読み取っています…', '同梱の案内を使って読み取る')
+    );
+    actions.append(useHint);
+  } else if (d.encryptedChallenge) {
+    gen.append(
+      el('p', 'muted', '問題ログは暗号化されていますが、同梱の案内からは候補が見つかりませんでした。パスワードを入力してください。')
+    );
+    manual.open = true;
+  }
+
+  const useManual = el('button', 'btn btn-ghost', '入力したパスワードで読み取る');
+  useManual.type = 'button';
+  useManual.addEventListener('click', () => {
+    const value = pw.value;
+    if (!value) {
+      setOut('feedback is-bad', null, 'パスワードを入力してください。');
+      pw.focus();
+      return;
+    }
+    pw.value = '';
+    run({ mode: 'manual', value }, useManual, '読み取っています…', '入力したパスワードで読み取る');
   });
-  nav.append(gen);
-  page.append(nav);
-  page.append(genOut);
+  const manualNav = el('div', 'navbtns');
+  manualNav.append(useManual);
+  manual.append(manualNav);
+
+  gen.append(actions);
+  gen.append(manual);
+  gen.append(out);
+  mount.append(gen);
 }
 
 /** 畳める一覧。件数が多く、一件ずつ読む必要がないものに使う。 */
