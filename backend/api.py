@@ -238,30 +238,59 @@ def count_zips(directory: str, limit: int | None = None) -> tuple[int, bool]:
     instead of one per file. Listing ~/Library was measured at 5.9s with the
     lstat form and 0.1s with this one -- the kind of pause that reads as a hang.
     """
+    n, complete, _examined = _count_zips_scan(directory, limit)
+    return n, complete
+
+
+def _count_zips_scan(directory: str, limit: int | None) -> tuple[int, bool, int]:
+    """count_zips, plus how many entries it looked at, for budgeting callers."""
     n = 0
-    seen = 0
+    examined = 0
+    complete = True
     try:
         with os.scandir(directory) as it:
             for entry in it:
-                if limit is not None and seen >= limit:
-                    return n, False
-                seen += 1
+                if limit is not None and examined >= limit:
+                    return n, False, examined
+                examined += 1
                 if not entry.name.lower().endswith(".zip"):
                     continue
                 try:
                     if entry.is_file(follow_symlinks=False):
                         n += 1
                 except OSError:
-                    continue
+                    # Cannot tell what this is, and it is named like an
+                    # archive. Not knowing is not the same as knowing it is
+                    # absent, so the count stops claiming to be complete.
+                    complete = False
     except OSError:
-        return 0, True
-    return n, True
+        # Unreadable, or it went away mid-walk. Whatever was counted so far is
+        # all there is to say; reporting `complete` here would let a caller
+        # read a failure as a confident "no archives in this folder".
+        return n, False, examined
+    return n, complete, examined
 
 
-# A directory listing is metadata, never content, and it is capped so that one
-# request cannot turn a folder with a hundred thousand entries into a reply the
-# browser has to parse.
+# Three separate bounds, because they bound three different things and only
+# capping one of them leaves the walk unbounded in practice:
+#
+#   MAX_BROWSE_ENTRIES  folders put in the reply -- keeps the JSON small.
+#   MAX_BROWSE_SCAN     filesystem entries LOOKED AT in the folder being
+#                       listed. A folder of 5100 plain files yields no
+#                       subfolders at all, so a cap on the reply never trips
+#                       and every one of those entries still gets examined.
+#   MAX_BROWSE_BUDGET   entries looked at by the whole request, the per-folder
+#                       archive counts included. Without it the worst case is
+#                       MAX_BROWSE_ENTRIES x MAX_COUNT_SCAN -- two million
+#                       entries for one click.
+#
+# Running out of budget is not an error: the folders that go uncounted come
+# back marked `zipsPartial`, which the page already treats as "unknown" rather
+# than "none", so nothing gets disabled on the strength of a number nobody
+# finished computing.
 MAX_BROWSE_ENTRIES = 500
+MAX_BROWSE_SCAN = 4000
+MAX_BROWSE_BUDGET = 20000
 
 
 def browse_dir(directory: str) -> dict:
@@ -279,9 +308,36 @@ def browse_dir(directory: str) -> dict:
     """
     entries: list[dict] = []
     truncated = False
+    examined = 0
+    budget = MAX_BROWSE_BUDGET
+    # This folder's own archives are tallied on the same pass as the listing.
+    # Walking it a second time to count them doubled the work for no new
+    # information: every entry is already in hand here.
+    here = 0
+    here_complete = True
     try:
         with os.scandir(directory) as it:
             for entry in it:
+                # Count every entry looked at, not just the ones kept. A folder
+                # of plain files produces no rows, so counting rows alone would
+                # walk the whole directory however large it is.
+                examined += 1
+                if examined > MAX_BROWSE_SCAN:
+                    truncated = True
+                    here_complete = False
+                    break
+                if entry.name.lower().endswith(".zip"):
+                    # Checked before the dotfile skip, because /api/scan reads
+                    # hidden archives too and this number has to agree with it.
+                    try:
+                        if entry.is_file(follow_symlinks=False):
+                            here += 1
+                            continue
+                    except OSError:
+                        here_complete = False
+                        continue
+                    # Falls through: a *directory* named "something.zip" is
+                    # still a folder worth offering.
                 if entry.name.startswith("."):
                     continue
                 try:
@@ -291,43 +347,52 @@ def browse_dir(directory: str) -> dict:
                     continue
                 if len(entries) >= MAX_BROWSE_ENTRIES:
                     truncated = True
+                    here_complete = False
                     break
-                # Capped: this runs once per sibling folder, and a place like
-                # ~/Library holds folders with a hundred thousand files each.
-                # `partial` travels with the number so the page can say "83 or
-                # more" instead of passing a cut-off count off as the total.
-                zips, complete = count_zips(entry.path, MAX_COUNT_SCAN)
+                # Capped per folder AND against the request's shared budget, so
+                # a folder full of heavy subfolders cannot add up to an
+                # unbounded walk. At zero budget the call returns immediately
+                # and the row is marked unknown rather than counted as empty.
+                zips, complete, cost = _count_zips_scan(
+                    entry.path, min(MAX_COUNT_SCAN, budget)
+                )
+                budget -= cost
                 entries.append({
                     "name": entry.name,
                     "path": entry.path,
                     "zips": zips,
                     "zipsPartial": not complete,
                 })
+    # A folder that could not be read tells us nothing about what is in it, so
+    # zipsPartial stays true here as well: "unknown", never "empty".
     except PermissionError:
         return {
             "path": directory,
             "entries": [],
             "zips": 0,
+            "zipsPartial": True,
             "error": "このフォルダを見る権限がありません。",
         }
     except OSError as exc:
-        return {"path": directory, "entries": [], "zips": 0, "error": str(exc)}
+        return {
+            "path": directory,
+            "entries": [],
+            "zips": 0,
+            "zipsPartial": True,
+            "error": str(exc),
+        }
 
     entries.sort(key=lambda e: e["name"].lower())
     parent = os.path.dirname(directory)
-    # Capped like the rest. Merely opening a folder must never start an
-    # unbounded walk: this runs on a plain click, and the folder could sit on a
-    # network share, in iCloud, behind FUSE, or on slow external media, where a
-    # directory of a few hundred thousand entries stalls the page for as long
-    # as it takes. `partial` is what keeps the cap honest -- the caller must not
-    # read a capped zero as "no archives here".
-    here, complete = count_zips(directory, MAX_COUNT_SCAN)
     return {
         "path": directory,
         "parent": None if parent == directory else parent,
         "entries": entries,
+        # `here` is bounded by MAX_BROWSE_SCAN along with the listing itself.
+        # `zipsPartial` is what keeps that bound honest: a cut-off zero means
+        # "not known", and the page must not disable anything on it.
         "zips": here,
-        "zipsPartial": not complete,
+        "zipsPartial": not here_complete,
         "truncated": truncated,
     }
 
