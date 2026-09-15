@@ -216,25 +216,31 @@ def hexdump(data: bytes, base: int = 0) -> list[dict]:
 MAX_COUNT_SCAN = 4000
 
 
-def count_zips(directory: str) -> int:
-    """How many regular .zip files sit directly in `directory`.
+def count_zips(directory: str, limit: int | None = None) -> tuple[int, bool]:
+    """Count the .zip files sitting directly in `directory`.
+
+    Returns (count, complete). `complete` is False when `limit` stopped the
+    walk early, and the caller MUST NOT then treat the count as the truth --
+    least of all as "this folder has no archives", since scandir order is
+    arbitrary and every archive could lie past the cut.
 
     scandir rather than listdir + lstat: the entry's type usually arrives with
     the directory read itself, so this costs roughly one syscall per directory
     instead of one per file. Listing ~/Library was measured at 5.9s with the
     lstat form and 0.1s with this one -- the kind of pause that reads as a hang.
 
-    Past MAX_COUNT_SCAN the count is returned as far as it got. It is a hint
-    printed next to a folder name, not a figure anything relies on.
+    `limit` is for counting across many sibling folders at once. A folder the
+    person actually opened is counted in full: it is one directory, and the
+    read button's enabled state hangs on the answer.
     """
     n = 0
     seen = 0
     try:
         with os.scandir(directory) as it:
             for entry in it:
+                if limit is not None and seen >= limit:
+                    return n, False
                 seen += 1
-                if seen > MAX_COUNT_SCAN:
-                    break
                 if not entry.name.lower().endswith(".zip"):
                     continue
                 try:
@@ -243,8 +249,8 @@ def count_zips(directory: str) -> int:
                 except OSError:
                     continue
     except OSError:
-        return 0
-    return n
+        return 0, True
+    return n, True
 
 
 # A directory listing is metadata, never content, and it is capped so that one
@@ -275,10 +281,16 @@ def browse_dir(directory: str) -> dict:
                 if len(entries) >= MAX_BROWSE_ENTRIES:
                     truncated = True
                     break
+                # Capped: this runs once per sibling folder, and a place like
+                # ~/Library holds folders with a hundred thousand files each.
+                # `partial` travels with the number so the page can say "83 or
+                # more" instead of passing a cut-off count off as the total.
+                zips, complete = count_zips(entry.path, MAX_COUNT_SCAN)
                 entries.append({
                     "name": entry.name,
                     "path": entry.path,
-                    "zips": count_zips(entry.path),
+                    "zips": zips,
+                    "zipsPartial": not complete,
                 })
     except PermissionError:
         return {
@@ -292,11 +304,15 @@ def browse_dir(directory: str) -> dict:
 
     entries.sort(key=lambda e: e["name"].lower())
     parent = os.path.dirname(directory)
+    # The folder that is open is counted in full, with no cap. The read button
+    # is enabled from this number, so a capped count could disable the main
+    # path to a folder that does hold archives.
+    here, _complete = count_zips(directory)
     return {
         "path": directory,
         "parent": None if parent == directory else parent,
         "entries": entries,
-        "zips": count_zips(directory),
+        "zips": here,
         "truncated": truncated,
     }
 
@@ -345,7 +361,10 @@ def subdirs_with_zips(directory: str) -> list[dict]:
                 continue
         except OSError:
             continue
-        n = count_zips(full)
+        # Exact: this hint is the recovery path out of "nothing here", so an
+        # undercount could hide the very folder the person was looking for. It
+        # only runs when a scan found nothing at all, which is rare.
+        n, _complete = count_zips(full)
         if n:
             out.append({"name": name, "path": full, "zips": n})
         if len(out) >= MAX_SUBDIR_HINTS:
@@ -1027,7 +1046,8 @@ class Handler(BaseHTTPRequestHandler):
                 "unavailable": True,
                 "detail": "選ばれた場所がフォルダではありませんでした",
             })
-        return self._json({"dir": directory, "zips": count_zips(directory)})
+        chosen_zips, _complete = count_zips(directory)
+        return self._json({"dir": directory, "zips": chosen_zips})
 
     def h_scan(self):
         payload = self._body()

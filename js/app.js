@@ -36,25 +36,39 @@ function parseRoute() {
 }
 
 async function render() {
-  const mount = getMount();
-  if (!mount) return;
+  const app = getMount();
+  if (!app) return;
 
-  // Clear the previous view.
-  mount.replaceChildren();
+  // Every render draws into its own container, and swapping it in detaches the
+  // previous one.
+  //
+  // The views fetch before they draw, so a route change can land while a
+  // request is still in flight. Sharing one mount meant that request's
+  // continuation appended its half of the old screen onto the new one --
+  // leaving, say, the lesson list with a stray "read a ZIP" panel stapled to
+  // it. Handing each render a private container makes a late continuation
+  // write into a node that is no longer in the document, where it is harmless
+  // and gets collected. Views also check `isConnected` to stop early rather
+  // than keep fetching for a screen nobody is looking at.
+  const view = document.createElement("div");
+  app.replaceChildren(view);
 
   const route = parseRoute();
   try {
     if (route.view === "lesson") {
-      await renderLesson(mount, route.id);
+      await renderLesson(view, route.id);
     } else if (route.view === "inspect") {
-      await renderInspect(mount);
+      await renderInspect(view);
     } else if (route.view === "archive") {
-      await renderArchive(mount, route.id);
+      await renderArchive(view, route.id);
     } else {
-      await renderHome(mount);
+      await renderHome(view);
     }
   } catch (err) {
-    showError(mount, err);
+    // A failure belonging to a screen the person already left must not replace
+    // the one they are on now.
+    if (view.isConnected) showError(view, err);
+    else console.error(err);
   }
 }
 
