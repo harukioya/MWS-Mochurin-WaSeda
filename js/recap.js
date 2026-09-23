@@ -1,89 +1,345 @@
-// recap.js — the MITRE ATT&CK kill-chain recap shown at the end of a lesson.
-// Renders score + summary + kill-chain + actions. textContent only (never innerHTML).
+// recap.js — 最終調査レポート。
+//
+// 得点と ATT&CK の一覧だけでは、「何が観測され、どの順で記録され、何がまだ
+// 分からないか」を説明できるようにならない。ここは、回答結果（利用者ごとに
+// 変わる）と、教材に保存された静的なレポート（誰が解いても同じ）を、画面で
+// 結合して見せる。教材へ得点を書き戻さないのは、同じ教材を複数人が解くため。
+//
+// ZIP 由来の文字列は textContent でのみ描く。原文の不可視文字は evidence.js
+// の visible() を通す。
+
+import {
+  citedEvidence,
+  evidenceCard,
+  evidenceMap,
+  jumpButtons,
+  visible,
+} from './evidence.js';
+import { glossary } from './intro.js';
+
+const el = (tag, className, text) => {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text != null) node.textContent = text;
+  return node;
+};
+
+const STATUS_LABEL = {
+  observed: '観測された事実',
+  correlated: '複数記録からの関連付け',
+  hypothesis: '未確定（追加調査が必要）',
+};
+
+const CATEGORY_LABEL = {
+  'log-reading': 'ログの意味を読む',
+  evidence: '根拠を特定する',
+  correlation: '二つの証拠を関連付ける',
+  attck: '観測を手法に対応させる',
+  limits: '断定できない理由を説明する',
+};
+
+// このレポート画面の id 空間。演習の段階とは別に持つ。レポートは mount を
+// 丸ごと差し替えて描かれるので、段階側のカードはもう頁に無い。同じ id を
+// 探していたために、レポートの「根拠ログを見る」は押しても何も起きなかった。
+const SCOPE = 'report';
+
+/** 見出し付きの区画。中身が空なら null を返し、空の箱を並べない。 */
+function section(title, build) {
+  const box = el('section', 'panel');
+  box.append(el('div', 'panel__label', title));
+  const filled = build(box);
+  return filled === false ? null : box;
+}
 
 /**
- * @param {HTMLElement} mount   the #app container
- * @param {object} lesson       the full lesson object (uses lesson.recap and lesson.id)
- * @param {{correct:number,total:number}} stats
+ * @param {HTMLElement} mount
+ * @param {object} lesson
+ * @param {{correct:number,total:number,answers?:Array,goToStage?:Function}} stats
  */
 export function renderRecap(mount, lesson, stats) {
   const recap = lesson.recap || {};
+  const report = lesson.report || {};
+  const evidence = evidenceMap(lesson);
   const correct = Number(stats && stats.correct) || 0;
   const total = Number(stats && stats.total) || 0;
+  const answers = (stats && stats.answers) || [];
+  const goToStage = stats && stats.goToStage;
 
   const root = document.createElement('section');
   root.className = 'recap';
 
-  // ---- Score heading ----
-  const eyebrow = document.createElement('p');
-  eyebrow.className = 'eyebrow';
-  eyebrow.textContent = '攻撃の流れの振り返り';
-  root.appendChild(eyebrow);
-
+  // ---- 得点 ----
+  root.appendChild(el('p', 'eyebrow', '調査レポート'));
   const heading = document.createElement('h1');
   heading.textContent = `正解 ${correct} / ${total}`;
-  // Focus target for this view (see below): anchors focus after the mount swap.
   heading.tabIndex = -1;
   root.appendChild(heading);
 
-  // ---- Summary ----
   if (recap.summary) {
-    const summary = document.createElement('p');
-    summary.className = 'muted';
-    summary.textContent = recap.summary;
-    root.appendChild(summary);
+    root.appendChild(el('p', 'muted', visible(recap.summary)));
   }
 
-  // ---- Kill chain ----
-  const chain = Array.isArray(recap.chain) ? recap.chain : [];
-  const killchain = document.createElement('div');
-  killchain.className = 'killchain';
-
-  chain.forEach((step) => {
-    const kc = document.createElement('div');
-    kc.className = 'kc-step';
-
-    const name = document.createElement('div');
-    name.className = 'kc-step__name';
-    name.textContent = step.stage ? `${step.stage}: ${step.name || ''}` : (step.name || '');
-    kc.appendChild(name);
-
-    if (step.desc) {
-      const desc = document.createElement('p');
-      desc.className = 'kc-step__desc';
-      desc.textContent = step.desc;
-      kc.appendChild(desc);
-    }
-
-    const techniques = Array.isArray(step.attck) ? step.attck : [];
-    techniques.forEach((t) => {
-      const badge = document.createElement('span');
-      badge.className = 'attck-badge';
-      badge.textContent = t && t.name ? `${t.id} · ${t.name}` : String((t && t.id) || '');
-      kc.appendChild(badge);
+  // ---- 段階別・カテゴリ別 ----
+  if (answers.length) {
+    const byStage = new Map();
+    const byCategory = new Map();
+    answers.forEach((a) => {
+      for (const [map, key, label] of [
+        [byStage, a.stageId || a.stageName, a.stageName || a.stageId],
+        [byCategory, a.category, CATEGORY_LABEL[a.category] || a.category],
+      ]) {
+        const row = map.get(key) || { label, correct: 0, total: 0 };
+        row.total += 1;
+        if (a.correct) row.correct += 1;
+        map.set(key, row);
+      }
     });
-
-    killchain.appendChild(kc);
-  });
-
-  root.appendChild(killchain);
-
-  // 振り返りの中身が空でも、画面が真っ白にならないようにしておく。
-  if (!recap.summary && !chain.length) {
-    const none = document.createElement('p');
-    none.className = 'muted';
-    none.textContent = 'この演習には、まとめの記述が用意されていません。';
-    root.appendChild(none);
+    const scores = section('段階別・カテゴリ別の成績', (box) => {
+      [['段階別', byStage], ['学習カテゴリ別', byCategory]].forEach(([name, map]) => {
+        box.append(el('p', 'muted', name));
+        const list = el('div', 'scorelist');
+        [...map.values()].forEach((row) => {
+          const line = el('div', 'scorelist__row');
+          line.append(el('span', 'scorelist__name', visible(row.label)));
+          line.append(el('span', 'scorelist__val mono', `${row.correct} / ${row.total}`));
+          list.append(line);
+        });
+        box.append(list);
+      });
+    });
+    root.appendChild(scores);
   }
 
-  // ---- Actions ----
-  const nav = document.createElement('div');
-  nav.className = 'navbtns';
+  // ---- 観測された時系列 ----
+  const timeline = Array.isArray(report.timeline) ? report.timeline : [];
+  const techniques = Array.isArray(report.techniques) ? report.techniques : [];
+  root.appendChild(
+    section('記録された順序', (box) => {
+      box.append(
+        el('p', 'muted',
+          'ログにこの順で記録された、という一覧です。記録の前後は、一方が他方を引き起こしたことを意味しません。')
+      );
+      if (!timeline.length) {
+        box.append(el('p', 'muted', '時刻を読み取れた記録がありませんでした。'));
+        return;
+      }
+      const list = el('ol', 'timeline');
+      timeline.forEach((row) => {
+        const item = el('li', 'timeline__row');
+        const when = el('span', 'timeline__time mono',
+          row.timeKnown ? visible(row.timestamp) : '時刻不明');
+        item.append(when);
+        // タイムゾーンが読めなかった行は、同じログの中でしか前後を比べ
+        // られない。一本の軸に並んでいる見た目に引きずられないよう、行に
+        // そう書く。教材側の相関も、この札が同じ行どうししか結ばない。
+        if (row.timeKnown && row.timeComparable === false) {
+          const mark = el('span', 'timeline__basis', '基準不明');
+          mark.setAttribute(
+            'title',
+            'タイムゾーンが書かれていません。同じログの中でのみ前後を比べられます。'
+          );
+          when.append(mark);
+        }
+        item.append(el('span', 'timeline__title', visible(row.title || '')));
+        // 状態は色だけでなく文言でも出す。
+        item.append(
+          el('span', 'timeline__status',
+            STATUS_LABEL[row.status] || row.status || '')
+        );
+        item.append(
+          el('span', 'timeline__src mono',
+            `${visible(row.member || '')} : ${row.line} 行目`)
+        );
+        const jump = jumpButtons(row.evidenceIds, evidence, SCOPE);
+        if (jump) item.append(jump);
+        list.append(item);
+      });
+      box.append(list);
+    })
+  );
 
-  const back = document.createElement('button');
+  // ---- このレポートが参照する記録 ----
+  //
+  // レポートの中から「根拠ログを見る」で飛べる先は、ここに置いたカードだけ
+  // である。だから、レポートのどこかが指している証拠は、ひとつ残らずここに
+  // 並べなければならない。以前は回答が指したものだけを並べ、しかも
+  // anchor=false で id を付けていなかったので、時系列と ATT&CK のボタンは
+  // 押しても何も起きなかった。
+  //
+  // 集める順は、時系列（記録された順）、ATT&CK、回答。先頭を時系列にして
+  // おくと、一覧そのものが読み下せる並びになる。
+  const keyIds = [];
+  const addId = (i) => {
+    if (evidence[i] && !keyIds.includes(i)) keyIds.push(i);
+  };
+  timeline.forEach((row) => (row.evidenceIds || []).forEach(addId));
+  techniques.forEach((t) => {
+    (t.evidenceIds || []).forEach(addId);
+    (t.reasons || []).forEach((r) => (r.evidenceIds || []).forEach(addId));
+  });
+  answers.forEach((a) => (a.evidenceIds || []).forEach(addId));
+  if (keyIds.length) {
+    root.appendChild(
+      section('判断の根拠になった記録', (box) => {
+        box.append(
+          el('p', 'muted',
+            'このレポートの「根拠ログを見る」は、すべてこの一覧の記録を指しています。')
+        );
+        const list = el('div', 'evidence-list');
+        keyIds.forEach((i) => list.append(evidenceCard(evidence[i], null, true, SCOPE)));
+        box.append(list);
+      })
+    );
+  }
+
+  // ---- ATT&CK ----
+  root.appendChild(
+    section('MITRE ATT&CK との対応', (box) => {
+      if (!techniques.length) {
+        box.append(
+          el('p', 'muted',
+            '根拠を説明できる対応が見つかりませんでした。推測で手法を当てはめていません。')
+        );
+        // 旧形式の recap.chain があれば、そちらは従来どおり出す。
+        return;
+      }
+      techniques.forEach((t) => {
+        const card = el('div', 'technique');
+        const head = el('div', 'technique__head');
+        head.append(el('span', 'attck-badge', `${visible(t.id)} · ${visible(t.name)}`));
+        head.append(
+          el('span', 'technique__status',
+            `${STATUS_LABEL[t.status] || t.status || ''}／確信度 ${visible(t.confidence || '')}`)
+        );
+        card.append(head);
+
+        // 同じ手法でも、理由が違えば根拠も違う。vssadmin と bcdedit は
+        // どちらも T1490 だが、観測しているものは別である。理由ごとに
+        // その理由を支える記録だけを並べ、まとめて 1 つの説明に押し込まない。
+        const reasons = Array.isArray(t.reasons) && t.reasons.length
+          ? t.reasons
+          : [{ reason: t.reason || '', evidenceIds: t.evidenceIds || [] }];
+        let linked = false;
+        reasons.forEach((r) => {
+          card.append(el('p', 'technique__reason', visible(r.reason || '')));
+          const jump = jumpButtons(r.evidenceIds, evidence, SCOPE);
+          if (jump) {
+            card.append(jump);
+            linked = true;
+          }
+        });
+        if (!linked) card.append(el('p', 'muted', '根拠の記録を特定できませんでした。'));
+        card.append(
+          el('p', 'technique__rule mono', `対応規則 ${visible(t.ruleVersion || '')}`)
+        );
+        box.append(card);
+      });
+    })
+  );
+
+  // ---- 旧形式のキルチェーン ----
+  const chain = Array.isArray(recap.chain) ? recap.chain : [];
+  if (chain.length) {
+    const killchain = el('div', 'killchain');
+    chain.forEach((step) => {
+      const kc = el('div', 'kc-step');
+      kc.append(
+        el('div', 'kc-step__name',
+          step.stage ? `${visible(step.stage)}: ${visible(step.name || '')}`
+                     : visible(step.name || ''))
+      );
+      if (step.desc) kc.append(el('p', 'kc-step__desc', visible(step.desc)));
+      (Array.isArray(step.attck) ? step.attck : []).forEach((t) => {
+        kc.append(
+          el('span', 'attck-badge',
+            t && t.name ? `${visible(t.id)} · ${visible(t.name)}` : visible((t && t.id) || ''))
+        );
+      });
+      killchain.append(kc);
+    });
+    root.appendChild(killchain);
+  }
+
+  // ---- 間違えた問題と復習 ----
+  const wrong = answers.filter((a) => !a.correct);
+  root.appendChild(
+    section('間違えた問題', (box) => {
+      if (!answers.length) {
+        box.append(el('p', 'muted', '回答の記録がありません。'));
+        return;
+      }
+      if (!wrong.length) {
+        box.append(el('p', 'muted', '間違えた問題はありません。'));
+        return;
+      }
+      wrong.forEach((a) => {
+        const row = el('div', 'review');
+        row.append(
+          el('div', 'review__q',
+            visible((a.quiz && (a.quiz.q || a.quiz.prompt)) || a.questionId))
+        );
+        row.append(
+          el('p', 'muted',
+            `${visible(a.stageName || '')}／${CATEGORY_LABEL[a.category] || a.category}`)
+        );
+        // 根拠をその場で再表示する。戻らなくても確かめられるようにする。
+        const cited = citedEvidence(a.evidenceIds, evidence);
+        if (cited) row.append(cited);
+
+        const nav = el('div', 'navbtns navbtns--wrap');
+        if (goToStage && a.stageId) {
+          const back = el('button', 'btn btn-ghost btn-sm', 'この段階へ戻って解き直す');
+          back.type = 'button';
+          back.addEventListener('click', () => goToStage(a.stageId));
+          nav.append(back);
+        }
+        const jump = jumpButtons(a.evidenceIds, evidence, SCOPE);
+        if (jump) nav.append(...jump.children);
+        if (nav.children.length) row.append(nav);
+        box.append(row);
+      });
+    })
+  );
+
+  // ---- 未確定事項 ----
+  const unknowns = Array.isArray(report.unknowns) ? report.unknowns : [];
+  if (unknowns.length) {
+    root.appendChild(
+      section('断定できなかったこと', (box) => {
+        unknowns.forEach((u) => {
+          box.append(el('div', 'unknown__topic', visible(u.topic || '')));
+          box.append(el('p', 'unknown__detail', visible(u.detail || '')));
+        });
+      })
+    );
+  }
+
+  // ---- 追加調査 ----
+  const next = Array.isArray(report.nextInvestigations) ? report.nextInvestigations : [];
+  if (next.length) {
+    root.appendChild(
+      section('次に調べるとよいこと', (box) => {
+        const ul = el('ul', 'bullets');
+        next.forEach((t) => ul.append(el('li', null, visible(t))));
+        box.append(ul);
+      })
+    );
+  }
+
+  root.appendChild(glossary());
+
+  // 何も無い教材でも白画面にしない。
+  if (!timeline.length && !techniques.length && !answers.length && !chain.length) {
+    root.appendChild(
+      el('p', 'muted',
+        'この演習からは、まとめとして示せる記録が得られませんでした。読み取れたログが少ないか、根拠が不足しています。')
+    );
+  }
+
+  // ---- 導線 ----
+  const nav = el('div', 'navbtns');
+  const back = el('button', 'btn btn-ghost', '演習の一覧に戻る');
   back.type = 'button';
-  back.className = 'btn btn-ghost';
-  back.textContent = '演習の一覧に戻る';
   back.setAttribute('aria-label', '演習の一覧に戻る');
   back.addEventListener('click', () => {
     location.hash = '#/';
@@ -96,22 +352,17 @@ export function renderRecap(mount, lesson, stats) {
   replay.textContent = 'もう一度';
   replay.setAttribute('aria-label', 'この演習を最初からやり直す');
   replay.addEventListener('click', () => {
+    // 演習を作り直すので、得点も回答履歴もここで捨てられる。
     const target = `#/lesson/${lesson.id}`;
     if (location.hash === target) {
-      // Already on this lesson's hash — re-run the router to restart from stage 1.
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     } else {
       location.hash = target;
     }
   });
   nav.appendChild(replay);
-
   root.appendChild(nav);
 
   mount.replaceChildren(root);
-
-  // Move focus to the recap heading so keyboard/SR users land in the new view
-  // instead of at <body> after the mount is replaced. preventScroll leaves the
-  // caller's window.scrollTo(0, 0) in charge of scroll position.
   heading.focus({ preventScroll: true });
 }

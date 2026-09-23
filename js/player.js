@@ -6,6 +6,8 @@
 import { loadLesson } from './data.js';
 import { renderQuiz } from './quiz.js';
 import { renderRecap } from './recap.js';
+import { evidenceCard, evidenceMap, visible } from './evidence.js';
+import { renderIntroduction } from './intro.js';
 
 // 事象の種別（データ側のキー）を、画面表示用の日本語に対応させる。
 // データの値そのものは変更しない。
@@ -49,7 +51,43 @@ export async function renderLesson(mount, lessonId) {
 
   const stages = Array.isArray(lesson.stages) ? lesson.stages : [];
   const total = stages.length;
+  const evidence = evidenceMap(lesson);
+
+  /** その段階の設問。旧形式は `quiz` が 1 つだけなので同じ形へ揃える。 */
+  const quizzesOf = (stage) =>
+    Array.isArray(stage.quizzes) && stage.quizzes.length
+      ? stage.quizzes
+      : stage.quiz
+        ? [stage.quiz]
+        : [];
+
+  // 得点は設問単位で数える。段階ごとに 1 点としていたため、端末段階に設問が
+  // 2 つある今の教材では、4 問答えても「3/3」としか出なかった。振り返りは
+  // 「正解 X / Y」と読ませるので、Y は実際の設問数でなければならない。
+  //
+  // 設問を持たない段階（証拠が無く落とされた旧形式など）は、母数にも得点にも
+  // 入れない。以前はそうした段階が自動的に正解として加算されていた。
+  const questionTotal = stages.reduce((n, s) => n + quizzesOf(s).length, 0);
   let correct = 0;
+
+  // 回答履歴。最終レポートの段階別・カテゴリ別得点と、間違えた問題の復習に
+  // 使う。永続化はしない（今回の範囲外）。同じ問題を二度数えないよう、
+  // 問題 ID を鍵にする。
+  const answers = new Map();
+  const record = (stage, quiz, isCorrect) => {
+    const key = quiz.id || `${stage.id}:${quiz.q}`;
+    if (answers.has(key)) return false;
+    answers.set(key, {
+      questionId: key,
+      stageId: stage.id || '',
+      stageName: stage.name || '',
+      category: quiz.category || 'log-reading',
+      correct: !!isCorrect,
+      evidenceIds: quiz.evidenceIds || [],
+      quiz,
+    });
+    return true;
+  };
 
   const player = el('div', 'player');
   mount.appendChild(player);
@@ -108,11 +146,58 @@ export async function renderLesson(mount, lessonId) {
           : event.attck.id;
         body.appendChild(el('span', 'event__attck', label));
       }
+      // 証拠があれば、その事象がどのログの何行目から来たのかを添える。
+      // 旧形式の演習には evidenceIds が無いので、その場合は従来どおり。
+      const cite = (event.evidenceIds || []).map((i) => evidence[i]).filter(Boolean)[0];
+      if (cite && cite.source) {
+        // 出典名も ZIP 由来なので、ここでも visible() を通す。証拠カードと
+        // ジャンプボタンだけ処理していたため、未処理のデータが渡ってきた
+        // 場合に、この一覧にだけ改行やタブが不可視のまま残っていた。
+        const where = el(
+          'span',
+          'event__source mono',
+          `${visible(cite.source.member)} : ${cite.source.line} 行目`
+        );
+        body.appendChild(where);
+      }
       row.appendChild(body);
       list.appendChild(row);
     });
     panel.appendChild(list);
     player.appendChild(panel);
+
+    // --- 証拠カード ---
+    //
+    // 事象の一覧は短くまとめた説明で、原文ではない。根拠を確かめるための
+    // 原文はここに置く。回答後の「根拠ログを見る」はこのカードへ飛ぶ。
+    //
+    // 事象が指すものだけでなく、この段階の設問が指すものも並べる。設問の
+    // 根拠が別の段階の記録から来ることがあり、そのときカードが無いと
+    // 「根拠ログを見る」が押しても何も起きないボタンになる。飛び先の有無を
+    // 設問側で気にせずに済むよう、この段階が参照する証拠はここで全部出す。
+    const cited = [];
+    const addCite = (i) => {
+      if (evidence[i] && !cited.includes(i)) cited.push(i);
+    };
+    (stage.events || []).forEach((event) =>
+      (event.evidenceIds || []).forEach(addCite));
+    quizzesOf(stage).forEach((quiz) => {
+      (quiz.evidenceIds || []).forEach(addCite);
+      (quiz.options || []).forEach((o) => {
+        if (o && typeof o === 'object' && o.evidenceId) addCite(o.evidenceId);
+      });
+    });
+    if (cited.length) {
+      const evPanel = el('div', 'panel');
+      evPanel.appendChild(el('div', 'panel__label', '根拠となった記録'));
+      evPanel.appendChild(
+        el('p', 'muted', '上の各行は、次のログの原文から読み取ったものです。')
+      );
+      const box = el('div', 'evidence-list');
+      cited.forEach((i) => box.appendChild(evidenceCard(evidence[i])));
+      evPanel.appendChild(box);
+      player.appendChild(evPanel);
+    }
 
     // --- Quiz (answer before advance) ---
     const quizPanel = el('div', 'panel');
@@ -133,7 +218,23 @@ export async function renderLesson(mount, lessonId) {
     cont.hidden = true;
     cont.addEventListener('click', () => {
       if (isLast) {
-        renderRecap(mount, lesson, { correct, total });
+        renderRecap(mount, lesson, {
+          correct,
+          total: questionTotal,
+          answers: [...answers.values()],
+          // 復習から段階へ戻れるようにする。得点は `answers` が鍵で
+          // 重複を弾くので、戻って解き直しても二重加算されない。
+          goToStage: (stageId) => {
+            const at = stages.findIndex((s) => s.id === stageId);
+            if (at < 0) return;
+            // レポートは mount を丸ごと差し替えるので、player はもう外れて
+            // いる。付け直してから段階を描かないと、どこにも表示されない。
+            mount.textContent = '';
+            mount.appendChild(player);
+            renderStage(at);
+            window.scrollTo(0, 0);
+          },
+        });
         window.scrollTo(0, 0);
       } else {
         renderStage(index + 1);
@@ -143,16 +244,69 @@ export async function renderLesson(mount, lessonId) {
     nav.appendChild(cont);
     player.appendChild(nav);
 
-    // Render the quiz; reveal Continue once answered, count correct once.
-    let answered = false;
-    renderQuiz(quizPanel, stage.quiz, (isCorrect) => {
-      if (!answered) {
-        answered = true;
-        if (isCorrect) correct++;
+    // --- 設問 ---
+    //
+    // 新しい演習は 1 段階に複数の設問を持つ（`quizzes`）。旧形式は `quiz` が
+    // 1 つだけなので、同じ形へ揃えてから順に出す。
+    const quizzes = quizzesOf(stage);
+
+    // 同じ設問を二重に数えないための記録。再描画や連打で加算されないように。
+    const scored = new Set();
+
+    const askFrom = (qi) => {
+      if (qi >= quizzes.length) {
+        if (!quizzes.length) {
+          // 根拠が足りず設問を作れなかった段階。観測できた事実は上に出して
+          // あるので、黙って飛ばさず理由を書いて先へ進めるようにする。
+          quizPanel.appendChild(
+            el('div', 'panel__label', 'この段階には設問がありません')
+          );
+          quizPanel.appendChild(
+            el('p', 'muted',
+              stage.note ||
+              'この段階では、問題を作るための根拠が不足しています。上の記録を読んで次へ進んでください。')
+          );
+        }
+        cont.hidden = false;
+        cont.focus();
+        return;
       }
-      cont.hidden = false;
-      cont.focus();
-    });
+      quizPanel.textContent = '';
+      if (quizzes.length > 1) {
+        quizPanel.appendChild(
+          el('div', 'panel__label', `設問 ${qi + 1}/${quizzes.length}`)
+        );
+      }
+      const holder = el('div');
+      quizPanel.appendChild(holder);
+
+      renderQuiz(
+        holder,
+        quizzes[qi],
+        (isCorrect) => {
+          if (!scored.has(qi)) {
+            scored.add(qi);
+            if (record(stage, quizzes[qi], isCorrect) && isCorrect) correct++;
+          }
+          if (qi + 1 < quizzes.length) {
+            const nav2 = el('div', 'navbtns');
+            const nextQ = el('button', 'btn btn-primary', '次の設問へ');
+            nextQ.type = 'button';
+            nextQ.addEventListener('click', () => {
+              askFrom(qi + 1);
+              quizPanel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            });
+            nav2.appendChild(nextQ);
+            quizPanel.appendChild(nav2);
+            nextQ.focus();
+          } else {
+            askFrom(qi + 1);
+          }
+        },
+        evidence
+      );
+    };
+    askFrom(0);
 
     // Move focus to this stage's heading so keyboard/SR users land in the new
     // view rather than at <body> after the rebuild. preventScroll avoids
@@ -161,7 +315,22 @@ export async function renderLesson(mount, lessonId) {
   };
 
   if (total === 0) {
-    renderRecap(mount, lesson, { correct: 0, total: 0 });
+    renderRecap(mount, lesson, { correct: 0, total: 0, answers: [] });
+    return;
+  }
+
+  // 自動生成した演習には導入がある。いきなり第1段階へ入ると、何のログを
+  // 何のために読むのかが分からないまま設問に入ることになる。
+  //
+  // 旧形式（introduction が無い）は従来どおり第1段階から始める。導入が
+  // 無いものに空の導入画面を出しても、何も伝わらない。
+  if (lesson.introduction) {
+    renderIntroduction(mount, lesson, () => {
+      mount.textContent = '';
+      mount.appendChild(player);
+      renderStage(0);
+      window.scrollTo(0, 0);
+    });
     return;
   }
 
