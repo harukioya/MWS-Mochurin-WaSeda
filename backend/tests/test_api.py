@@ -10,11 +10,22 @@ import os
 import re
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import api  # noqa: E402
 from api import ROLE_CAPS, ROUTES, Capability, Handler  # noqa: E402
+
+
+class TestBrowseNavigation(unittest.TestCase):
+    def test_unreadable_folder_still_returns_its_parent(self):
+        """A permission error must not disable the in-page browser's Up button."""
+        with mock.patch.object(api.os, "scandir", side_effect=PermissionError):
+            result = api.browse_dir("/parent/locked")
+
+        self.assertEqual(result["parent"], "/parent")
+        self.assertIn("error", result)
 
 
 class TestRouteTable(unittest.TestCase):

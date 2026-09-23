@@ -766,7 +766,16 @@ class TestContainerBudget(unittest.TestCase):
             with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as zf:
                 zf.writestr(f"logs/{tag}.log", ("x" * 99 + "\n") * 1000)
             self.blobs[tag] = buf.getvalue()
+        # Sizes are read back from the fixture rather than written as
+        # constants, so a change in zip metadata cannot silently shift what the
+        # budget assertions mean.
         self.size = len(self.blobs["a"])
+        with zipfile.ZipFile(io.BytesIO(self.blobs["a"])) as zf:
+            self.log_size = zf.infolist()[0].file_size
+        self.assertEqual(
+            {len(b) for b in self.blobs.values()}, {self.size},
+            "the three containers must be the same size for these bounds",
+        )
         self.outer = os.path.join(self.tmp, "top.zip")
         with zipfile.ZipFile(self.outer, "w", zipfile.ZIP_STORED) as zf:
             for i, tag in enumerate("abc"):
@@ -818,11 +827,62 @@ class TestContainerBudget(unittest.TestCase):
         self.assertTrue(res.truncated)
         self.assertEqual(len(res.failures), 3)
 
-    def test_a_container_larger_than_the_remainder_is_refused_unread(self):
-        res, read_bytes = self._run(self.size * 2 + 118)
-        self.assertLessEqual(read_bytes, self.size * 2 + 118 + dataset._READ_BLOCK * 3)
-        self.assertTrue(
-            any(f["reason"] == "limit-exceeded" for f in res.failures), res.failures
+    def test_only_the_container_that_fits_is_read(self):
+        """A budget with room for exactly one container must read exactly one.
+
+        The earlier version of this test only bounded the bytes read, with
+        enough slack that reading a second container could still pass. What
+        matters is stricter than a byte ceiling: the containers that do not fit
+        must not be opened at all, and they must be reported rather than
+        silently dropped. All expectations are derived from the fixture sizes
+        so that a different zip layout cannot quietly loosen them.
+        """
+        container = self.size          # bytes of one inner ZIP
+        log = self.log_size            # uncompressed bytes of the log inside it
+
+        # Enough for one container plus its log, and short of a second
+        # container by a wide margin.
+        budget = container + log + dataset._READ_BLOCK
+        self.assertLess(
+            budget - (container + log), container,
+            "the budget must not leave room for a second container",
+        )
+
+        res, read_bytes = self._run(budget)
+
+        # 1. Exactly one log is taken as lesson input.
+        self.assertEqual(len(res.sources), 1, [s.name for s in res.sources])
+
+        # 2. The two remaining containers are refused, and each is reported.
+        #
+        # The reason is exactly "limit-exceeded", not "budget": the size check
+        # runs first and catches a container that cannot fit in what is left.
+        # "budget" is what the exhausted check reports, and the two are not
+        # interchangeable -- accepting either here would stop the test from
+        # noticing if the size check disappeared.
+        self.assertEqual(len(res.failures), 2, res.failures)
+        for failure in res.failures:
+            self.assertEqual(failure["reason"], "limit-exceeded", failure)
+
+        # 3. Every container that was refused is named in the failures, so
+        #    nothing is dropped without a trace.
+        refused = {f["name"] for f in res.failures}
+        accepted_parent = res.sources[0].name.split(" :: ")[0]
+        expected_refused = {
+            f"mwscup2022/DFIR/logs{i}.zip" for i in range(3)
+        } - {accepted_parent}
+        self.assertEqual(refused, expected_refused)
+
+        # 4. The caller is told the result is incomplete.
+        self.assertTrue(res.truncated)
+
+        # 5. The bytes actually pulled out cover one container and one log, and
+        #    cannot stretch to a second container.
+        ceiling = container + log + dataset._READ_BLOCK
+        self.assertLessEqual(read_bytes, ceiling, f"read={read_bytes}")
+        self.assertLess(
+            read_bytes, container * 2,
+            f"a second container was read: {read_bytes}",
         )
 
     def test_everything_is_read_when_the_budget_allows(self):

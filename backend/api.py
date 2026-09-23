@@ -130,6 +130,8 @@ ROUTES = [
           Capability.READ, "h_preview"),
     Route("GET", r"/api/lessons", Capability.READ, "h_lessons"),
     Route("GET", r"/api/lessons/([A-Za-z0-9_-]{1,64})", Capability.READ, "h_lesson"),
+    Route("GET", r"/api/lessons/([A-Za-z0-9_-]{1,64})/evidence/(ev-[0-9a-f]{8,64})",
+          Capability.READ, "h_evidence"),
     Route("POST", r"/api/browse", Capability.SCAN, "h_browse"),
     Route("POST", r"/api/choose-dir", Capability.SCAN, "h_choose_dir"),
     Route("POST", r"/api/scan", Capability.SCAN, "h_scan"),
@@ -296,6 +298,12 @@ MAX_BROWSE_SCAN = 4000
 MAX_BROWSE_BUDGET = 20000
 
 
+def _parent_of(directory: str) -> str | None:
+    """1 つ上のフォルダ。ルートでは None。"""
+    parent = os.path.dirname(directory)
+    return None if parent == directory else parent
+
+
 def browse_dir(directory: str) -> dict:
     """List the subfolders of one directory, for the in-page folder chooser.
 
@@ -368,9 +376,15 @@ def browse_dir(directory: str) -> dict:
                 })
     # A folder that could not be read tells us nothing about what is in it, so
     # zipsPartial stays true here as well: "unknown", never "empty".
+    #
+    # `parent` is included on the error paths too. Without it the page has no
+    # Up button, and a single unreadable folder becomes a dead end: the only
+    # way out is to retype a path. Failing to list a folder is not a reason to
+    # take away the way back.
     except PermissionError:
         return {
             "path": directory,
+            "parent": _parent_of(directory),
             "entries": [],
             "zips": 0,
             "zipsPartial": True,
@@ -379,6 +393,7 @@ def browse_dir(directory: str) -> dict:
     except OSError as exc:
         return {
             "path": directory,
+            "parent": _parent_of(directory),
             "entries": [],
             "zips": 0,
             "zipsPartial": True,
@@ -386,10 +401,9 @@ def browse_dir(directory: str) -> dict:
         }
 
     entries.sort(key=lambda e: e["name"].lower())
-    parent = os.path.dirname(directory)
     return {
         "path": directory,
-        "parent": None if parent == directory else parent,
+        "parent": _parent_of(directory),
         "entries": entries,
         # `here` is bounded by MAX_BROWSE_SCAN along with the listing itself.
         # `zipsPartial` is what keeps that bound honest: a cut-off zero means
@@ -1216,6 +1230,43 @@ class Handler(BaseHTTPRequestHandler):
             "dataset": lesson["dataset"],
         })
 
+    def h_evidence(self, lesson_id: str, evidence_id: str):
+        """Return one stored piece of evidence from one saved lesson.
+
+        Deliberately narrow. The route takes no path from the caller: both ids
+        are bounded by the route pattern, and the evidence is looked up in the
+        lesson that was already built and saved. No archive is opened, nothing
+        is re-read from disk, and nothing outside the stored record is returned.
+
+        That matters because the alternative -- accepting an archive path and a
+        member name and fetching the line on demand -- would hand the caller a
+        way to read arbitrary files through this endpoint. The excerpt was
+        already trimmed, escaped and stored when the lesson was generated, so
+        there is nothing here to re-derive.
+        """
+        lesson = STATE.store.lesson(lesson_id)
+        if lesson is None:
+            return self._error(404, "該当する演習がありません")
+        item = (lesson.get("evidence") or {}).get(evidence_id)
+        if item is None:
+            return self._error(404, "該当する証拠がありません")
+
+        # 保存されている辞書をそのまま返さず、出す項目をここで列挙する。
+        # 証拠オブジェクトへ内部用の項目が増えたとき、黙って API へ漏れる
+        # のを防ぐため。増やすかどうかは、そのつど明示的に決める。
+        src = item.get("source") or {}
+        return self._json({
+            "id": item.get("id"),
+            "kind": item.get("kind"),
+            "confidence": item.get("confidence"),
+            "source": {
+                "archivePath": src.get("archivePath"),
+                "member": src.get("member"),
+                "line": src.get("line"),
+                "excerpt": src.get("excerpt"),
+            },
+        })
+
     def h_generate(self):
         """Build a draft lesson from the CHALLENGE logs in one archive.
 
@@ -1368,6 +1419,31 @@ class Handler(BaseHTTPRequestHandler):
             "incomplete": bool(unreadable) or read.truncated,
             "draft": True,
         }
+        # 読み取りの制約は、生成直後の画面だけでなく教材の中にも残す。導入と
+        # 最終レポートから「何が読めなかったか」を確かめられるようにするため。
+        # 終わってから言われても、どの判断がその影響を受けたのか分からない。
+        report = lesson.setdefault("report", {})
+        unknowns = report.setdefault("unknowns", [])
+        if read.truncated:
+            unknowns.append({
+                "topic": "読み取りの打ち切り",
+                "detail": ("上限に達したため、一部のログを最後まで読んでいません。"
+                           "見えていない記録がある前提で読んでください。"),
+            })
+        if unreadable:
+            unknowns.append({
+                "topic": "読み取れなかったログ",
+                "detail": (f"{len(unreadable)} 件の問題ログを読み取れませんでした。"
+                           "この教材はその分を欠いた状態で作られています。"),
+            })
+        lesson.setdefault("introduction", {})["dataset"] = {
+            "year": view.year,
+            "label": (view.profile.label if view.profile else "年度不明"),
+            "incomplete": lesson["dataset"]["incomplete"],
+            "truncated": read.truncated,
+            "unreadable": len(unreadable),
+        }
+
         STATE.store.save_lesson(lesson, base)
         return self._json({
             "id": lesson["id"], "title": lesson["title"],

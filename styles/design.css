@@ -347,3 +347,79 @@ a{color:var(--brand-ink)}
 .fold[open] .fold__head::before{transform:rotate(90deg)}
 .fold__head:focus-visible{outline:2px solid var(--brand); outline-offset:3px; border-radius:var(--r-sm)}
 .fold > p{margin:8px 0 0}
+
+/* ---- 証拠カード（フェーズ2） ----
+   原文は ZIP 由来なので、長い行や制御文字が来る前提で組む。 */
+.evidence-list{display:flex; flex-direction:column; gap:12px; margin-top:12px}
+.evidence{
+  background:var(--surface-2); border:1px solid var(--line-2);
+  border-left:3px solid var(--line-2); border-radius:var(--r-sm); padding:12px 14px;
+}
+.evidence:focus-visible{outline:3px solid var(--brand); outline-offset:2px}
+/* 引用された証拠。色だけでなく左の太さと見出しでも分かるようにする。 */
+.evidence.is-cited{border-left-color:var(--brand); background:var(--brand-soft)}
+.evidence__head{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.evidence__kind{
+  font:700 10px/1 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.06em; padding:5px 9px; border-radius:var(--r-pill);
+  background:var(--brand-soft); color:var(--brand-ink);
+}
+.evidence__confidence{font-size:.8rem; color:var(--muted)}
+.evidence__where{display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; font-size:.82rem}
+.evidence__member{color:var(--ink); word-break:break-all; unicode-bidi:isolate}
+.evidence__line{color:var(--muted); flex:0 0 auto}
+.evidence__path{margin-top:4px; font-size:.75rem; color:var(--faint); word-break:break-all; unicode-bidi:isolate}
+.evidence__excerpt{
+  margin:10px 0 0; padding:10px 12px; background:var(--surface);
+  border:1px solid var(--line); border-radius:var(--r-sm);
+  font-size:11.5px; line-height:1.7; max-height:220px;
+  overflow:auto; white-space:pre-wrap; word-break:break-all;
+  unicode-bidi:isolate;
+}
+.evidence__excerpt:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+.evidence__note{margin:8px 0 0; font-size:.88rem; color:var(--muted)}
+.event__source{display:block; margin-top:4px; font-size:.75rem; color:var(--faint); unicode-bidi:isolate}
+.quiz__aim{font-size:.82rem; color:var(--muted); margin-bottom:6px}
+.quiz__next{margin-top:12px; font-size:.9rem; color:var(--muted)}
+
+/* ---- 調査導入と最終レポート（フェーズ3） ---- */
+.glossary{margin:10px 0 0}
+.glossary__term{font-weight:700; margin-top:10px}
+.glossary__desc{margin:2px 0 0 0; color:var(--muted); font-size:.92rem}
+.factlist{display:grid; grid-template-columns:auto 1fr; gap:6px 16px; margin:10px 0 0}
+.factlist__key{color:var(--muted); font-size:.88rem}
+.factlist__value{margin:0; word-break:break-word; unicode-bidi:isolate}
+.bullets{margin:8px 0 0; padding-left:1.3em; color:var(--muted)}
+.bullets li{margin:4px 0}
+
+.scorelist{display:flex; flex-direction:column; gap:4px; margin:6px 0 14px}
+.scorelist__row{display:flex; gap:12px; align-items:baseline}
+.scorelist__name{flex:1 1 auto; min-width:0}
+.scorelist__val{flex:0 0 auto; color:var(--brand-ink); font-weight:700}
+
+.timeline{margin:10px 0 0; padding-left:1.4em}
+.timeline__row{margin:10px 0}
+.timeline__time{display:block; font-size:.8rem; color:var(--muted)}
+/* タイムゾーンが読めず、他の行と前後を比べられない行の印。色だけに
+   頼らず文言で出す。 */
+.timeline__basis{margin-left:.5em; padding:0 .35em; border-radius:3px;
+  border:1px solid var(--line); font-size:.72rem; color:var(--muted)}
+.timeline__title{display:block; word-break:break-all; unicode-bidi:isolate}
+.timeline__status{
+  display:inline-block; margin-top:4px; font-size:.75rem;
+  padding:3px 8px; border-radius:var(--r-pill);
+  background:var(--surface-2); color:var(--muted); border:1px solid var(--line-2);
+}
+.timeline__src{display:block; font-size:.75rem; color:var(--faint); unicode-bidi:isolate}
+
+.technique{border-left:3px solid var(--line-2); padding-left:12px; margin:14px 0}
+.technique__head{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+.technique__status{font-size:.8rem; color:var(--muted)}
+.technique__reason{margin:6px 0 0}
+.technique__rule{margin:2px 0 0; font-size:.72rem; color:var(--faint)}
+
+.review{border-top:1px solid var(--line); padding-top:12px; margin-top:12px}
+.review:first-of-type{border-top:0}
+.review__q{font-weight:700; word-break:break-word}
+.unknown__topic{font-weight:700; margin-top:10px}
+.unknown__detail{margin:2px 0 0; color:var(--muted); font-size:.93rem}
