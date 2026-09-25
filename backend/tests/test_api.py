@@ -206,3 +206,120 @@ class TestRoleLoading(unittest.TestCase):
     def test_trailing_whitespace_is_tolerated(self):
         self._write("  student \n")
         self.assertEqual(api.load_role(), "student")
+
+
+class TestProfileIdContract(unittest.TestCase):
+    """`profileId` selects a dataset format; nothing else in the contract does.
+
+    The id never reaches the filesystem -- `dataset.detect` only compares it
+    against the profiles it already loaded -- but it is still caller-supplied
+    text that ends up in an error message, so it gets the same bounded shape
+    the profile loader enforces.
+
+    `profile` is a DEPRECATED alias kept for pages built before profiles were
+    generalised. It is read in exactly one place (`_legacy_profile_alias`); the
+    tests below pin both that it still works and that the new contract does not
+    depend on it.
+    """
+
+    def _query(self, path: str):
+        handler = Handler.__new__(Handler)
+        handler.path = path
+        return Handler._profile_request(handler, Handler._query(handler))
+
+    def _body(self, payload: dict):
+        handler = Handler.__new__(Handler)
+        return Handler._profile_request(handler, payload)
+
+    def test_absent_means_automatic(self):
+        self.assertEqual(self._query("/api/archives/1/dataset"), (None, None))
+        self.assertEqual(self._query("/api/archives/1/dataset?other=x"), (None, None))
+        self.assertEqual(self._query("/api/archives/1/dataset?profileId="), (None, None))
+        self.assertEqual(self._body({"archive": 1}), (None, None))
+
+    def test_a_named_profile_is_passed_through(self):
+        self.assertEqual(
+            self._query("/api/archives/1/dataset?profileId=example-incident"),
+            ("example-incident", None),
+        )
+        self.assertEqual(self._body({"profileId": "example-incident"}),
+                         ("example-incident", None))
+
+    def test_auto_is_passed_through_unchanged(self):
+        """`detect` already treats "auto" as "decide for yourself"."""
+        self.assertEqual(self._query("/api/archives/1/dataset?profileId=auto"),
+                         ("auto", None))
+
+    def test_a_malformed_id_is_rejected_rather_than_ignored(self):
+        """Ignoring a malformed override would classify under the automatic
+        decision while the screen showed the chosen one."""
+        for bad in (
+            "/api/archives/1/dataset?profileId=../../etc/passwd",
+            "/api/archives/1/dataset?profileId=" + "x" * 65,
+            "/api/archives/1/dataset?profileId=a%20b",
+            "/api/archives/1/dataset?profileId=a/b",
+            "/api/archives/1/dataset?profileId=a%2Fb",
+        ):
+            with self.subTest(path=bad):
+                value, problem = self._query(bad)
+                self.assertIsNone(value)
+                self.assertTrue(problem)
+        for bad in (123, ["x"], {"a": 1}, "x" * 65):
+            with self.subTest(body=bad):
+                value, problem = self._body({"profileId": bad})
+                self.assertIsNone(value)
+                self.assertTrue(problem)
+
+    def test_deprecated_alias_still_works(self):
+        """旧名 `profile` は非推奨の互換として受け付ける。"""
+        self.assertEqual(
+            self._query("/api/archives/1/dataset?profile=example-incident"),
+            ("example-incident", None),
+        )
+        self.assertEqual(self._body({"profile": "example-incident"}),
+                         ("example-incident", None))
+
+    def test_the_new_name_and_the_alias_must_agree(self):
+        value, problem = self._body({"profileId": "a", "profile": "b"})
+        self.assertIsNone(value)
+        self.assertTrue(problem)
+        self.assertEqual(self._body({"profileId": "a", "profile": "a"}), ("a", None))
+
+    def test_the_contract_stands_without_the_alias(self):
+        """互換層を外しても、新しい契約（profileId）はそのまま成り立つ。"""
+        with mock.patch.object(Handler, "_legacy_profile_alias",
+                               staticmethod(lambda fields: None)):
+            self.assertEqual(self._body({"profileId": "example-incident"}),
+                             ("example-incident", None))
+            self.assertEqual(
+                self._query("/api/archives/1/dataset?profileId=example-incident"),
+                ("example-incident", None),
+            )
+            # 旧名だけを送ってきたものは、互換層が無ければ自動判定になる。
+            self.assertEqual(self._body({"profile": "example-incident"}), (None, None))
+
+    def test_every_loadable_profile_id_fits_the_pattern(self):
+        """A profile the loader accepts must be expressible in the query."""
+        import dataset
+
+        self.assertEqual(Handler.PROFILE_ID.pattern, dataset.PROFILE_ID)
+
+
+class TestNoYearInTheContract(unittest.TestCase):
+    """年度は新しい API 契約に出てこない。"""
+
+    def test_dataset_summary_has_no_year(self):
+        import dataset
+
+        view = dataset.detect(["a/b.log"], profiles=[])
+        body = dataset.summarise(view, [{"name": "a/b.log"}],
+                                 catalog=dataset.ProfileCatalog())
+        self.assertNotIn("year", body)
+        self.assertNotIn("profile", body, "旧名 profile を返さない（profileId を使う）")
+        for key in ("profileId", "label", "edition", "metadata", "forced",
+                    "confidence", "generic", "parsers", "parserLabels",
+                    "profiles", "profileErrors"):
+            self.assertIn(key, body)
+        self.assertIsNone(body["profileId"])
+        self.assertTrue(body["generic"])
+        self.assertEqual(body["profiles"], [])

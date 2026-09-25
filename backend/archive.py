@@ -12,9 +12,10 @@ Three classes of hazard are handled here:
   * NAMES — a CP932 (Shift_JIS) trail byte may be 0x5C ('\\'), so a validator
     that checks the DECODED string sees one character where a byte-level
     extractor on Windows sees a path separator. We check both views and report
-    the disagreement. (Measured: all Many entries in real archives are
-    in fact UTF-8 with the language flag CLEAR, so they take the UTF-8 path and
-    this scan does not fire on them. It is kept for archives that are CP932.)
+    the disagreement. (Measured on the real archives used for validation during
+    development: all 236 entries were in fact UTF-8 with the language flag
+    CLEAR, so they take the UTF-8 path and this scan does not fire on them. It
+    is kept for archives that are CP932.)
   * FAIL-OPEN — an encrypted, malformed, or unsupported member must never land
     on the benign side of the fence. Every failure path returns a blocking
     verdict, never `inert`.
@@ -117,7 +118,7 @@ def raw_name_bytes(info: zipfile.ZipInfo) -> bytes:
 def decode_name(raw: bytes, utf8_flag: bool) -> tuple[str, str]:
     """Best-effort display name, plus the encoding that actually worked.
 
-    Distributed archives store UTF-8 bytes but leave the language-encoding flag
+    Real-world archives often store UTF-8 bytes but leave the language-encoding flag
     CLEAR, so the flag cannot be trusted either way — we try decoders in order
     and report which one succeeded. The caller needs that answer, because the
     Shift_JIS separator hazard exists only for genuinely CP932 names.

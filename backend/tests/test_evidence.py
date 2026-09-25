@@ -17,12 +17,26 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import evidence  # noqa: E402
 import explain  # noqa: E402
+from parsers import InputSource, itm2, proxy  # noqa: E402
 from api import ROLE_CAPS, ROUTES, Capability  # noqa: E402
+
+#: このファイルの入力は、どれも「その形式の記録だ」と分かっているログ。
+#: Proxy は内容だけでは形式を言い切れない（Web サーバーのログと同じ形）ので
+#: 自動判定に参加しない。本番でプロファイルが `parsers` に明示するのと同じく、
+#: ここでも明示して読む。
+KNOWN_FORMATS = ["itm2", "proxy"]
+
+
+def build_lesson(name, sources, lesson_id, parser_ids=None, **kwargs):
+    return explain.build_lesson(name, sources, lesson_id,
+                                parser_ids=KNOWN_FORMATS if parser_ids is None else parser_ids,
+                                **kwargs)
+
 
 HOST = "WS99"
 ITM2 = [
     # InfoTrace Mark II では、起動したプロセスが `psPath`、親が `parentPath`。
-    # ITM2 の起動記録はこの形で、`path` は空だった。
+    # 検証に使った実データでも、起動記録はすべてこの形で、`path` は空だった。
     '10/05/2022 14:00:01.000 +0900 loc=en-US type=ITM2 sn=1 lv=5 evt=ps '
     f'subEvt=start os=Win com="{HOST}" parentPath="C:\\Windows\\explorer.exe" '
     'psPath="C:\\Windows\\System32\\cmd.exe"',
@@ -48,8 +62,17 @@ PROXY = [
     '"GET http://203.0.113.9/a HTTP/1.1" 200 42',
 ]
 
-ENDPOINT_NAME = "case2022/case/logs.zip :: logs/ws99.log"
-PROXY_NAME = "case2022/case/logs.zip :: logs/proxy01.log"
+ENDPOINT_NAME = "example-incident/evidence/logs.zip :: logs/ws99.log"
+PROXY_NAME = "example-incident/evidence/logs.zip :: logs/proxy01.log"
+
+
+def itm2_events(text: str, name: str = ""):
+    """ITM2 パーサーが返す正規化イベント。行番号の検査などに使う。"""
+    return itm2.PARSER.parse(InputSource(name, text), None)
+
+
+def proxy_events(text: str, name: str = ""):
+    return proxy.PARSER.parse(InputSource(name, text), None)
 
 
 def endpoint_text() -> str:
@@ -80,7 +103,7 @@ def sources() -> dict[str, str]:
 
 
 def build() -> dict:
-    lesson = explain.build_lesson("t", sources(), "gen-test")
+    lesson = build_lesson("t", sources(), "gen-test")
     assert lesson is not None
     return lesson
 
@@ -89,30 +112,30 @@ class TestLineNumbers(unittest.TestCase):
     """A line number that is off by even one makes the evidence useless."""
 
     def test_itm2_line_numbers_match_the_original(self):
-        recs = explain.parse_itm2(endpoint_text(), name=ENDPOINT_NAME)
-        got = [r["_src"].line for r in recs]
+        recs = itm2_events(endpoint_text(), ENDPOINT_NAME)
+        got = [r.source.line for r in recs]
         self.assertEqual(got, [3, 6, 7, 9, 10, 11])
 
     def test_proxy_line_numbers_match_the_original(self):
-        recs = explain.parse_proxy(proxy_text(), name=PROXY_NAME)
-        self.assertEqual([r["_src"].line for r in recs], [3, 5])
+        recs = proxy_events(proxy_text(), PROXY_NAME)
+        self.assertEqual([r.source.line for r in recs], [3, 5])
 
     def test_blank_and_unparseable_lines_still_advance_the_count(self):
         """Skipped lines must not compress the numbering."""
         lines = endpoint_text().split("\n")
-        for rec in explain.parse_itm2(endpoint_text(), name=ENDPOINT_NAME):
-            self.assertEqual(lines[rec["_src"].line - 1], rec["_src"].excerpt)
+        for rec in itm2_events(endpoint_text(), ENDPOINT_NAME):
+            self.assertEqual(lines[rec.source.line - 1], rec.source.excerpt)
 
     def test_numbering_is_one_based(self):
-        recs = explain.parse_itm2(ITM2[0], name=ENDPOINT_NAME)
-        self.assertEqual(recs[0]["_src"].line, 1)
+        recs = itm2_events(ITM2[0], ENDPOINT_NAME)
+        self.assertEqual(recs[0].source.line, 1)
 
     def test_same_member_name_in_different_containers_is_distinct(self):
         """`logs/a.log` in two inner ZIPs must not collapse into one source."""
-        a = "case/one.zip :: logs/a.log"
-        b = "case/two.zip :: logs/a.log"
-        ra = explain.parse_itm2(ITM2[0], name=a)[0]["_src"]
-        rb = explain.parse_itm2(ITM2[0], name=b)[0]["_src"]
+        a = "case/evidence/one.zip :: logs/a.log"
+        b = "case/evidence/two.zip :: logs/a.log"
+        ra = itm2_events(ITM2[0], a)[0].source
+        rb = itm2_events(ITM2[0], b)[0].source
         self.assertEqual(ra.member, rb.member)
         self.assertNotEqual(ra.archive_path, rb.archive_path)
         self.assertNotEqual(
@@ -123,7 +146,7 @@ class TestLineNumbers(unittest.TestCase):
 class TestEvidenceId(unittest.TestCase):
     def source(self, **kw):
         base = dict(
-            archive_path="case/logs.zip :: logs/a.log",
+            archive_path="case/evidence/logs.zip :: logs/a.log",
             member="logs/a.log", line=10, excerpt="hello",
         )
         base.update(kw)
@@ -292,15 +315,15 @@ class TestQuestionsAreGrounded(unittest.TestCase):
         """A quiz with no evidence must not survive into the lesson."""
         original = explain._stage_files
 
-        def stripped(files, store):
-            stage = original(files, store)
+        def stripped(*args, **kwargs):
+            stage = original(*args, **kwargs)
             for quiz in stage["quizzes"]:
                 quiz["evidenceIds"] = []
             return stage
 
         explain._stage_files = stripped
         try:
-            lesson = explain.build_lesson("t", sources(), "gen-test")
+            lesson = build_lesson("t", sources(), "gen-test")
         finally:
             explain._stage_files = original
         stage = next(s for s in lesson["stages"] if s["id"] == "files")
@@ -396,9 +419,7 @@ class TestEvidencePick(unittest.TestCase):
             line(1, "powershell.exe", "powershell.exe -enc AAAA"),
         ])
         store = evidence.EvidenceStore()
-        events = explain.events_from_itm2(
-            explain.parse_itm2(text, name=ENDPOINT_NAME), store
-        )
+        events = explain.display_events(itm2_events(text, ENDPOINT_NAME), store)
         excerpt = store.get(events[0]["evidenceIds"][0])["source"]["excerpt"]
 
         # 前提を固定する。これが崩れるとテストが意味を失う。
@@ -409,7 +430,7 @@ class TestEvidencePick(unittest.TestCase):
             explain._evidence_pick(
                 store, events[0], events, "q", "o", "cmd.exe",
                 lambda v: f"{v}?", "e", "n",
-                proves=explain._started_program,
+                proves=itm2.program_name,
             ),
             "psPath が読めないなら根拠にならない",
         )
@@ -422,35 +443,33 @@ class TestEvidencePick(unittest.TestCase):
             'psPath="C:\\Windows\\System32\\whoami.exe"'
         )
         store = evidence.EvidenceStore()
-        events = explain.events_from_itm2(
-            explain.parse_itm2(line, name=ENDPOINT_NAME), store
-        )
+        events = explain.display_events(itm2_events(line, ENDPOINT_NAME), store)
         excerpt = store.get(events[0]["evidenceIds"][0])["source"]["excerpt"]
         self.assertIn("cmd.exe", excerpt, "親の名前は行の中にある")
         # 起動したのは whoami.exe なので、cmd.exe の起動の根拠にはならない。
-        self.assertEqual(explain._started_program(excerpt), "whoami.exe")
+        self.assertEqual(itm2.program_name(excerpt), "whoami.exe")
         self.assertIsNone(
             explain._evidence_pick(
                 store, events[0], events, "q", "o", "cmd.exe",
                 lambda v: f"{v}?", "e", "n",
-                proves=explain._started_program,
+                proves=itm2.program_name,
             )
         )
 
     def test_started_program_reads_psPath_then_path(self):
         self.assertEqual(
-            explain._started_program('psPath="C:\\W\\a.exe" path="C:\\W\\b.exe"'),
+            itm2.program_name('psPath="C:\\W\\a.exe" path="C:\\W\\b.exe"'),
             "a.exe",
         )
-        self.assertEqual(explain._started_program('path="C:\\W\\b.exe"'), "b.exe")
-        self.assertEqual(explain._started_program('cmd="a.exe --x"'), "")
+        self.assertEqual(itm2.program_name('path="C:\\W\\b.exe"'), "b.exe")
+        self.assertEqual(itm2.program_name('cmd="a.exe --x"'), "")
 
     def test_proxy_client_reads_the_leading_address(self):
         self.assertEqual(
-            explain._proxy_client('192.0.2.10 - - [05/Oct/2022] "GET x" 200'),
+            proxy.client('192.0.2.10 - - [05/Oct/2022] "GET x" 200'),
             "192.0.2.10",
         )
-        self.assertEqual(explain._proxy_client(""), "")
+        self.assertEqual(proxy.client(""), "")
 
     def test_not_generated_when_the_claim_is_absent_from_the_excerpt(self):
         """Regression: the claim must be checkable against the cited line.
@@ -482,7 +501,7 @@ class TestEvidencePick(unittest.TestCase):
         quiz = explain._evidence_pick(
             store, one, [one, two], "q", "o", "powershell.exe",
             lambda v: f"{v}?", "e", "n",
-            proves=explain._started_program,
+            proves=itm2.program_name,
         )
         self.assertIsNotNone(quiz)
         self.assertIn("powershell.exe", quiz["q"])
@@ -516,8 +535,8 @@ class TestDeterminism(unittest.TestCase):
 
         forward = dict(sources())
         backward = dict(reversed(list(sources().items())))
-        a = explain.build_lesson("t", forward, "gen-test")
-        b = explain.build_lesson("t", backward, "gen-test")
+        a = build_lesson("t", forward, "gen-test")
+        b = build_lesson("t", backward, "gen-test")
         self.assertEqual(
             json.dumps(a, sort_keys=True), json.dumps(b, sort_keys=True)
         )
@@ -554,9 +573,9 @@ class TestBackwardCompatibility(unittest.TestCase):
         self.assertGreater(checked, 0)
 
     def test_parsers_still_work_without_a_source_name(self):
-        recs = explain.parse_itm2(endpoint_text())
+        recs = itm2_events(endpoint_text())
         self.assertTrue(recs)
-        self.assertEqual(recs[0]["_src"].archive_path, "")
+        self.assertEqual(recs[0].source.archive_path, "")
 
 
 class TestQuestionsAnswerableFromTheLog(unittest.TestCase):
@@ -616,8 +635,8 @@ class TestQuestionsAnswerableFromTheLog(unittest.TestCase):
         which establishes that the program started.
         """
         provers = {
-            "q-endpoint-evidence": explain._started_program,
-            "q-network-evidence": explain._proxy_client,
+            "q-endpoint-evidence": itm2.program_name,
+            "q-network-evidence": proxy.client,
         }
         checked = 0
         for quiz in self.quizzes:
@@ -719,8 +738,7 @@ class TestDisplayMatchesTheAnswer(unittest.TestCase):
             'psPath="C:\\Windows\\System32\\cmd.exe"'
         )
         store = evidence.EvidenceStore()
-        records = explain.parse_itm2(line, name=ENDPOINT_NAME)
-        events = explain.events_from_itm2(records, store)
+        events = explain.display_events(itm2_events(line, ENDPOINT_NAME), store)
         self.assertEqual(len(events), 1)
         self.assertIn("cmd.exe", events[0]["detail"])
         self.assertNotIn("explorer.exe", events[0]["detail"])
@@ -759,7 +777,7 @@ class TestLongRealisticLines(unittest.TestCase):
         exes = ["cmd.exe", "powershell.exe", "whoami.exe", "net.exe"]
         text = "\n".join(self.line(i, e) for i, e in enumerate(exes))
         self.text = text
-        self.lesson = explain.build_lesson(
+        self.lesson = build_lesson(
             "t", {ENDPOINT_NAME: text}, "gen-long"
         )
 
@@ -935,6 +953,47 @@ class TestEvidenceRoute(unittest.TestCase):
         for group in match.groups():
             self.assertNotIn("/", group)
             self.assertNotIn("..", group)
+
+
+class TestEvidenceIdsSurviveTheParserRegistry(unittest.TestCase):
+    """教材生成を正規化イベントの上へ載せ替えても、証拠 ID は 1 つも変わらない。
+
+    下の ID は、載せ替える前の実装（`explain.py` が ITM2・Proxy の生の
+    レコードを直接読んでいた版）で、この fixture から計算したもの。証拠 ID
+    は出典・行番号・原文・種別から決まるので、ここがずれるのは「別の行を
+    引用している」か「種別を取り違えている」かのどちらかであり、保存済みの
+    教材の「根拠ログを見る」も壊れる。
+    """
+
+    PINNED = {
+        "ev-4074a850a34bf43170bca22c": ("logs/ws99.log", 6, "process"),
+        "ev-66154019386366dbda51d88d": ("logs/ws99.log", 9, "process"),
+        "ev-6eeeaa3a871f40a62f218692": ("logs/ws99.log", 10, "file"),
+        "ev-9fb92759e6a9ef9c875a3d19": ("logs/proxy01.log", 5, "network"),
+        "ev-cf6f877bb7233bbe9d684092": ("logs/ws99.log", 7, "process"),
+        "ev-e3ef72a224be7a2635ee321d": ("logs/ws99.log", 3, "process"),
+    }
+
+    def test_lesson_evidence_ids_are_unchanged(self):
+        lesson = build()
+        got = {
+            ident: (item["source"]["member"], item["source"]["line"], item["kind"])
+            for ident, item in lesson["evidence"].items()
+        }
+        self.assertEqual(got, self.PINNED)
+
+    def test_normalized_events_carry_the_same_ids(self):
+        """教材に載る前の段階（正規化イベント）で、もう同じ ID を持っている。"""
+        events = (itm2_events(endpoint_text(), ENDPOINT_NAME)
+                  + proxy_events(proxy_text(), PROXY_NAME))
+        by_id = {e.evidence_id: e for e in events}
+        for ident, (member, line, kind) in self.PINNED.items():
+            with self.subTest(ident=ident):
+                self.assertIn(ident, by_id, "正規化イベントに証拠 ID が無い")
+                ev = by_id[ident]
+                self.assertEqual((ev.source.member, ev.source.line, ev.kind),
+                                 (member, line, kind))
+                self.assertEqual(ident, evidence.evidence_id(ev.source, ev.kind))
 
 
 if __name__ == "__main__":

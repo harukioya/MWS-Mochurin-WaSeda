@@ -10,14 +10,17 @@ node_modules/
 samples/
 
 # internal design contract - local only, never push (collaborative repo)
-docs/BUILD-CONTRACT.md
-docs/THREAT-MODEL.md
+docs/
 
 # stray screenshots
 Screenshot*.png
 
 # local runtime state (manifest DB) - never commit
 .mws-state/
+
+# local validation against real datasets (profiles, manifests, notes) -
+# dataset-specific material that must never be published
+.local-validation/
 
 # Python bytecode
 __pycache__/

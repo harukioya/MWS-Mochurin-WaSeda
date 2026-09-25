@@ -1,7 +1,7 @@
 """evidence.py — ログ 1 行を「根拠」として扱える形に保つ。
 
 教材が「なぜその答えなのか」を示せるかどうかは、解析の途中で出典を捨てて
-いないかで決まる。`explain.py` はこれまで行を読んで事象へ畳み込むだけで、
+いないかで決まる。以前の教材生成は行を読んで事象へ畳み込むだけで、
 どのファイルの何行目から来たのかを落としていた。ここはその出典を組み立て、
 決定的な識別子を付け、重複なく貯める役を持つ。
 
@@ -73,7 +73,7 @@ def visible(text: str, limit: int = MAX_EXCERPT) -> str:
 class Source:
     """証拠がどこから来たか。ZIP の中での位置だけを持つ。
 
-    `archive_path` は `dataset/case/logs.zip :: logs/ws02.log` のような
+    `archive_path` は `case/evidence/logs.zip :: logs/ws02.log` のような
     論理パス。同じ `member` 名のログが別の内側 ZIP にあっても、ここが違うので
     取り違えない。手元のどこに ZIP が置かれているかは持たない。
     """
