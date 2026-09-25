@@ -31,6 +31,7 @@ import re
 import secrets
 import socket
 import stat
+import subprocess
 import sys
 import threading
 import zipfile
@@ -61,6 +62,15 @@ STATIC_EXT = {".js": "text/javascript", ".css": "text/css", ".json": "applicatio
 
 PREVIEW_BYTES = 2048
 MAX_BODY = 64 * 1024
+
+# How long to leave the OS folder chooser open before giving up on it. Long
+# enough that someone can go and find the folder; short enough that a forgotten
+# dialog cannot pin a worker thread for the life of the process.
+PICKER_TIMEOUT = 180
+
+# When a chosen folder holds no archives, offer its immediate subfolders that
+# do. Bounded so a directory with thousands of entries cannot make a huge reply.
+MAX_SUBDIR_HINTS = 20
 
 # {nonce} is filled per response. Never use 'unsafe-inline' here: the page
 # carries the injected mws-token, so script injection would hand it over.
@@ -117,6 +127,8 @@ ROUTES = [
           Capability.READ, "h_preview"),
     Route("GET", r"/api/lessons", Capability.READ, "h_lessons"),
     Route("GET", r"/api/lessons/([A-Za-z0-9_-]{1,64})", Capability.READ, "h_lesson"),
+    Route("POST", r"/api/browse", Capability.SCAN, "h_browse"),
+    Route("POST", r"/api/choose-dir", Capability.SCAN, "h_choose_dir"),
     Route("POST", r"/api/scan", Capability.SCAN, "h_scan"),
     Route("POST", r"/api/generate", Capability.SCAN, "h_generate"),
     Route("POST", r"/api/verify", Capability.VERIFY, "h_verify"),
@@ -198,6 +210,418 @@ def hexdump(data: bytes, base: int = 0) -> list[dict]:
     return rows
 
 
+# Entries examined per directory when counting archives. A cap is needed
+# because the folder browser calls count_zips once per subfolder, and places
+# like ~/Library hold subfolders with a hundred thousand files each.
+MAX_COUNT_SCAN = 4000
+
+
+def count_zips(directory: str, limit: int | None = None) -> tuple[int, bool]:
+    """Count the .zip files sitting directly in `directory`.
+
+    Returns (count, complete). `complete` is False when `limit` stopped the
+    walk early, and the caller MUST NOT then treat the count as the truth --
+    least of all as "this folder has no archives", since scandir order is
+    arbitrary and every archive could lie past the cut. A capped zero means
+    "unknown", never "none".
+
+    Every caller that runs while someone is browsing passes a limit. Opening a
+    folder is a plain click, and the folder may sit on a network share, in
+    iCloud, behind FUSE, or on slow external media, where an unbounded walk of
+    a few hundred thousand entries stalls the page. Local APFS timings do not
+    generalise to those, so the bound is kept rather than argued away. The
+    authoritative count is the scan itself, which the person asks for
+    explicitly and which reads the directory in full.
+
+    scandir rather than listdir + lstat: the entry's type usually arrives with
+    the directory read itself, so this costs roughly one syscall per directory
+    instead of one per file. Listing ~/Library was measured at 5.9s with the
+    lstat form and 0.1s with this one -- the kind of pause that reads as a hang.
+    """
+    n, complete, _examined = _count_zips_scan(directory, limit)
+    return n, complete
+
+
+def _count_zips_scan(directory: str, limit: int | None) -> tuple[int, bool, int]:
+    """count_zips, plus how many entries it looked at, for budgeting callers."""
+    n = 0
+    examined = 0
+    complete = True
+    try:
+        with os.scandir(directory) as it:
+            for entry in it:
+                if limit is not None and examined >= limit:
+                    return n, False, examined
+                examined += 1
+                if not entry.name.lower().endswith(".zip"):
+                    continue
+                try:
+                    if entry.is_file(follow_symlinks=False):
+                        n += 1
+                except OSError:
+                    # Cannot tell what this is, and it is named like an
+                    # archive. Not knowing is not the same as knowing it is
+                    # absent, so the count stops claiming to be complete.
+                    complete = False
+    except OSError:
+        # Unreadable, or it went away mid-walk. Whatever was counted so far is
+        # all there is to say; reporting `complete` here would let a caller
+        # read a failure as a confident "no archives in this folder".
+        return n, False, examined
+    return n, complete, examined
+
+
+# Three separate bounds, because they bound three different things and only
+# capping one of them leaves the walk unbounded in practice:
+#
+#   MAX_BROWSE_ENTRIES  folders put in the reply -- keeps the JSON small.
+#   MAX_BROWSE_SCAN     filesystem entries LOOKED AT in the folder being
+#                       listed. A folder of 5100 plain files yields no
+#                       subfolders at all, so a cap on the reply never trips
+#                       and every one of those entries still gets examined.
+#   MAX_BROWSE_BUDGET   entries looked at by the whole request, the per-folder
+#                       archive counts included. Without it the worst case is
+#                       MAX_BROWSE_ENTRIES x MAX_COUNT_SCAN -- two million
+#                       entries for one click.
+#
+# Running out of budget is not an error: the folders that go uncounted come
+# back marked `zipsPartial`, which the page already treats as "unknown" rather
+# than "none", so nothing gets disabled on the strength of a number nobody
+# finished computing.
+MAX_BROWSE_ENTRIES = 500
+MAX_BROWSE_SCAN = 4000
+MAX_BROWSE_BUDGET = 20000
+
+
+def browse_dir(directory: str) -> dict:
+    """List the subfolders of one directory, for the in-page folder chooser.
+
+    Returns folder names, archive counts, and the paths needed to keep moving
+    around -- this folder's, its parent's, its children's. No file is opened
+    and no file content is returned.
+
+    Symlinked directories are left out of the listing entirely
+    (`follow_symlinks=False`): a link pointing back up its own tree would
+    otherwise offer a path that walks in circles, and one pointing at a slow
+    mount would put that cost behind an ordinary click. Someone who really
+    means to browse through a link can still type its path.
+    """
+    entries: list[dict] = []
+    truncated = False
+    examined = 0
+    budget = MAX_BROWSE_BUDGET
+    # This folder's own archives are tallied on the same pass as the listing.
+    # Walking it a second time to count them doubled the work for no new
+    # information: every entry is already in hand here.
+    here = 0
+    here_complete = True
+    try:
+        with os.scandir(directory) as it:
+            for entry in it:
+                # Count every entry looked at, not just the ones kept. A folder
+                # of plain files produces no rows, so counting rows alone would
+                # walk the whole directory however large it is.
+                examined += 1
+                if examined > MAX_BROWSE_SCAN:
+                    truncated = True
+                    here_complete = False
+                    break
+                if entry.name.lower().endswith(".zip"):
+                    # Checked before the dotfile skip, because /api/scan reads
+                    # hidden archives too and this number has to agree with it.
+                    try:
+                        if entry.is_file(follow_symlinks=False):
+                            here += 1
+                            continue
+                    except OSError:
+                        here_complete = False
+                        continue
+                    # Falls through: a *directory* named "something.zip" is
+                    # still a folder worth offering.
+                if entry.name.startswith("."):
+                    continue
+                try:
+                    if not entry.is_dir(follow_symlinks=False):
+                        continue
+                except OSError:
+                    continue
+                if len(entries) >= MAX_BROWSE_ENTRIES:
+                    truncated = True
+                    here_complete = False
+                    break
+                # Capped per folder AND against the request's shared budget, so
+                # a folder full of heavy subfolders cannot add up to an
+                # unbounded walk. At zero budget the call returns immediately
+                # and the row is marked unknown rather than counted as empty.
+                zips, complete, cost = _count_zips_scan(
+                    entry.path, min(MAX_COUNT_SCAN, budget)
+                )
+                budget -= cost
+                entries.append({
+                    "name": entry.name,
+                    "path": entry.path,
+                    "zips": zips,
+                    "zipsPartial": not complete,
+                })
+    # A folder that could not be read tells us nothing about what is in it, so
+    # zipsPartial stays true here as well: "unknown", never "empty".
+    except PermissionError:
+        return {
+            "path": directory,
+            "entries": [],
+            "zips": 0,
+            "zipsPartial": True,
+            "error": "このフォルダを見る権限がありません。",
+        }
+    except OSError as exc:
+        return {
+            "path": directory,
+            "entries": [],
+            "zips": 0,
+            "zipsPartial": True,
+            "error": str(exc),
+        }
+
+    entries.sort(key=lambda e: e["name"].lower())
+    parent = os.path.dirname(directory)
+    return {
+        "path": directory,
+        "parent": None if parent == directory else parent,
+        "entries": entries,
+        # `here` is bounded by MAX_BROWSE_SCAN along with the listing itself.
+        # `zipsPartial` is what keeps that bound honest: a cut-off zero means
+        # "not known", and the page must not disable anything on it.
+        "zips": here,
+        "zipsPartial": not here_complete,
+        "truncated": truncated,
+    }
+
+
+def browse_shortcuts() -> list[dict]:
+    """The handful of places a folder hunt actually starts from."""
+    home = os.path.expanduser("~")
+    out = []
+    for label, path in (
+        ("ホーム", home),
+        ("デスクトップ", os.path.join(home, "Desktop")),
+        ("書類", os.path.join(home, "Documents")),
+        ("ダウンロード", os.path.join(home, "Downloads")),
+    ):
+        if os.path.isdir(path):
+            out.append({"name": label, "path": path})
+    # Folders already read in this session are the likeliest next destination.
+    #
+    # Read without STATE.lock on purpose. h_scan holds that lock for the whole
+    # length of a scan, so taking it here would stall browsing for seconds
+    # behind an unrelated read. Copying a list is atomic under the GIL, and the
+    # worst a race can do is leave a shortcut out until the next request.
+    for path in list(STATE.dataset_dirs):
+        if os.path.isdir(path) and all(s["path"] != path for s in out):
+            out.append({"name": os.path.basename(path) or path, "path": path})
+    return out
+
+
+def subdirs_with_zips(directory: str) -> list[dict]:
+    """Immediate subfolders that contain archives, for the "did you mean" hint.
+
+    One level only, and never through a symlink: following links here would
+    turn a glance at a folder into an unbounded walk of the filesystem.
+    """
+    out: list[dict] = []
+    try:
+        entries = sorted(os.listdir(directory))
+    except OSError:
+        return out
+    for name in entries:
+        if name.startswith("."):
+            continue
+        full = os.path.join(directory, name)
+        try:
+            if not stat.S_ISDIR(os.lstat(full).st_mode):
+                continue
+        except OSError:
+            continue
+        # Capped, like every other count taken while browsing. This walks one
+        # directory per sibling folder, so leaving it unbounded would put the
+        # same stall behind a mis-selected parent folder. A hint that misses a
+        # folder is a worse hint; a hint that hangs is a worse product.
+        n, complete = count_zips(full, MAX_COUNT_SCAN)
+        if n:
+            out.append(
+                {"name": name, "path": full, "zips": n, "zipsPartial": not complete}
+            )
+        if len(out) >= MAX_SUBDIR_HINTS:
+            break
+    return out
+
+
+class PickerUnavailable(Exception):
+    """No OS folder chooser on this machine; the caller should fall back."""
+
+
+class PickerCancelled(Exception):
+    """The person closed the dialog without choosing. Not an error."""
+
+
+class PickerBusy(Exception):
+    """A dialog is already open; a second one would hide behind the first."""
+
+
+# The prompt is a fixed constant, never interpolated from request data, so
+# nothing from the network can reach the script these helpers run.
+_PICKER_PROMPT = "調べたいZIPファイルが入っているフォルダを選んでください"
+
+# `choose folder` can only ever return a folder, so picking a file by mistake is
+# impossible rather than rejected after the fact.
+#
+# WHICH APPLICATION SHOWS THE DIALOG DECIDES WHETHER IT IS VISIBLE AT ALL.
+# `osascript` registers itself as a UIElement -- a background accessory app --
+# so a dialog it owns cannot take focus and simply sits behind the browser. The
+# symptom is indistinguishable from a hang: the process is alive, the request
+# never returns, and the person sees nothing. Measured with `lsappinfo front`,
+# only the Finder spelling actually brings a window forward; the System Events
+# and bare spellings both leave the caller's window frontmost.
+#
+# So: ask Finder, a normal foreground app, to own the dialog. The coercion to a
+# POSIX path is done AFTER the tell block, because inside it `POSIX path of`
+# would be sent to Finder rather than evaluated by AppleScript itself.
+#
+# The remaining spellings are fallbacks for when Automation permission for
+# Finder is refused. They may open behind other windows, which is worse than
+# ideal but better than no dialog at all.
+def _folder_script(target: str | None) -> str:
+    choose = f'choose folder with prompt "{_PICKER_PROMPT}"'
+    if target is None:
+        return f"POSIX path of ({choose})"
+    return (
+        f'tell application "{target}"\n'
+        f"\tactivate\n"
+        f"\tset chosen to {choose}\n"
+        f"end tell\n"
+        f"POSIX path of chosen"
+    )
+
+
+_PICKER_OSASCRIPT = [
+    _folder_script("Finder"),
+    _folder_script("System Events"),
+    _folder_script(None),
+]
+
+# Only one dialog at a time. Without this, an impatient second click opens a
+# second dialog behind the first and both threads sit waiting on a person who
+# can only answer one of them.
+_PICKER_BUSY = threading.Lock()
+
+_PICKER_POWERSHELL = (
+    "Add-Type -AssemblyName System.Windows.Forms;"
+    "$d = New-Object System.Windows.Forms.FolderBrowserDialog;"
+    f'$d.Description = "{_PICKER_PROMPT}";'
+    "if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK)"
+    " { [Console]::Out.Write($d.SelectedPath) } else { exit 1 }"
+)
+
+
+# AppleScript's "user cancelled" error number. osascript exits 1 for EVERY
+# script error -- a refused Automation permission (-1743) included -- so the
+# exit status alone cannot tell a cancel from a failure. Treating them alike
+# made a denied permission look like a cancel: the fallback spellings were
+# never tried and the UI, which rightly stays quiet on a cancel, showed
+# nothing at all. The error number is not localised, so it is what to match on.
+APPLESCRIPT_CANCELLED = "-128"
+
+
+def _run_picker(argv: list[str], cancel_marker: str | None = None) -> str:
+    """Run one folder-chooser command. Returns the chosen path.
+
+    `cancel_marker`, when given, is the text that marks a genuine cancel in
+    stderr; any other non-zero exit is a failure the caller should fall back
+    from. Without it, exit status 1 means cancelled -- the convention zenity,
+    kdialog and the PowerShell dialog all follow.
+    """
+    try:
+        proc = subprocess.run(
+            argv, capture_output=True, text=True, timeout=PICKER_TIMEOUT
+        )
+    except FileNotFoundError as exc:
+        raise PickerUnavailable(str(exc)) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise PickerCancelled("時間内に選択されませんでした") from exc
+
+    if proc.returncode != 0:
+        err = proc.stderr.strip()
+        # Killed by a signal (the dialog's process was terminated, the machine
+        # is going to sleep, someone ran pkill). Opening a replacement dialog
+        # would be the opposite of what just happened, so stop here.
+        if proc.returncode < 0:
+            raise PickerCancelled("フォルダ選択画面が終了しました")
+        if cancel_marker is not None:
+            if cancel_marker in err:
+                raise PickerCancelled("選択が取り消されました")
+            raise PickerUnavailable(err or f"exit {proc.returncode}")
+        if proc.returncode == 1:
+            raise PickerCancelled("選択が取り消されました")
+        raise PickerUnavailable(err or f"exit {proc.returncode}")
+
+    path = proc.stdout.strip()
+    if not path:
+        raise PickerCancelled("選択が取り消されました")
+    return path
+
+
+def choose_directory() -> str:
+    """Open the machine's own folder chooser and return the folder's path.
+
+    A browser file input cannot do this job. For privacy reasons it hands back
+    file contents and relative names -- never an absolute path -- and this
+    server needs the path: the integrity re-check (`/api/verify`) and the
+    hexdump preview both re-open the archive on disk long after the page that
+    selected it is gone. Since the server and the browser are the same machine
+    here by construction (the Host allowlist guarantees it), asking the OS is
+    the honest way to browse.
+
+    Each backend selects folders only, so a mis-click on a file cannot happen.
+    """
+    # A dialog nobody can see is worse than none, so refuse to open a second.
+    if not _PICKER_BUSY.acquire(blocking=False):
+        raise PickerBusy("フォルダ選択画面はすでに開いています")
+    try:
+        return _choose_directory_locked()
+    finally:
+        _PICKER_BUSY.release()
+
+
+def _choose_directory_locked() -> str:
+    if sys.platform == "darwin":
+        last: PickerUnavailable | None = None
+        for script in _PICKER_OSASCRIPT:
+            try:
+                return _run_picker(
+                    ["osascript", "-e", script], cancel_marker=APPLESCRIPT_CANCELLED
+                )
+            except PickerUnavailable as exc:
+                # Permission refused, or that app cannot show it. Say so on the
+                # console: this is the one failure a person cannot see, because
+                # its whole symptom is that no window appears.
+                print(f"[picker] {str(exc)[:200]}", file=sys.stderr, flush=True)
+                last = exc
+        raise last
+    if sys.platform == "win32":
+        return _run_picker(
+            ["powershell", "-STA", "-NoProfile", "-Command", _PICKER_POWERSHELL]
+        )
+    # Linux and the BSDs: whichever toolkit's dialog is actually installed.
+    for argv in (
+        ["zenity", "--file-selection", "--directory", "--title", _PICKER_PROMPT],
+        ["kdialog", "--getexistingdirectory", os.path.expanduser("~")],
+    ):
+        try:
+            return _run_picker(argv)
+        except PickerUnavailable:
+            continue
+    raise PickerUnavailable("この環境で使えるフォルダ選択画面が見つかりませんでした")
+
+
 class Handler(BaseHTTPRequestHandler):
     timeout = 15  # a stalled connection must not hold a thread forever
     server_version = "mws-local"
@@ -206,6 +630,20 @@ class Handler(BaseHTTPRequestHandler):
     # -- plumbing ---------------------------------------------------------
     def log_message(self, fmt, *args):  # keep the console quiet and PII-free
         pass
+
+    def handle_one_request(self):
+        """Treat a client that hangs up mid-reply as ordinary, not as a crash.
+
+        The folder chooser makes this routine: the request is outstanding for
+        as long as the dialog is open, so reloading the page or navigating away
+        closes the socket under a reply that is still being written. Left
+        unhandled, socketserver prints a full traceback for what is simply
+        someone changing their mind.
+        """
+        try:
+            super().handle_one_request()
+        except (BrokenPipeError, ConnectionResetError):
+            self.close_connection = True
 
     def _send(self, code: int, body: bytes, ctype: str, extra: dict | None = None,
               nonce: str = ""):
@@ -640,6 +1078,68 @@ class Handler(BaseHTTPRequestHandler):
             "sources": sorted(sources),
         })
 
+    def h_browse(self):
+        """Feed the in-page folder chooser.
+
+        This exists because a native dialog cannot be shown inside the browser
+        window. On a full-screen browser macOS switches Spaces to show it,
+        which loses the page the person was working in. Listing folders here
+        and drawing the chooser in the page keeps the whole job in one window.
+
+        No new exposure: the same capability already reads any directory it is
+        pointed at via /api/scan. What comes back is folder names, archive
+        counts, and the folder paths needed to navigate -- never file content.
+        """
+        payload = self._body()
+        if payload is None:
+            return None
+        directory = payload.get("dir")
+        if directory in (None, ""):
+            directory = os.path.expanduser("~")
+        if not isinstance(directory, str) or "\x00" in directory:
+            return self._error(400, "パスが不正です")
+        directory = os.path.realpath(os.path.expanduser(directory))
+        if not os.path.isdir(directory):
+            return self._error(404, "該当するフォルダがありません")
+        result = browse_dir(directory)
+        result["shortcuts"] = browse_shortcuts()
+        return self._json(result)
+
+    def h_choose_dir(self):
+        """Open the OS folder chooser and report what was picked.
+
+        Cancelling is an ordinary outcome, not a failure, so it comes back as
+        200 with `cancelled: true`: the UI has nothing to apologise for and
+        should simply carry on. The same goes for a machine with no dialog
+        available -- the page falls back to the typed path instead of showing
+        an error the person cannot act on.
+        """
+        try:
+            directory = choose_directory()
+        except (PickerCancelled, PickerBusy) as exc:
+            return self._json({"cancelled": True, "detail": str(exc)})
+        except PickerUnavailable as exc:
+            return self._json({"unavailable": True, "detail": str(exc)})
+
+        directory = os.path.realpath(directory)
+        # The dialogs only return folders, so this should not fire. It is here
+        # because "should not" is not a guarantee, and the caller of /api/scan
+        # deserves a real directory or a clear reason.
+        if not os.path.isdir(directory):
+            return self._json({
+                "unavailable": True,
+                "detail": "選ばれた場所がフォルダではありませんでした",
+            })
+        # Capped: the OS dialog can land on any folder at all, including one on
+        # a slow mount, and this reply is only a hint printed alongside the
+        # path. The authoritative count comes from the scan that follows.
+        chosen_zips, chosen_complete = count_zips(directory, MAX_COUNT_SCAN)
+        return self._json({
+            "dir": directory,
+            "zips": chosen_zips,
+            "zipsPartial": not chosen_complete,
+        })
+
     def h_scan(self):
         payload = self._body()
         if payload is None:
@@ -651,6 +1151,15 @@ class Handler(BaseHTTPRequestHandler):
             return self._error(400, "パスが不正です")
         directory = os.path.realpath(os.path.expanduser(directory))
         if not os.path.isdir(directory):
+            # Distinguish the two ways this goes wrong. "フォルダがありません"
+            # for a path that is really a file sends people looking for a typo
+            # that is not there.
+            if os.path.exists(directory):
+                return self._error(
+                    400,
+                    "指定されたのはファイルです。ZIPファイルが入っている"
+                    "フォルダのほうを指定してください。",
+                )
             return self._error(404, "該当するフォルダがありません")
 
         found = []
@@ -677,7 +1186,11 @@ class Handler(BaseHTTPRequestHandler):
                 )
             if directory not in STATE.dataset_dirs:
                 STATE.dataset_dirs.append(directory)
-        return self._json({"scanned": found})
+        # Picking the parent of the folder you meant is the easy mistake to
+        # make in a file dialog, and "no archives here" is a dead end when the
+        # archives are one level down. Offer those folders instead.
+        hints = [] if found else subdirs_with_zips(directory)
+        return self._json({"scanned": found, "subdirs": hints})
 
 
 def main() -> None:

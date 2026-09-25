@@ -14,6 +14,67 @@ export function renderRecap(mount, lesson, stats) {
   const root = document.createElement('section');
   root.className = 'recap';
 
+  // ---- Score heading ----
+  const eyebrow = document.createElement('p');
+  eyebrow.className = 'eyebrow';
+  eyebrow.textContent = '攻撃の流れの振り返り';
+  root.appendChild(eyebrow);
+
+  const heading = document.createElement('h1');
+  heading.textContent = `正解 ${correct} / ${total}`;
+  // Focus target for this view (see below): anchors focus after the mount swap.
+  heading.tabIndex = -1;
+  root.appendChild(heading);
+
+  // ---- Summary ----
+  if (recap.summary) {
+    const summary = document.createElement('p');
+    summary.className = 'muted';
+    summary.textContent = recap.summary;
+    root.appendChild(summary);
+  }
+
+  // ---- Kill chain ----
+  const chain = Array.isArray(recap.chain) ? recap.chain : [];
+  const killchain = document.createElement('div');
+  killchain.className = 'killchain';
+
+  chain.forEach((step) => {
+    const kc = document.createElement('div');
+    kc.className = 'kc-step';
+
+    const name = document.createElement('div');
+    name.className = 'kc-step__name';
+    name.textContent = step.stage ? `${step.stage}: ${step.name || ''}` : (step.name || '');
+    kc.appendChild(name);
+
+    if (step.desc) {
+      const desc = document.createElement('p');
+      desc.className = 'kc-step__desc';
+      desc.textContent = step.desc;
+      kc.appendChild(desc);
+    }
+
+    const techniques = Array.isArray(step.attck) ? step.attck : [];
+    techniques.forEach((t) => {
+      const badge = document.createElement('span');
+      badge.className = 'attck-badge';
+      badge.textContent = t && t.name ? `${t.id} · ${t.name}` : String((t && t.id) || '');
+      kc.appendChild(badge);
+    });
+
+    killchain.appendChild(kc);
+  });
+
+  root.appendChild(killchain);
+
+  // 振り返りの中身が空でも、画面が真っ白にならないようにしておく。
+  if (!recap.summary && !chain.length) {
+    const none = document.createElement('p');
+    none.className = 'muted';
+    none.textContent = 'この演習には、まとめの記述が用意されていません。';
+    root.appendChild(none);
+  }
 
   // ---- Actions ----
   const nav = document.createElement('div');
