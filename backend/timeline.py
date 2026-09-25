@@ -11,34 +11,17 @@
 2. 読めない時刻を捨てない。形式が想定と違う、欄が空、という行も調査対象で
    ありうる。捨てると「無かったこと」になるので、`時刻不明` として残し、
    並べ替えでは末尾へ送る。
+
+ログ形式ごとの時刻の書き方（正規表現）はここに置かない。各パーサーが自分の
+形式から年・月・日・時刻・タイムゾーンを取り出し、`stamp()` で `Stamp` に
+する。ここが持つのは、形式に依らない「暦として正しいか」「実際の秒数」
+「比較の基準」の三つだけである。
 """
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
-
-#: InfoTrace Mark II の行頭。`10/05/2022 14:00:27.738 +0900`
-_ITM2_TS = re.compile(
-    r"^(?P<mon>\d{2})/(?P<day>\d{2})/(?P<year>\d{4})\s+"
-    r"(?P<hh>\d{2}):(?P<mm>\d{2}):(?P<ss>\d{2})(?:\.(?P<frac>\d{1,6}))?"
-    r"(?:\s*(?P<tz>[+-]\d{4}))?"
-)
-
-#: Squid/Apache 形式。`[05/Oct/2022:14:00:07 +0900]`
-_PROXY_TS = re.compile(
-    r"^(?P<day>\d{2})/(?P<mon>[A-Za-z]{3})/(?P<year>\d{4}):"
-    r"(?P<hh>\d{2}):(?P<mm>\d{2}):(?P<ss>\d{2})"
-    r"(?:\s*(?P<tz>[+-]\d{4}))?"
-)
-
-_MONTHS = {
-    m: i + 1
-    for i, m in enumerate(
-        "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split()
-    )
-}
 
 #: 時刻が読めなかったことを表す並べ替え値。数値より必ず後ろへ来る。
 UNKNOWN_SORT = float("inf")
@@ -143,56 +126,27 @@ def _basis(tz: str | None, source: str) -> str:
     return f"local:{source}" if source else ""
 
 
-def parse_itm2(line: str, source: str = "") -> Stamp:
-    """InfoTrace Mark II の行頭から時刻を読む。
+def stamp(year: int, mon: int, day: int, hh: int, mm: int, ss: int,
+          frac: float, tz: str | None, display: str, source: str = "") -> Stamp:
+    """パーサーが取り出した暦の値から `Stamp` を作る。
 
-    `source` はその行の出どころ（ログの論理パス）。タイムゾーンが書かれて
-    いない行の比較基準を決めるのに使う。
+    `display` はログに書かれていたとおりの表記。`tz` は `+0900` のような
+    オフセットで、書かれていなければ None。`source` はその行の論理パスで、
+    タイムゾーンの無い行の比較基準に使う。
+
+    暦として成り立たない値（13 月、2 月 31 日など）は読めなかったことにする。
+    桁数の揃った数字であっても、存在しない時刻を並べ替えへ紛れ込ませない。
     """
-    m = _ITM2_TS.match(line or "")
-    if not m:
+    if not _plausible(mon, day, hh, mm, ss):
         return UNKNOWN
-    g = m.groupdict()
-    mon, day = int(g["mon"]), int(g["day"])
-    hh, mm_, ss = int(g["hh"]), int(g["mm"]), int(g["ss"])
-    if not _plausible(mon, day, hh, mm_, ss):
-        return UNKNOWN
-    frac = float(f"0.{g['frac']}") if g.get("frac") else 0.0
-    sort = _seconds(
-        int(g["year"]), mon, day, hh, mm_, ss, frac, g.get("tz"),
-    )
+    sort = _seconds(year, mon, day, hh, mm, ss, frac, tz)
     if sort is None:
         return UNKNOWN
     return Stamp(
-        display=m.group(0).strip(),
+        display=display,
         sort=sort,
-        comparable=bool(g.get("tz")),
-        basis=_basis(g.get("tz"), source),
-    )
-
-
-def parse_proxy(stamp: str, source: str = "") -> Stamp:
-    """`[...]` の中身として取り出された時刻文字列を読む。"""
-    m = _PROXY_TS.match((stamp or "").strip())
-    if not m:
-        return UNKNOWN
-    g = m.groupdict()
-    mon = _MONTHS.get(g["mon"].title())
-    if mon is None:
-        return UNKNOWN
-    if not _plausible(mon, int(g["day"]), int(g["hh"]), int(g["mm"]), int(g["ss"])):
-        return UNKNOWN
-    sort = _seconds(
-        int(g["year"]), mon, int(g["day"]),
-        int(g["hh"]), int(g["mm"]), int(g["ss"]), 0.0, g.get("tz"),
-    )
-    if sort is None:
-        return UNKNOWN
-    return Stamp(
-        display=m.group(0).strip(),
-        sort=sort,
-        comparable=bool(g.get("tz")),
-        basis=_basis(g.get("tz"), source),
+        comparable=bool(tz),
+        basis=_basis(tz, source),
     )
 
 

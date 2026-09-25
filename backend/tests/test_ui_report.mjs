@@ -95,7 +95,7 @@ const EV_A = 'ev-aaaaaaaaaaaaaaaaaaaaaaaa';
 const EV_B = 'ev-bbbbbbbbbbbbbbbbbbbbbbbb';
 
 const src = (member, line, excerpt) => ({
-  archivePath: `case/DFIR/logs.zip :: ${member}`, member, line, excerpt,
+  archivePath: `case/evidence/logs.zip :: ${member}`, member, line, excerpt,
 });
 
 /** フェーズ3の形。導入・時系列・ATT&CK・未確定事項を持つ。 */
@@ -110,7 +110,10 @@ function lesson(overrides = {}) {
       objectives: ['記録された事実と解釈を区別する'],
       status: 'draft',
       estimatedMinutes: 9,
-      dataset: { year: 2022, label: 'MWS Cup 2022 DFIR', truncated: true, unreadable: 2 },
+      dataset: {
+        profileId: 'example-incident', label: 'Example incident logs', edition: 'fixture v1',
+        forced: false, truncated: true, unreadable: 2,
+      },
     },
     evidence: {
       [EV_A]: { id: EV_A, kind: 'process', confidence: 'observed',
@@ -223,7 +226,10 @@ async function playThrough(view, answers) {
 await test('導入画面が出て、そこから調査を始められる', async () => {
   const view = await open(lesson());
   const text = view.textContent;
-  assert.ok(text.includes('MWS Cup 2022 DFIR'), '年度と課題名');
+  assert.ok(
+    text.includes('データセット形式: Example incident logs（fixture v1）／自動で判定した形式'),
+    'データセット形式と、誰が決めたか'
+  );
   assert.ok(text.includes('自動生成した下書き'), '下書きであることを明示');
   assert.ok(text.includes('InfoTrace Mark II'), '使用するログ種別');
   assert.ok(text.includes('WS99'), '対象ホスト');
@@ -233,6 +239,37 @@ await test('導入画面が出て、そこから調査を始められる', async
 
   await view.button(/調査を始める/).click();
   assert.ok(view.cls('option').length > 0, '調査が始まる');
+});
+
+await test('導入と最終レポートに、同じデータセット形式の 1 行が出る', async () => {
+  const obj = lesson();
+  obj.introduction.dataset.forced = true;
+  const view = await open(obj);
+  const line = 'データセット形式: Example incident logs（fixture v1）／利用者が指定した形式';
+  assert.ok(view.textContent.includes(line), '導入画面');
+  await playThrough(view, obj.stages.map(() => 0));
+  assert.ok(/正解 \d+ \/ \d+/.test(view.textContent), '最終レポートまで進んだ');
+  assert.ok(view.textContent.includes(line), '最終レポート');
+});
+
+await test('edition が無いときは括弧ごと出さない', async () => {
+  const obj = lesson();
+  obj.introduction.dataset = { profileId: 'p', label: 'Example incident logs', forced: false };
+  const view = await open(obj);
+  const text = view.textContent;
+  assert.ok(text.includes('データセット形式: Example incident logs／自動で判定した形式'));
+  assert.ok(!text.includes('（）'), '空の括弧');
+  assert.ok(!text.includes('Example incident logs（'), '中身の無い括弧');
+});
+
+await test('古い教材の year は表示に使わない（年度前提を持ち込まない）', async () => {
+  const obj = lesson();
+  obj.introduction.dataset = { year: 2022, label: 'Old dataset label', forced: false };
+  const view = await open(obj);
+  const text = view.textContent;
+  assert.ok(text.includes('データセット形式: Old dataset label／自動で判定した形式'));
+  assert.ok(!text.includes('年度'), '年度という言葉を出さない');
+  assert.ok(!text.includes('2022）'), 'year を括弧で添えない');
 });
 
 await test('導入に読み取りの制約が出る', async () => {

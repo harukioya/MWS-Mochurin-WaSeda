@@ -25,7 +25,6 @@ Security decisions, in the order they are enforced:
 from __future__ import annotations
 
 import hashlib
-import io
 import json
 import os
 import re
@@ -35,22 +34,21 @@ import stat
 import subprocess
 import sys
 import threading
+import urllib.parse
 import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from archive import (  # noqa: E402
-    MAX_NESTED_BYTES,
-    decode_name,
     enumerate_zip,
-    raw_name_bytes,
     scan_stream_full,
 )
 import dataset  # noqa: E402
-from explain import build_lesson  # noqa: E402
+import explain  # noqa: E402
 from identify import HEAD_BYTES, Verdict  # noqa: E402
 import net  # noqa: E402
+import parsers  # noqa: E402
 from store import Store, blob_path, sha256_file  # noqa: E402
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -799,10 +797,20 @@ class Handler(BaseHTTPRequestHandler):
     # Each is reached only through ROUTES, which declares its capability.
 
     def h_status(self):
+        catalog = dataset.profile_catalog()
         return self._json({
             "role": STATE.role,
             "capabilities": sorted(STATE.caps),
             "datasetDirs": STATE.dataset_dirs,
+            # 読み込めなかったプロファイルは黙って捨てない。理由を画面へ出す。
+            "profiles": {
+                "loaded": len(catalog.profiles),
+                "errors": catalog.errors_json(),
+            },
+            "parsers": [
+                {"id": i, "label": parsers.REGISTRY.label(i)}
+                for i in parsers.REGISTRY.ids()
+            ],
             "claims": {
                 "detects": [
                     "読み込んだZIPファイルが追加・変更・削除されたこと",
@@ -1093,35 +1101,90 @@ class Handler(BaseHTTPRequestHandler):
     )
 
     def _dataset_for(self, archive_id: int, force_profile: str | None = None):
-        """Classify one indexed archive as MWS Cup teaching material.
+        """Classify one indexed archive as teaching material.
 
         Reads nothing from disk: the member names are already in the manifest,
-        and the year/role decision is made from those names alone.
+        and the profile/role decision is made from those names alone.
         """
         rows = STATE.store.members(archive_id)
         view = dataset.detect([r["name"] for r in rows], force_id=force_profile)
         return view, rows
 
+    #: A forced profile id comes from the query string or a JSON body, so it
+    #: is bounded by the same shape the loader enforces on profile files. It
+    #: never reaches the filesystem -- `dataset.detect` only compares it
+    #: against the ids it already loaded -- but an unbounded string has no
+    #: business being echoed into an error message either.
+    PROFILE_ID = re.compile(dataset.PROFILE_ID)
+
+    @staticmethod
+    def _legacy_profile_alias(fields: dict):
+        """DEPRECATED: accept the old name `profile` for `profileId`.
+
+        Pages built before profiles were generalised sent `profile`. The
+        current page and all new code send `profileId` only. This is the one
+        place the alias is read; removing it leaves the new contract intact
+        (pinned by `test_api.TestProfileIdContract`).
+        """
+        return fields.get("profile")
+
+    def _profile_request(self, fields: dict) -> tuple[str | None, str | None]:
+        """(profile id, error message) from a query or a JSON body.
+
+        None means "decide automatically". "auto" is passed through unchanged;
+        `dataset.detect` treats it the same way.
+        """
+        new = fields.get("profileId")
+        old = self._legacy_profile_alias(fields)
+        if new not in (None, "") and old not in (None, "") and new != old:
+            return None, "profileId と profile が食い違っています"
+        value = new if new not in (None, "") else old
+        if value in (None, ""):
+            return None, None
+        if not isinstance(value, str) or not self.PROFILE_ID.fullmatch(value):
+            return None, "プロファイルの指定が不正です"
+        return value, None
+
+    def _query(self) -> dict:
+        """The first value of each query parameter, percent-decoded."""
+        _, _, query = self.path.partition("?")
+        return {k: v[0] for k, v in urllib.parse.parse_qs(query).items() if v}
+
     def h_dataset(self, archive_id: str):
-        """Report what this archive looks like as a MWS Cup exercise.
+        """Report what this archive looks like as a teaching dataset.
 
         Read-only, and deliberately says only whether a password hint EXISTS.
         The candidate strings never leave the process: putting them in a
         response would park a working key in the browser's memory, in any
         proxy log, and in whatever the page later caches (BUILD-CONTRACT-style
         rule from 仕様書 12.1).
+
+        `?profileId=<id>` overrides the automatic decision (仕様書 11.2,
+        「自動判定結果は利用者が変更できる」). The reply says which of the two
+        happened via `forced`, so the screen can label it rather than leaving
+        the person to guess whether the format was detected or chosen. No
+        match is not an error: the reply is the generic analysis mode.
         """
         archive_id = int(archive_id)
         row = self._archive_row(archive_id)
         if row is None:
             return self._error(404, "そのZIPファイルは読み込まれていません")
+
+        requested, problem = self._profile_request(self._query())
+        if problem:
+            return self._error(400, problem)
+
         # The hint scan reads the file, so verify and read through one
         # descriptor rather than checking the path and opening it again.
         fh = self._open_verified(row)
         if fh is None:
             return self._error(409, self.STALE_ARCHIVE)
 
-        view, member_rows = self._dataset_for(archive_id)
+        try:
+            view, member_rows = self._dataset_for(archive_id, requested)
+        except dataset.UnknownProfile as exc:
+            fh.close()
+            return self._error(400, str(exc))
         body = dataset.summarise(view, member_rows)
 
         # Only a boolean crosses this boundary.
@@ -1140,95 +1203,197 @@ class Handler(BaseHTTPRequestHandler):
         body["archive"] = archive_id
         return self._json(body)
 
-    def _generate_generic(self, archive_id: int, row, fh):
-        """The pre-profile behaviour, kept for archives no profile claims.
+    @staticmethod
+    def _attach_dataset(lesson: dict, view, parsed, *, truncated: bool,
+                        unreadable: list, unsupported: list,
+                        baseline: list) -> None:
+        """Record where the lesson came from, on the lesson itself.
 
-        This is what `POST /api/generate {"archive": N}` did before year
-        profiles existed: walk the archive, read whatever `.log` files are not
-        encrypted, and build a lesson from those. It is still the only thing
-        that can be done for an ordinary ZIP, so removing it would break
-        callers that the spec promises to keep working.
+        Everything a later reader needs to judge the lesson -- which profile,
+        whether a person chose it, which parser read what, and what could NOT
+        be read -- is kept with it, not only in the reply to this request.
+        A lesson built from 2 of 6 logs must never look like a clean success.
 
-        It is NOT used when a profile matched. There, "any readable .log"
-        reliably picks the tool's bundled sample over the real incident logs,
-        which is the defect this whole layer exists to remove.
-
-        Reads through the caller's already-verified descriptor. Re-opening the
-        path here would hand back the TOCTOU window the caller just closed, and
-        would leak the descriptor it opened.
+        「読めなかった」「読む仕組みが無い」「どの形式にも当たらなかった」を
+        混ぜない。前者は鍵や上限の問題で、やり直せば変わる。後の二つは
+        対応範囲の話で、何度試しても変わらない。
         """
-        sources: dict[str, str] = {}
-        budget = 24 * 1024 * 1024
-
-        def collect(zf, prefix="", depth=0):
-            nonlocal budget
-            for info in zf.infolist():
-                if info.is_dir() or budget <= 0:
-                    continue
-                decoded, _enc = decode_name(
-                    raw_name_bytes(info), bool(info.flag_bits & 0x800)
-                )
-                name = prefix + decoded
-                if info.flag_bits & 0x1:
-                    continue  # encrypted: unreadable, so skipped rather than guessed
-                if name.lower().endswith(".log") and info.file_size:
-                    try:
-                        raw = zf.open(info).read(min(budget, 4 * 1024 * 1024))
-                    except Exception:  # noqa: BLE001
-                        continue
-                    budget -= len(raw)
-                    sources[name] = raw.decode("utf-8", "replace")
-                elif (
-                    name.lower().endswith(".zip")
-                    and depth < 2
-                    and 0 < info.file_size <= MAX_NESTED_BYTES
-                ):
-                    try:
-                        nested = zipfile.ZipFile(io.BytesIO(zf.open(info).read()))
-                    except Exception:  # noqa: BLE001
-                        continue
-                    with nested:
-                        collect(nested, name + " :: ", depth + 1)
-
-        try:
-            fh.seek(0)
-            with zipfile.ZipFile(fh) as zf:
-                collect(zf)
-        except Exception as exc:  # noqa: BLE001
-            return self._error(422, f"圧縮ファイルを読み取れませんでした: {exc}")
-
-        # 読み終えたあとの再照合。プロファイル経路と同じ扱いにする。
-        if not self._recheck(fh, row):
-            return self._error(409, self.STALE_ARCHIVE)
-
-        if not sources:
-            return self._error(
-                422,
-                "この圧縮ファイルには読み取れるログファイルがありません。MWS データセットの "
-                "DFIR ログの多くはパスワード付きで、暗号化された項目は読み取れません。",
-            )
-
-        base = os.path.basename(row["path"]).rsplit(".", 1)[0]
-        ordered = {k: sources[k] for k in sorted(sources)}
-        lesson = build_lesson(f"{base} — DFIR 時系列", ordered, f"gen-{archive_id}")
-        if lesson is None:
-            return self._error(422, "ログは読み取れましたが、事象を解析できませんでした")
+        info = dataset.dataset_info(view)
+        report = parsed.report()
+        unrecognized = report["unrecognized"]
+        unknown_parsers = sorted(set(info["unknownParsers"]) | set(report["unknownParsers"]))
+        explicit_only = report["explicitOnly"]
+        incomplete = bool(unreadable or unsupported or unrecognized
+                          or unknown_parsers or truncated)
         lesson["dataset"] = {
-            "year": None, "profile": None, "label": "年度不明（汎用DFIRモード）",
-            "challengeInputs": sorted(ordered), "baselineIdentified": [],
-            "truncated": False, "unreadable": [], "incomplete": False, "draft": True,
+            **info,
+            "unknownParsers": unknown_parsers,
+            "parsing": report,
+            "challengeInputs": sorted(parsed.sources),
+            "baselineIdentified": list(baseline),
+            "truncated": truncated,
+            "unreadable": unreadable,
+            "unsupported": unsupported,
+            "unrecognized": unrecognized,
+            "explicitOnly": explicit_only,
+            "incomplete": incomplete,
+            "draft": True,
         }
-        STATE.store.save_lesson(lesson, base)
-        return self._json({
+
+        # 読み取りの制約は、生成直後の画面だけでなく教材の中にも残す。導入と
+        # 最終レポートから「何が読めなかったか」を確かめられるようにするため。
+        unknowns = lesson.setdefault("report", {}).setdefault("unknowns", [])
+        if truncated:
+            unknowns.append({
+                "topic": "読み取りの打ち切り",
+                "detail": ("上限に達したため、一部のログを最後まで読んでいません。"
+                           "見えていない記録がある前提で読んでください。"),
+            })
+        if unreadable:
+            unknowns.append({
+                "topic": "読み取れなかったログ",
+                "detail": (f"{len(unreadable)} 件の問題ログを読み取れませんでした。"
+                           "この教材はその分を欠いた状態で作られています。"),
+            })
+        if unsupported:
+            labels = sorted({u["label"] for u in unsupported})
+            unknowns.append({
+                "topic": "専用解析が未対応のログ",
+                "detail": (
+                    f"{len(unsupported)} 件（{'、'.join(labels)}）は問題ログとして"
+                    "分類できていますが、専用の解析に対応していないため教材の材料に"
+                    "していません。この教材の時系列には、これらのログに記録された"
+                    "出来事が含まれていません。"
+                ),
+            })
+        if unrecognized:
+            unknowns.append({
+                "topic": "形式を判別できなかったログ",
+                "detail": (
+                    f"{len(unrecognized)} 件のログは、登録済みのどのパーサーでも"
+                    "読めませんでした。この教材には、それらに記録された出来事が"
+                    "含まれていません。新しい形式に対応するにはパーサーの追加が必要です。"
+                ),
+            })
+        if explicit_only:
+            labels = sorted({parsers.REGISTRY.label(i)
+                             for ids in explicit_only.values() for i in ids})
+            unknowns.append({
+                "topic": "通信の向きを断定できないログ",
+                "detail": (
+                    f"{len(explicit_only)} 件のログは {'、'.join(labels)} の行の形を"
+                    "していますが、同じ形は Web サーバーのアクセスログにも現れます。"
+                    "端末から外へ出た通信なのか、外からサーバーへ来た要求なのかを"
+                    "内容だけでは決められないため、教材の材料にしていません。"
+                    "プロキシの記録だと分かっている場合は、プロファイルの parsers に"
+                    "指定すると読み取ります。"
+                ),
+            })
+        if unknown_parsers:
+            unknowns.append({
+                "topic": "登録されていないパーサー",
+                "detail": (
+                    f"プロファイルが指定したパーサー（{', '.join(unknown_parsers)}）は"
+                    "登録されていないため、その形式のログは解析していません。"
+                ),
+            })
+        lesson.setdefault("introduction", {})["dataset"] = {
+            "profileId": info["profileId"],
+            "label": info["label"],
+            "edition": info["edition"],
+            "forced": info["forced"],
+            "generic": info["generic"],
+            "incomplete": incomplete,
+            "truncated": truncated,
+            "unreadable": len(unreadable),
+            "unsupported": len(unsupported),
+            "unrecognized": len(unrecognized),
+        }
+
+    @staticmethod
+    def _generated_reply(lesson: dict) -> dict:
+        return {
             "id": lesson["id"], "title": lesson["title"],
             "stages": len(lesson["stages"]),
             "events": sum(len(s["events"]) for s in lesson["stages"]),
             "tagged": sum(
                 1 for s in lesson["stages"] for e in s["events"] if "attck" in e
             ),
-            "sources": sorted(ordered),
+            "sources": list(lesson["dataset"]["challengeInputs"]),
             "dataset": lesson["dataset"],
-        })
+        }
+
+    def _generate_generic(self, archive_id: int, row, fh, view):
+        """Generic analysis: the path for archives no profile claims.
+
+        Walk the archive, read whatever `.log` files are not encrypted, and let
+        the registered parsers decide, file by file, which of them can read it
+        (`detect()`). With no profiles installed -- the public default -- this
+        is the only path, so "no profile matched" is a normal outcome, not an
+        error.
+
+        It is NOT used when a profile matched. Without a profile nothing tells
+        the incident logs apart from quiet-period logs or a tool's bundled
+        sample, so "any readable .log" is only honest as an explicitly
+        labelled generic mode, never as a stand-in for a profile.
+
+        Reads through the caller's already-verified descriptor. Re-opening the
+        path here would hand back the TOCTOU window the caller just closed, and
+        would leak the descriptor it opened.
+        """
+        # 読み取りはプロファイル経路と同じ部品で行う（dataset.read_all_logs）。
+        # 共有予算は読む前に予約し、内側 ZIP も予約してから開く。打ち切り・
+        # 暗号化・壊れ・予算切れは黙って飛ばさず、教材まで伝える。
+        try:
+            read = dataset.read_all_logs(fh)
+        except dataset.ArchiveDamaged:
+            return self._error(422, "圧縮ファイルを読み取れませんでした。")
+
+        # 読み終えたあとの再照合。プロファイル経路と同じ扱いにする。
+        if not self._recheck(fh, row):
+            return self._error(409, self.STALE_ARCHIVE)
+
+        sources = read.as_mapping
+        if not sources:
+            if read.failures:
+                return self._error(
+                    422,
+                    f"読み取れる .log ファイルがありませんでした（読み取れなかったもの "
+                    f"{len(read.failures)} 件）。暗号化された項目は、プロファイルを"
+                    "指定して同梱の案内から読み取る必要があります。",
+                )
+            return self._error(
+                422,
+                "この圧縮ファイルには、暗号化されていない .log ファイルがありません。"
+                "暗号化された項目は、プロファイルを指定して同梱の案内から読み取る"
+                "必要があります。",
+            )
+
+        base = os.path.basename(row["path"]).rsplit(".", 1)[0]
+        # 本番の経路。パーサーレジストリで形式を判定し、正規化イベントから作る。
+        parsed = parsers.REGISTRY.parse_sources(sources, None)
+        lesson = explain.lesson_from_parsed(
+            f"{base} — DFIR 時系列", parsed, f"gen-{archive_id}"
+        )
+        if lesson is None:
+            if parsed.explicit_only:
+                return self._error(
+                    422,
+                    f"{len(parsed.explicit_only)} 件のログはプロキシの記録と同じ形をして"
+                    "いますが、同じ形は Web サーバーのアクセスログにも現れるため、"
+                    "通信の向きを内容だけでは決められません。プロキシの記録だと"
+                    "分かっている場合は、プロファイルの parsers に proxy を指定して"
+                    "ください。",
+                )
+            return self._error(
+                422,
+                "ログは読み取れましたが、登録済みのパーサーで解析できる記録が"
+                "ありませんでした。",
+            )
+        self._attach_dataset(lesson, view, parsed, truncated=read.truncated,
+                             unreadable=read.failures, unsupported=[], baseline=[])
+        STATE.store.save_lesson(lesson, base)
+        return self._json(self._generated_reply(lesson))
 
     def h_evidence(self, lesson_id: str, evidence_id: str):
         """Return one stored piece of evidence from one saved lesson.
@@ -1270,17 +1435,19 @@ class Handler(BaseHTTPRequestHandler):
     def h_generate(self):
         """Build a draft lesson from the CHALLENGE logs in one archive.
 
-        What changed, and why it matters: the previous version walked the whole
-        archive for anything ending in `.log` and skipped every encrypted entry.
-        In the real MWS Cup sets that is exactly backwards -- the genuine
-        incident logs are the encrypted ones, so what actually got taught was
-        `Tools/example.log`, a sample shipped with the viewer utility. Lessons
-        are now built from members the profile calls `challenge`, and from
-        nothing else.
+        What changed, and why it matters: an earlier version walked the whole
+        archive for anything ending in `.log` and skipped every encrypted
+        entry. In real distributions that is exactly backwards -- the genuine
+        incident logs are often the encrypted ones, so what got taught was a
+        sample log shipped with a viewer utility. With a profile, lessons are
+        built from members the profile calls `challenge`, and nothing else.
 
         `baseline` is identified but never substituted for the real logs. A
         quiet fallback to the quiet-period logs would reintroduce the same
         failure in a form that is harder to notice.
+
+        With no profile (the public default ships none) the request falls
+        through to generic analysis, which is labelled as such end to end.
 
         Reads in memory only; nothing is written to disk. The password, if one
         is used, is held for the duration of the call and never stored, logged
@@ -1316,9 +1483,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._error(400, "要求の書式が不正です（credential）")
         mode = credential.get("mode") or "none"
 
-        requested = payload.get("profile")
-        if requested is not None and not isinstance(requested, str):
-            return self._error(400, "要求の書式が不正です（profile）")
+        requested, problem = self._profile_request(payload)
+        if problem:
+            return self._error(400, problem)
 
         try:
             view, _rows = self._dataset_for(archive_id, requested)
@@ -1327,22 +1494,20 @@ class Handler(BaseHTTPRequestHandler):
 
         if not view.named("challenge"):
             # A profile matched but named no challenge logs: refuse. Falling
-            # back to "any readable .log" here is precisely the old behaviour
-            # that taught `Tools/example.log`.
+            # back to "any readable .log" here is precisely the behaviour that
+            # taught a tool's bundled sample instead of the incident logs.
             if view.profile is not None:
                 return self._error(
                     422,
-                    f"{view.profile.label} と判定しましたが、本番の問題ログが"
+                    f"{view.profile.display_label} と判定しましたが、本番の問題ログが"
                     "見つかりませんでした。",
                 )
-            # No profile matched at all. This is an ordinary archive that the
-            # old endpoint could still make something of, and callers that
-            # never asked for a profile are entitled to that behaviour.
+            # No profile matched at all: generic analysis.
             if requested:
                 return self._error(
                     422, "指定されたプロファイルでは問題ログを特定できませんでした。"
                 )
-            return self._generate_generic(archive_id, row, archive_fh)
+            return self._generate_generic(archive_id, row, archive_fh, view)
 
         # 鍵はここで組み立て、この呼び出しの間だけ持つ。保存も記録もしない。
         passwords: list[str] = []
@@ -1395,66 +1560,26 @@ class Handler(BaseHTTPRequestHandler):
             return self._error(422, "問題ログを読み取れませんでした。")
 
         base = os.path.basename(row["path"]).rsplit(".", 1)[0]
-        title = f"{view.profile.label} — DFIR 時系列" if view.profile else f"{base} — DFIR 時系列"
-        lesson = build_lesson(title, sources, f"gen-{archive_id}")
+        title = f"{view.profile.display_label} — DFIR 時系列"
+        # 本番の経路。プロファイルが指定したパーサーで、レジストリを通して
+        # 読む。指定が無ければ自動判定に参加するパーサー（AUTO_DETECT）で判定する。
+        parsed = parsers.REGISTRY.parse_sources(sources, view.parser_ids)
+        lesson = explain.lesson_from_parsed(title, parsed, f"gen-{archive_id}")
         if lesson is None:
             return self._error(422, "ログは読み取れましたが、事象を解析できませんでした")
 
-        # 採用した入力を教材側にも残す。どのファイルから作られたのかを、後から
-        # 画面だけでなく教材そのものからも辿れるようにするため。
-        # 読めなかった問題ログは黙って落とさない。6 本中 2 本だけで作った教材
-        # が「正常に完成」と見えるのが、いちばん困る失敗の仕方であるため。
+        # 採用した入力と、読めなかったものを教材側にも残す。
         unreadable = [
             {"name": f["name"], "reason": f["reason"], "detail": f["detail"]}
             for f in read.failures
         ]
-        lesson["dataset"] = {
-            "year": view.year,
-            "profile": (view.profile.id if view.profile else None),
-            "label": (view.profile.label if view.profile else "年度不明"),
-            "challengeInputs": sorted(sources),
-            "baselineIdentified": view.named("baseline"),
-            "truncated": read.truncated,
-            "unreadable": unreadable,
-            "incomplete": bool(unreadable) or read.truncated,
-            "draft": True,
-        }
-        # 読み取りの制約は、生成直後の画面だけでなく教材の中にも残す。導入と
-        # 最終レポートから「何が読めなかったか」を確かめられるようにするため。
-        # 終わってから言われても、どの判断がその影響を受けたのか分からない。
-        report = lesson.setdefault("report", {})
-        unknowns = report.setdefault("unknowns", [])
-        if read.truncated:
-            unknowns.append({
-                "topic": "読み取りの打ち切り",
-                "detail": ("上限に達したため、一部のログを最後まで読んでいません。"
-                           "見えていない記録がある前提で読んでください。"),
-            })
-        if unreadable:
-            unknowns.append({
-                "topic": "読み取れなかったログ",
-                "detail": (f"{len(unreadable)} 件の問題ログを読み取れませんでした。"
-                           "この教材はその分を欠いた状態で作られています。"),
-            })
-        lesson.setdefault("introduction", {})["dataset"] = {
-            "year": view.year,
-            "label": (view.profile.label if view.profile else "年度不明"),
-            "incomplete": lesson["dataset"]["incomplete"],
-            "truncated": read.truncated,
-            "unreadable": len(unreadable),
-        }
-
+        self._attach_dataset(
+            lesson, view, parsed, truncated=read.truncated,
+            unreadable=unreadable, unsupported=list(read.unsupported),
+            baseline=view.named("baseline"),
+        )
         STATE.store.save_lesson(lesson, base)
-        return self._json({
-            "id": lesson["id"], "title": lesson["title"],
-            "stages": len(lesson["stages"]),
-            "events": sum(len(s["events"]) for s in lesson["stages"]),
-            "tagged": sum(
-                1 for s in lesson["stages"] for e in s["events"] if "attck" in e
-            ),
-            "sources": sorted(sources),
-            "dataset": lesson["dataset"],
-        })
+        return self._json(self._generated_reply(lesson))
 
     def h_browse(self):
         """Feed the in-page folder chooser.
@@ -1571,10 +1696,24 @@ class Handler(BaseHTTPRequestHandler):
         return self._json({"scanned": found, "subdirs": hints})
 
 
+#: 外部プロファイルのフォルダを指定する環境変数。`os.pathsep` 区切りで複数可。
+#: 起動時にだけ読む。HTTP リクエストから任意のフォルダを指定させない。
+PROFILE_DIR_ENV = "DATASET_PROFILE_DIR"
+
+
+def configure_profiles_from_env(environ=None) -> "dataset.ProfileCatalog":
+    """起動時の設定からプロファイルを読み込む。無ければ標準のフォルダだけ。"""
+    environ = os.environ if environ is None else environ
+    raw = environ.get(PROFILE_DIR_ENV) or ""
+    dirs = [os.path.expanduser(d) for d in raw.split(os.pathsep) if d.strip()]
+    return dataset.configure_profiles(dirs)
+
+
 def main() -> None:
     global STATE, ALLOWED_HOSTS
     os.makedirs(STATE_DIR, exist_ok=True)
     STATE = State()
+    catalog = configure_profiles_from_env()
 
     sock = socket.socket()
     sock.bind(("127.0.0.1", 0))  # random high port: the attacker must guess it
@@ -1598,6 +1737,14 @@ def main() -> None:
     else:
         print(f"  role: {STATE.role}  (read-only; delete {ROLE_FILE} to restore "
               "full access)", flush=True)
+    print(f"  profiles: {len(catalog.profiles)} loaded"
+          f"  (parsers: {', '.join(parsers.REGISTRY.ids())})", flush=True)
+    if not os.environ.get(PROFILE_DIR_ENV):
+        print(f"        add dataset profiles with:  {PROFILE_DIR_ENV}=/path/to/profiles",
+              flush=True)
+    # 読み込めなかったものは、ファイル名と理由だけを出す。中身は引用しない。
+    for err in catalog.errors:
+        print(f"  [profile] {err.source}: {err.reason}", file=sys.stderr, flush=True)
     print("  Ctrl+C to stop.", flush=True)
     try:
         httpd.serve_forever()

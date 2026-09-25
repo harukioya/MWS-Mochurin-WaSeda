@@ -1,0 +1,59 @@
+{
+  "id": "example-keyfile",
+  "label": "Example key-file layout",
+  "order": 30,
+  "match": {
+    "requiredPathPatterns": [
+      "*/evidence/challenge-logs*.zip"
+    ],
+    "optionalNamePatterns": [
+      "*/evidence/challenge-logs*password.txt",
+      "*/reference/ベースライン*.zip",
+      "*/tools.zip :: tools/sample.log",
+      "*/evidence/challenge-logs*.zip :: logs/*.log",
+      "*/brief.pdf"
+    ]
+  },
+  "roles": {
+    "ignore": [
+      "__MACOSX/*",
+      "*/__MACOSX/*",
+      "._*",
+      "*/._*",
+      "* :: __MACOSX/*",
+      "* :: ._*",
+      "* :: */._*"
+    ],
+    "tool": [
+      "*/tools.zip",
+      "*/tools.zip :: *"
+    ],
+    "challenge": [
+      "*/evidence/challenge-logs*.zip",
+      "*/evidence/challenge-logs*.zip :: *"
+    ],
+    "baseline": [
+      "*/reference/ベースライン*.zip",
+      "*/reference/ベースライン*.zip :: *"
+    ],
+    "narrative": [
+      "*/brief.*",
+      "*/evidence/*.txt",
+      "*/evidence/*.md"
+    ],
+    "unrelated": [
+      "*/presentations/*"
+    ]
+  },
+  "passwordHintPatterns": [
+    "*/evidence/*.md",
+    "*/evidence/*.txt"
+  ],
+  "passwordFilePatterns": [
+    "*/evidence/challenge-logs*password.txt"
+  ],
+  "parsers": [
+    "itm2",
+    "proxy"
+  ]
+}

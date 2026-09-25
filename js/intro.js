@@ -8,6 +8,7 @@
 // ません」と書く。埋めてしまうと、根拠のない情報が教材の一部に見える。
 
 import { visible } from './evidence.js';
+import { profileLine, profileOfLesson } from './profile.js';
 
 const el = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -87,10 +88,12 @@ export function renderIntroduction(mount, lesson, onStart) {
   }
 
   const ds = intro.dataset || {};
-  if (ds.label || ds.year) {
-    page.append(
-      el('p', 'muted', `年度・課題: ${visible(ds.label || '')}${ds.year ? `（${ds.year}年度）` : ''}`)
-    );
+  // データセット形式と、それを自動で判定したのか利用者が指定したのか。
+  // データセット画面・最終レポートと同じ 1 行を出す（profile.js）。教材を
+  // 後から見た人が、その形式を誰が決めたのかを取り違えないようにするため。
+  const profile = profileOfLesson(lesson);
+  if (profile) {
+    page.append(el('p', 'muted', profileLine(profile)));
   }
 
   page.append(
@@ -134,6 +137,19 @@ export function renderIntroduction(mount, lesson, onStart) {
   const limits = [];
   if (ds.truncated) limits.push('上限に達したため、一部のログを最後まで読んでいません。');
   if (ds.unreadable) limits.push(`${ds.unreadable} 件の問題ログを読み取れませんでした。`);
+  // 「読み取れなかった」と「読む仕組みが無い」は直し方が違うので分けて言う。
+  if (ds.unsupported) {
+    limits.push(
+      `${ds.unsupported} 件の問題ログは、分類はできましたが専用の解析に対応していないため、` +
+      'この教材の材料にしていません。'
+    );
+  }
+  if (ds.unrecognized) {
+    limits.push(
+      `${ds.unrecognized} 件のログは、登録済みのどのパーサーでも形式を判別できず、` +
+      'この教材の材料になっていません。'
+    );
+  }
   if (ds.incomplete && !limits.length) limits.push('読み取れなかったログがあります。');
   if (limits.length) {
     const box = el('div', 'panel');

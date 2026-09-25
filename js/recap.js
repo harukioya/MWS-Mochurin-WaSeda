@@ -16,6 +16,7 @@ import {
   visible,
 } from './evidence.js';
 import { glossary } from './intro.js';
+import { profileLine, profileOfLesson } from './profile.js';
 
 const el = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -74,6 +75,13 @@ export function renderRecap(mount, lesson, stats) {
   heading.textContent = `正解 ${correct} / ${total}`;
   heading.tabIndex = -1;
   root.appendChild(heading);
+
+  // どのデータセット形式として読んだ教材か。データセット画面・導入画面と
+  // 同じ 1 行を出す。レポートだけを見た人にも、分類の前提が分かるように。
+  const profile = profileOfLesson(lesson);
+  if (profile) {
+    root.appendChild(el('p', 'muted', profileLine(profile)));
+  }
 
   if (recap.summary) {
     root.appendChild(el('p', 'muted', visible(recap.summary)));

