@@ -89,7 +89,7 @@ export async function renderHome(mount) {
       buildCard({
         id: l.id,
         title: l.title,
-        tagline: 'MWS Cup のログから自動生成しました。使用前に内容を確認してください。',
+        tagline: 'ログから自動生成しました。使用前に内容を確認してください。',
         difficulty: '自動生成',
         family: l.source || 'DFIR',
       }).el

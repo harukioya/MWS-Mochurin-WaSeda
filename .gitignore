@@ -12,12 +12,18 @@ samples/
 # internal design contract - local only, never push (collaborative repo)
 docs/BUILD-CONTRACT.md
 docs/THREAT-MODEL.md
+docs/MWS_Cup過去問フォレンジック学習ツール_実装仕様書.md
+docs/汎用データセット教材生成基盤_実装指示書.md
 
 # stray screenshots
 Screenshot*.png
 
 # local runtime state (manifest DB) - never commit
 .mws-state/
+
+# local validation against real datasets (profiles, manifests, notes) -
+# dataset-specific material that must never be published
+.local-validation/
 
 # Python bytecode
 __pycache__/

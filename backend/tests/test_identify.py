@@ -302,9 +302,9 @@ class TestEnumerate(unittest.TestCase):
     def test_applesingle_sidecar_gets_its_own_verdict(self):
         """macOS の付随情報は「判別できない」ではない。何かは分かっている。
 
-        以前は unknown 扱いのうえ警告まで付けていたため、実データでは 60 件を
-        超える付随ファイルが「注意が必要」に並び、本当に注意すべき数件が埋も
-        れていた。取り出しを許さない点は変えず、区別だけを付ける。
+        以前は unknown 扱いのうえ警告まで付けていたため、実データでは大量の
+        付随ファイルが「注意が必要」に並び、本当に注意すべき数件が埋もれて
+        いた。取り出しを許さない点は変えず、区別だけを付ける。
         """
         path = self._write(
             _zip_bytes([("__MACOSX/._tools.zip", b"\x00\x05\x16\x07rubbish")])
