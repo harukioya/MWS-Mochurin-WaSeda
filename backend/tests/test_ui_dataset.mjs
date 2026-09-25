@@ -79,6 +79,8 @@ const app = new El('main');
 app._root = true;
 globalThis.document = {
   createElement: (t) => new El(t),
+  // 正答率のリングは SVG。名前空間は見ないので、同じ El で足りる。
+  createElementNS: (_ns, t) => new El(t),
   getElementById: () => app,
   querySelector: () => null,
   addEventListener() {},

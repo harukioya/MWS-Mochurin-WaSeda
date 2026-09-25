@@ -53,8 +53,8 @@ class El {
   setAttribute(k, v) { this.attrs[k] = v; }
   addEventListener(t, f) { (this._on[t] || (this._on[t] = [])).push(f); }
   click() { return Promise.all((this._on.click || []).map((f) => f())); }
-  focus() { globalThis.__focused = this; }
-  scrollIntoView() { globalThis.__scrolled = this; }
+  focus(opts) { globalThis.__focused = this; globalThis.__focusOpts = opts; }
+  scrollIntoView(opts) { globalThis.__scrolled = this; globalThis.__scrollOpts = opts; }
   get isConnected() {
     let n = this;
     while (n) { if (n._root) return true; n = n.parent; }
@@ -82,6 +82,8 @@ function byId(node, id) {
 }
 globalThis.document = {
   createElement: (t) => new El(t),
+  // 正答率のリングは SVG。名前空間は見ないので、同じ El で足りる。
+  createElementNS: (_ns, t) => new El(t),
   getElementById: (id) => (id === 'app' ? app : byId(app, id)),
   querySelector: () => null,
   addEventListener() {}, removeEventListener() {},
@@ -297,6 +299,273 @@ await test('導入のない旧形式はそのまま第1段階から始まる', a
   const view = await open(oldLesson());
   assert.equal(view.button(/調査を始める/), undefined, '導入は出さない');
   assert.ok(view.cls('option').length > 0, 'すぐ設問が出る');
+});
+
+// ---------------------------------------------------------------------------
+// 回答後の視点
+//
+// 回答すると解説・根拠・「次へ」が下に足される。以前は「次へ」ボタンへ
+// フォーカスを移していたため、ブラウザがそこまでスクロールし、自分の選択が
+// 正解だったかを見るのに上へ戻る必要があった。視点は「設問 n/m」に固定する。
+// ---------------------------------------------------------------------------
+const quizPanelOf = (view) => view.cls('quiz-panel')[0];
+const labelOf = (panel) => panel && panel.cls('panel__label')[0];
+
+async function answerFirst(view, pick) {
+  await view.button(/調査を始める/).click();
+  globalThis.__scrolled = null;
+  globalThis.__focusOpts = undefined;
+  await view.cls('option')[pick].click();
+}
+
+await test('回答後、視点は「設問 n/m」のある設問の先頭へ合わせる', async () => {
+  const view = await open(lesson());
+  await answerFirst(view, 1);
+  const panel = quizPanelOf(view);
+  assert.ok(panel, '設問の区画がある');
+  assert.equal(labelOf(panel).textContent, '設問 1/2');
+  assert.equal(globalThis.__scrolled, panel, '設問の区画へスクロールする');
+  assert.equal(globalThis.__scrollOpts.block, 'start', '区画の先頭で止める');
+});
+
+await test('回答後のフォーカス移動では、ページを動かさない', async () => {
+  const view = await open(lesson());
+  await answerFirst(view, 1);
+  // キーボード利用者のためにフォーカスは「次の設問へ」へ移す。ただし
+  // それで最下部まで流されないよう、位置は動かさない指定にする。
+  assert.match(globalThis.__focused.textContent, /次の設問へ/);
+  assert.deepEqual(globalThis.__focusOpts, { preventScroll: true });
+});
+
+await test('段階の最後の設問でも、視点は設問の先頭に残る', async () => {
+  const view = await open(lesson());
+  await answerFirst(view, 1);
+  await view.button(/次の設問へ/).click();
+  globalThis.__scrolled = null;
+  await view.cls('option')[0].click();
+  const panel = quizPanelOf(view);
+  assert.equal(labelOf(panel).textContent, '設問 2/2');
+  assert.equal(globalThis.__scrolled, panel, '「次へ」へ流されない');
+  assert.match(globalThis.__focused.textContent, /次へ|振り返りへ/);
+  assert.deepEqual(globalThis.__focusOpts, { preventScroll: true });
+});
+
+await test('「次の設問へ」で進んだときも、新しい設問の先頭を見せる', async () => {
+  const view = await open(lesson());
+  await answerFirst(view, 1);
+  globalThis.__scrolled = null;
+  await view.button(/次の設問へ/).click();
+  const panel = quizPanelOf(view);
+  assert.equal(globalThis.__scrolled, panel);
+  assert.equal(labelOf(panel).textContent, '設問 2/2');
+});
+
+// ---------------------------------------------------------------------------
+// 解答前に「問題の行」へ飛ぶ
+//
+// 「logs/ws99.log の 3 行目 について」のように問い文が行を名指ししている
+// 設問では、答える前にその行のカードへ飛べる。問い文に書いてある行へ移る
+// だけなので答えは漏れない。根拠を選ばせる設問では、先に飛べると答えそのもの
+// になるので出さない。
+// ---------------------------------------------------------------------------
+const subjectButton = (view) => view.button(/^問題の行を見る/);
+
+await test('行を名指しする設問は、解答前に「問題の行を見る」が出る', async () => {
+  const view = await open(lesson());
+  await view.button(/調査を始める/).click();
+  const btn = subjectButton(view);
+  assert.ok(btn, '解答前にボタンがある');
+  assert.match(btn.textContent, /logs\/ws99\.log/);
+  assert.equal(view.button(/^根拠ログを見る/), undefined, '根拠ボタンはまだ出さない');
+});
+
+await test('押すと、その行の証拠カードへ移動してフォーカスする', async () => {
+  const view = await open(lesson());
+  await view.button(/調査を始める/).click();
+  globalThis.__scrolled = null;
+  await subjectButton(view).click();
+  const card = document.getElementById(`ev-stage-${EV_A}`);
+  assert.ok(card, '飛び先のカードが解答前から頁にある');
+  assert.equal(globalThis.__scrolled, card, 'カードへスクロールする');
+  assert.equal(globalThis.__focused, card, 'カードへフォーカスを移す');
+});
+
+await test('飛んでも回答は始まらず、そのまま答えられる', async () => {
+  const view = await open(lesson());
+  await view.button(/調査を始める/).click();
+  await subjectButton(view).click();
+  assert.equal(view.textContent.includes('解説1'), false, '解説はまだ出ない');
+  const options = view.cls('option');
+  assert.ok(options.length && options.every((o) => !o.disabled), '選択肢は押せる');
+});
+
+await test('教材が明示した行を、根拠より優先して使う', async () => {
+  const obj = lesson();
+  obj.stages[0].quizzes[0].subjectEvidenceIds = [EV_B];
+  const view = await open(obj);
+  await view.button(/調査を始める/).click();
+  assert.match(subjectButton(view).textContent, /8 行目/, '明示した EV_B の行');
+});
+
+await test('根拠を選ぶ設問では、解答前に飛べない（答えになるため）', async () => {
+  const obj = lesson();
+  const pick = {
+    id: 'q-pick', type: 'evidence_pick', category: 'evidence',
+    prompt: 'この判断を最も直接支えるログはどれですか。',
+    options: [
+      { label: 'logs/ws99.log の 3 行目', evidenceId: EV_A },
+      { label: 'logs/ws99.log の 8 行目', evidenceId: EV_B },
+    ],
+    correct: 0, explain: '解説', evidenceIds: [EV_A],
+    // 誤って付けてしまっても、画面側で出さない。
+    subjectEvidenceIds: [EV_A],
+  };
+  obj.stages[0].quizzes = [pick];
+  obj.stages[0].quiz = pick;
+  const view = await open(obj);
+  await view.button(/調査を始める/).click();
+  assert.equal(subjectButton(view), undefined);
+});
+
+await test('行を名指ししない設問（関連付け）には出さない', async () => {
+  const view = await open(lesson());
+  await view.button(/調査を始める/).click();
+  await view.cls('option')[1].click();
+  await view.button(/次の設問へ/).click();
+  // 2 問目は関連付けの設問。問い文は行を名指ししていない。
+  assert.match(view.textContent, /どちらが先に記録されましたか/);
+  assert.equal(subjectButton(view), undefined);
+});
+
+// ---------------------------------------------------------------------------
+// 「下に示した記録は…」と書く設問は、解答前にその記録を設問の下へ出す
+//
+// 直した不具合: 問い文は「下に示した記録」と言うのに、記録は解答後にしか
+// 出していなかった。段階の上に並ぶカードのどれが対象なのかも分からない。
+// ---------------------------------------------------------------------------
+const subjectBox = (view) =>
+  view.find((e) => e.tag === 'div' && /^対象の記録/.test(e.textContent))[0];
+const cardsIn = (box) => (box ? box.cls('evidence') : []);
+
+async function reachSecondQuiz(view) {
+  await view.button(/調査を始める/).click();
+  await view.cls('option')[1].click();
+  await view.button(/次の設問へ/).click();
+}
+
+await test('関連付けの設問は、見比べる二つの記録を解答前に出す', async () => {
+  const view = await open(lesson());
+  await reachSecondQuiz(view);
+  assert.match(view.textContent, /どちらが先に記録されましたか/);
+  const box = subjectBox(view);
+  assert.ok(box, '「対象の記録」が解答前にある');
+  assert.equal(cardsIn(box).length, 2, '二つとも出す');
+  assert.ok(box.textContent.includes('3 行目') && box.textContent.includes('8 行目'));
+  assert.ok(view.cls('option').every((o) => !o.disabled), 'まだ答えていない');
+});
+
+await test('対象の記録は、設問文より下・選択肢より上にある', async () => {
+  const view = await open(lesson());
+  await reachSecondQuiz(view);
+  const quiz = view.cls('quiz')[0];
+  const order = quiz.children.map((c) => c.className || '');
+  const qAt = order.findIndex((c) => c.includes('quiz__q'));
+  const subjAt = order.findIndex((c) => c.includes('quiz__subject'));
+  const optAt = order.findIndex((c) => c.includes('options'));
+  assert.ok(qAt < subjAt && subjAt < optAt, `並び: ${order.join(' / ')}`);
+});
+
+await test('解答後に同じ記録を二度並べない', async () => {
+  const view = await open(lesson());
+  await reachSecondQuiz(view);
+  await view.cls('option')[0].click();
+  const quiz = view.cls('quiz')[0];
+  assert.equal(quiz.cls('evidence').length, 2, '対象の 2 枚だけ。根拠欄で複製しない');
+  assert.ok(view.button(/^根拠ログを見る/), '根拠への移動は残す');
+});
+
+await test('手法の設問も、旧い教材（項目なし）で対象の記録を出す', async () => {
+  const obj = lesson();
+  const attck = {
+    id: 'q-attck', type: 'single_choice', category: 'attck',
+    prompt: '下に示した記録は、どの手法にあたりますか。',
+    options: ['T1059.003 · Windows Command Shell', 'T1082 · System Information Discovery'],
+    correct: 0, explain: '解説', evidenceIds: [EV_A],
+  };
+  obj.stages[0].quizzes = [attck];
+  obj.stages[0].quiz = attck;
+  const view = await open(obj);
+  await view.button(/調査を始める/).click();
+  const box = subjectBox(view);
+  assert.ok(box, '項目が無くても、根拠を対象として出す');
+  assert.equal(cardsIn(box).length, 1);
+  assert.equal(view.button(/^問題の行を見る/), undefined, '行ジャンプとは別の出し方');
+});
+
+await test('解答前に出すカードは飛び先の id を持たない（id の重複を作らない）', async () => {
+  const view = await open(lesson());
+  await reachSecondQuiz(view);
+  for (const card of cardsIn(subjectBox(view))) {
+    assert.ok(!card.id, `設問内の複製に id が付いている: ${card.id}`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 正答率のリング
+// ---------------------------------------------------------------------------
+const ringOf = () => app.cls('ring')[0];
+const barOf = (ring) => ring && ring.find((e) => e.attrs.class === 'ring__bar')[0];
+
+await test('得点の横に正答率のリングが出て、中央は % 表記', async () => {
+  const view = await open(lesson());
+  await playThrough(view, [1, 1]);   // 1 / 2
+  const row = app.cls('recap__score')[0];
+  assert.ok(row, '見出しとリングを並べる行がある');
+  assert.ok(row.find((e) => e.tag === 'h1').length, '見出しは同じ行にある');
+  const ring = ringOf();
+  assert.ok(ring, 'リングがある');
+  assert.equal(ring.cls('ring__label')[0].textContent, '50%');
+});
+
+await test('リングの弧の長さが正答率と一致する', async () => {
+  const view = await open(lesson());
+  await playThrough(view, [1, 1]);   // 1 / 2 → 50%
+  const bar = barOf(ringOf());
+  assert.ok(bar, '弧がある');
+  // 円周を 100 と見なしているので、残す長さ = 100 - 正答率。
+  assert.equal(bar.attrs.pathLength, '100');
+  assert.equal(bar.attrs['stroke-dasharray'], '100');
+  assert.equal(bar.attrs['stroke-dashoffset'], '50');
+});
+
+await test('読み上げでは円を「正答率 N%」の 1 枚として伝える', async () => {
+  const view = await open(lesson());
+  await playThrough(view, [1, 1]);
+  const ring = ringOf();
+  assert.equal(ring.attrs.role, 'img');
+  assert.equal(ring.attrs['aria-label'], '正答率 50%');
+  const svg = ring.find((e) => e.tag === 'svg')[0];
+  assert.equal(svg.attrs['aria-hidden'], 'true', '中の図形は読ませない');
+});
+
+await test('全問正解は 100%、全問不正解は 0% で弧を描かない', async () => {
+  let view = await open(lesson());
+  await playThrough(view, [1, 0]);   // 両方正解
+  assert.equal(ringOf().cls('ring__label')[0].textContent, '100%');
+  assert.equal(barOf(ringOf()).attrs['stroke-dashoffset'], '0');
+
+  view = await open(lesson());
+  await playThrough(view, [0, 1]);   // 両方不正解
+  assert.equal(ringOf().cls('ring__label')[0].textContent, '0%');
+  // 端が丸いので、長さ 0 の弧でも点が残る。0% では弧そのものを置かない。
+  assert.equal(barOf(ringOf()), undefined, '0% で点が残らない');
+});
+
+await test('得点の見出しは従来どおり「正解 X / Y」のまま', async () => {
+  const view = await open(lesson());
+  await playThrough(view, [1, 1]);
+  const heading = app.find((e) => e.tag === 'h1' && /正解/.test(e.textContent))[0];
+  assert.equal(heading.textContent, '正解 1 / 2', 'リングの % が見出しに混ざらない');
 });
 
 await test('得点は設問単位で、カテゴリ別も出る', async () => {

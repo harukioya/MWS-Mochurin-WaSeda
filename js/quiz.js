@@ -7,6 +7,24 @@ import { citedEvidence, jumpButtons, visible } from './evidence.js';
 
 const KEYS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
+// 保存済みの教材にも、解説や正解を先に見せず使える共通ヒントを用意する。
+const DEFAULT_HINT =
+  'まず問題文が尋ねている対象と動作を整理し、上の記録や説明と選択肢を一つずつ照らし合わせてください。';
+const CATEGORY_HINTS = {
+  'log-reading': '問題文にあるファイル名と行番号の原文を確認してください。プログラム・端末・ファイル・通信先のうち何を尋ねているかを整理し、対応する項目を探します。',
+  evidence: '選択肢の出典と行番号を上の証拠カードと照合し、主張している対象と動作を直接記録した行を探してください。同じ単語があるだけでは根拠になりません。',
+  correlation: '二つの記録の日時とタイムゾーンを確認してください。比較できる時刻基準で前後を比べ、表示順や因果関係とは区別します。',
+  attck: 'プログラムと引数、または設定された場所から、記録された動作を確認してください。手法の意味と照合し、目的は推測で補わないようにします。',
+  limits: 'それぞれの選択肢を裏付ける項目が、原文にあるか確認してください。記録された事実と、目的や背景の推測を分けます。',
+};
+
+function hintText(quiz) {
+  if (typeof quiz.hint === 'string' && quiz.hint.trim()) return quiz.hint;
+  const categoryHint = CATEGORY_HINTS[quiz.category];
+  return (typeof categoryHint === 'string' ? categoryHint : '')
+    || (quiz.type === 'evidence_pick' ? CATEGORY_HINTS.evidence : DEFAULT_HINT);
+}
+
 /**
  * 選択肢を表示用の文字列にする。
  *
@@ -21,8 +39,37 @@ function optionText(option) {
 }
 
 /**
+ * 設問が対象にしている記録の証拠 id。解答前に見せてよいのはこれだけ。
+ *
+ * 対象の記録は、設問の種類によって二通りに出す。
+ *   * 「○○ の N 行目 について」と問い文が行を名指しする設問（log-reading）
+ *     → その行へ飛ぶボタン（`問題の行を見る`）
+ *   * 「下に示した記録は…」と問い文が記録を示すと約束する設問
+ *     （attck / limits / correlation）→ 問い文のすぐ下にカードを出す
+ * どちらも、記録は「探させる答え」ではなく「読んで判断する材料」なので、
+ * 解答前に見せても答えは漏れない。
+ *
+ * 教材側が `subjectEvidenceIds` で明示する。この項目が無い、以前に作った
+ * 教材でも動くよう、上の種類に限っては根拠を充てる。これらの設問では
+ * 根拠がそのまま対象の記録だからである。
+ *
+ * 根拠を選ばせる設問（evidence_pick）は、項目が付いていても空を返す。
+ * そこで根拠を先に見せたら、答えを押す前に答えを見せることになる。
+ */
+const PRESENTS_RECORD = new Set(['attck', 'limits', 'correlation']);
+
+function subjectIds(quiz) {
+  if (quiz.type === 'evidence_pick') return [];
+  if (Array.isArray(quiz.subjectEvidenceIds)) return quiz.subjectEvidenceIds;
+  if (!Array.isArray(quiz.evidenceIds)) return [];
+  if (quiz.category === 'log-reading') return quiz.evidenceIds.slice(0, 1);
+  if (PRESENTS_RECORD.has(quiz.category)) return quiz.evidenceIds;
+  return [];
+}
+
+/**
  * @param {HTMLElement} container  element to render into (cleared first)
- * @param {object} quiz            { q, options: string[], correct: number, explain: string }
+ * @param {object} quiz            { q, options, correct, explain, hint?: string }
  * @param {(isCorrect:boolean)=>void} onAnswered  called once, after the first answer
  */
 export function renderQuiz(container, quiz, onAnswered, evidence) {
@@ -68,6 +115,21 @@ export function renderQuiz(container, quiz, onAnswered, evidence) {
   q.textContent = promptText;
   quizEl.appendChild(q);
 
+  // 設問が対象にしている記録を、解答前から見せる（subjectIds の説明を参照）。
+  //
+  // 「下に示した記録は…」と書く設問で、その記録を解答後にしか出して
+  // いなかった。問い文が約束したものが画面に無く、段階の上に並ぶカードの
+  // どれが対象なのかも分からなかった。
+  const subjectShown = PRESENTS_RECORD.has(quiz.category);
+  const ids = subjectIds(quiz);
+  const subject = subjectShown
+    ? citedEvidence(ids, map, undefined, '対象の記録')
+    : jumpButtons(ids, map, 'stage', '問題の行を見る');
+  if (subject) {
+    subject.classList.add('quiz__subject');
+    quizEl.appendChild(subject);
+  }
+
   // 根拠を選ぶ問題では、選択肢が「どのログか」を指す。何を比べるのかを
   // 先に言っておかないと、出典と行番号の羅列にしか見えない。
   if (quiz.type === 'evidence_pick') {
@@ -77,6 +139,23 @@ export function renderQuiz(container, quiz, onAnswered, evidence) {
       '下の記録のうち、この判断を最も直接支えているものを選んでください。回答後に原文を確認できます。';
     quizEl.appendChild(hint);
   }
+
+  // details/summary の標準操作で、マウス・Enter・Spaceから開閉できる。
+  // 採点や回答コールバックには繋げない。設問が変わるたび閉じた状態で作る。
+  const hint = document.createElement('details');
+  hint.className = 'quiz__hint';
+  hint.open = false;
+  const hintToggle = document.createElement('summary');
+  hintToggle.className = 'quiz__hint-toggle';
+  hintToggle.textContent = 'ヒントを見る';
+  const hintBody = document.createElement('p');
+  hintBody.className = 'quiz__hint-body';
+  hintBody.textContent = visible(hintText(quiz));
+  const hintNote = document.createElement('p');
+  hintNote.className = 'quiz__hint-note';
+  hintNote.textContent = 'ヒントを見ても減点されません。';
+  hint.append(hintToggle, hintBody, hintNote);
+  quizEl.appendChild(hint);
 
   const optionsEl = document.createElement('div');
   optionsEl.className = 'options';
@@ -184,7 +263,8 @@ export function renderQuiz(container, quiz, onAnswered, evidence) {
     // 正解でも不正解でも出す。間違えたときこそ「なぜそれが答えなのか」を
     // 実ログで確かめられる必要がある。証拠を持たない旧形式の問題では、
     // どちらも null が返るので何も足さない。
-    const cited = citedEvidence(quiz.evidenceIds, map);
+    // 対象の記録として解答前に同じカードを出してあれば、二度は並べない。
+    const cited = subject && subjectShown ? null : citedEvidence(quiz.evidenceIds, map);
     if (cited) quizEl.appendChild(cited);
 
     const jump = jumpButtons(quiz.evidenceIds, map);

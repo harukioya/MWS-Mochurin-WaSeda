@@ -200,8 +200,22 @@ export async function renderLesson(mount, lessonId) {
     }
 
     // --- Quiz (answer before advance) ---
-    const quizPanel = el('div', 'panel');
+    const quizPanel = el('div', 'panel quiz-panel');
     player.appendChild(quizPanel);
+
+    // 回答した直後に、視点を設問の先頭（「設問 n/m」）へ合わせる。
+    //
+    // 回答後は解説・根拠・「次へ」が下に足される。以前は「次へ」ボタンへ
+    // フォーカスを移していたので、ブラウザがそこまでスクロールし、自分の
+    // 選択が正解だったかを確かめるには上へ戻る必要があった。フォーカスは
+    // キーボード利用者のために移すが（preventScroll で位置は動かさない）、
+    // 見せる位置は設問の先頭に固定する。
+    const keepQuizInView = () => {
+      const reduce =
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      quizPanel.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+    };
 
     // --- Nav: Back to lessons (always) + Continue (after answering) ---
     const nav = el('div', 'navbtns');
@@ -268,7 +282,9 @@ export async function renderLesson(mount, lessonId) {
           );
         }
         cont.hidden = false;
-        cont.focus();
+        // 位置は動かさない。フォーカス先へ飛ぶと、回答直後に最下部まで
+        // 流されてしまう。見せる位置は呼び出し側が決める。
+        cont.focus({ preventScroll: true });
         return;
       }
       quizPanel.textContent = '';
@@ -294,14 +310,15 @@ export async function renderLesson(mount, lessonId) {
             nextQ.type = 'button';
             nextQ.addEventListener('click', () => {
               askFrom(qi + 1);
-              quizPanel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+              keepQuizInView();
             });
             nav2.appendChild(nextQ);
             quizPanel.appendChild(nav2);
-            nextQ.focus();
+            nextQ.focus({ preventScroll: true });
           } else {
             askFrom(qi + 1);
           }
+          keepQuizInView();
         },
         evidence
       );

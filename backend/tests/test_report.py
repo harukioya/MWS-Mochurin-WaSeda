@@ -1841,3 +1841,63 @@ class TestCorrelationDoesNotMaterialiseEveryRecord(unittest.TestCase):
         by_id = {id(r) for r in records}
         for c in cands:
             self.assertIn(id(c), by_id, "レコードを複製している")
+
+
+class TestSubjectLineBeforeAnswering(unittest.TestCase):
+    """問い文が名指しした行へ、解答前でも飛べるようにするための項目。
+
+    `subjectEvidenceIds` は「問い文がすでに書いている行」だけを指す。解答前に
+    画面がそこへ飛んでも、問い文以上のことは何も見せないからである。逆に
+    「どの記録が根拠か」を選ばせる設問でこれを付けると、押す前に答えへ
+    案内することになる。ここでは、その境界を教材の側で固定する。
+    """
+
+    def setUp(self):
+        self.lesson = build()
+        self.quizzes = [
+            q for s in self.lesson["stages"] for q in (s.get("quizzes") or [])
+        ]
+
+    def test_line_reading_questions_name_their_line(self):
+        reading = [q for q in self.quizzes if q.get("category") == "log-reading"]
+        self.assertTrue(reading, "fixture から読み取り問題が作られていない")
+        for q in reading:
+            subject = q.get("subjectEvidenceIds")
+            self.assertEqual(len(subject or []), 1, q["id"])
+            # 名指しした行は、問い文に書かれた「○○ の N 行目」と同じ行。
+            src = self.lesson["evidence"][subject[0]]["source"]
+            self.assertIn(f"{src['member']} の {src['line']} 行目", q["prompt"], q["id"])
+
+    def test_the_named_line_is_on_the_page_before_answering(self):
+        """飛び先のカードが無ければ、ボタンは押しても何も起きない。"""
+        for q in self.quizzes:
+            for ident in q.get("subjectEvidenceIds") or []:
+                self.assertIn(ident, self.lesson["evidence"], q["id"])
+
+    def test_the_evidence_pick_question_never_points_at_its_answer(self):
+        """根拠を選ばせる設問で対象を示すと、押す前に答えを見せることになる。"""
+        picks = [q for q in self.quizzes if q["type"] == "evidence_pick"]
+        self.assertTrue(picks, "fixture から根拠選択問題が作られていない")
+        for q in picks:
+            self.assertNotIn("subjectEvidenceIds", q, q["id"])
+
+    def test_every_question_that_shows_a_record_carries_it(self):
+        """「下に示した記録」と書く設問は、その記録を必ず持つ。
+
+        問い文だけがそう言い、画面には記録が無い、という状態が実際に
+        あった（解答後にしか出していなかった）。問い文の約束と、画面に
+        出すものを同じ場所で固定する。
+        """
+        shown = [q for q in self.quizzes if "下に示した" in q["prompt"]]
+        self.assertTrue(shown, "fixture から「下に示した」設問が作られていない")
+        for q in shown:
+            subject = q.get("subjectEvidenceIds") or []
+            self.assertTrue(subject, f"{q['id']}: 示すと言った記録が無い")
+            for ident in subject:
+                self.assertIn(ident, self.lesson["evidence"], q["id"])
+
+    def test_the_shown_record_is_the_one_the_explanation_rests_on(self):
+        """解答前に見せた記録と、解説が根拠にする記録は同じでなければならない。"""
+        for q in self.quizzes:
+            if q.get("category") in ("attck", "limits", "correlation"):
+                self.assertEqual(q["subjectEvidenceIds"], q["evidenceIds"], q["id"])
