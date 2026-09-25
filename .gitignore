@@ -10,7 +10,10 @@ node_modules/
 samples/
 
 # internal design contract - local only, never push (collaborative repo)
-docs/
+docs/BUILD-CONTRACT.md
+docs/THREAT-MODEL.md
+docs/初期実装仕様書.md
+docs/汎用データセット教材生成基盤_実装指示書.md
 
 # stray screenshots
 Screenshot*.png
