@@ -356,6 +356,10 @@ def _evidence_pick(store: EvidenceStore, correct_event: dict,
         "type": "evidence_pick",
         "category": "evidence",
         "learningObjective": objective,
+        "hint": (
+            "選択肢のファイル名と行番号を、上の証拠カードと照合してください。"
+            "同じ単語があるだけでなく、主張している対象と動作を直接記録した行を探します。"
+        ),
         "q": prompt,
         "prompt": prompt,
         "options": [
@@ -419,6 +423,17 @@ def _grounded_choice(store: EvidenceStore, anchor: dict, pool: list[dict],
     text = readers.text(anchor.get("_nev"), fact)
     where = (text.where if text else DEFAULT_WHERE).replace("{field}", reading.field)
     why = where + rest
+    # 答えの値ではなく、その値を読んだ項目名と読み方だけを渡す。
+    # 項目名はパーサーが返すため、新しい形式にも同じ処理を使える。
+    hint = f"原文の「{reading.field}」を探してください。" + {
+        "program_name": (
+            "ここに起動したプログラムが記録されています。パスの場合は、"
+            "最後の区切りより後ろのファイル名を読みます。親プロセスや起動時の引数とは区別します。"
+        ),
+        "host": "ここが記録を残した端末です。ユーザー名や接続先と取り違えないようにします。",
+        "path": "操作対象のファイルの場所です。末尾の名前だけでなく、フォルダを含めて選択肢と比べます。",
+        "client": "ここが通信の要求元です。通信先のアドレスとは区別して読みます。",
+    }.get(fact, "その項目の値を、設問が尋ねている内容と照らし合わせてください。")
     if text and text.next:
         nxt = text.next
 
@@ -430,6 +445,7 @@ def _grounded_choice(store: EvidenceStore, anchor: dict, pool: list[dict],
         "type": "single_choice",
         "category": "log-reading",
         "learningObjective": objective,
+        "hint": hint,
         "q": f"{src.get('member', '')} の {src.get('line', '')} 行目 について。{ask}",
         "prompt": f"{src.get('member', '')} の {src.get('line', '')} 行目 について。{ask}",
         "options": options,
@@ -437,6 +453,12 @@ def _grounded_choice(store: EvidenceStore, anchor: dict, pool: list[dict],
         "explain": why,
         "explanation": why,
         "evidenceIds": list(anchor.get("evidenceIds") or []),
+        # 問い文が名指ししている行。解答前でも画面がそこへ飛べるようにする。
+        # 問い文にもう書いてある行なので、飛べても答えは漏れない。
+        # `evidenceIds`（答えの根拠）とは意味が違うので別の項目にする。
+        # 根拠を選ばせる設問では、根拠へ先に飛べると答えそのものになるため、
+        # この項目を付けてはいけない。
+        "subjectEvidenceIds": list(anchor.get("evidenceIds") or [])[:1],
         "nextInvestigation": nxt,
     }
 
@@ -844,6 +866,10 @@ def _correlation_quiz(store: EvidenceStore, candidates: list[NormalizedEvent],
         "type": "single_choice",
         "category": "correlation",
         "learningObjective": "近接した二つの記録を突き合わせ、記録された順序を読む",
+        "hint": (
+            "二つの証拠の日時とタイムゾーンを確認し、同じ時刻基準で前後を比べます。"
+            "一覧での表示順ではなく記録された時刻を使い、因果関係とは区別してください。"
+        ),
         "q": prompt,
         "prompt": prompt,
         "options": options,
@@ -860,6 +886,9 @@ def _correlation_quiz(store: EvidenceStore, candidates: list[NormalizedEvent],
         ),
         "explanation": "",
         "evidenceIds": ids,
+        # 問い文が「下に示した根拠」と言っている二つの記録。見比べる材料
+        # なので、解答前から設問の下に出す。
+        "subjectEvidenceIds": list(ids),
         "correlation": {
             "reason": reason_text,
             "gapSeconds": round(gap, 3),
@@ -907,6 +936,10 @@ def _attck_quiz(store: EvidenceStore, stages: list[dict], qid: str,
         "type": "single_choice",
         "category": "attck",
         "learningObjective": "観測された 1 行を、根拠を説明できる手法へ対応させる",
+        "hint": (
+            "記録されたプログラムと引数、または設定された場所を確認し、"
+            "実際に記録された動作を各手法の意味と照らし合わせます。攻撃の目的は推測で補いません。"
+        ),
         "q": prompt,
         "prompt": prompt,
         "options": options,
@@ -920,6 +953,9 @@ def _attck_quiz(store: EvidenceStore, stages: list[dict], qid: str,
         ),
         "explanation": "",
         "evidenceIds": list(event["evidenceIds"]),
+        # 問い文が「下に示した記録」と言っている行。手法を選ぶための材料
+        # なので、解答前から設問の下に出す。
+        "subjectEvidenceIds": list(event["evidenceIds"]),
         "nextInvestigation": "同じ端末で、この手法に関わる他の記録が残っていないかを見る",
         "status": "observed",
     }, at, ""
@@ -962,6 +998,10 @@ def _limits_quiz(store: EvidenceStore, stages: list[dict], qid: str,
                 "type": "single_choice",
                 "category": "limits",
                 "learningObjective": "1 行の記録から言えることと、言えないことを分ける",
+                "hint": (
+                    "選択肢ごとに、その内容を裏付ける項目が原文にあるか確認してください。"
+                    "記録に書かれている事実と、目的や背景についての推測を分けます。"
+                ),
                 "q": prompt,
                 "prompt": prompt,
                 "options": options,
@@ -977,6 +1017,9 @@ def _limits_quiz(store: EvidenceStore, stages: list[dict], qid: str,
                 ),
                 "explanation": "",
                 "evidenceIds": list(event["evidenceIds"]),
+                # 問い文が「下に示した 1 行」と言っている行。言えることを判断する
+                # 材料なので、解答前から設問の下に出す。
+                "subjectEvidenceIds": list(event["evidenceIds"]),
                 "nextInvestigation": f"{target} への通信が、どのプロセスから出たのかを端末の記録で確かめる",
                 "status": "observed",
             }, at, ""

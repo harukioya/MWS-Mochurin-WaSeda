@@ -480,6 +480,71 @@ class TestDummyParserReachesTheLesson(RegistryCase):
                 self.assertEqual(item["source"]["excerpt"], evidence.visible(ev.source.excerpt))
 
 
+class TestQuizHints(unittest.TestCase):
+    """Hints describe how to read the evidence, never the answer itself."""
+
+    @staticmethod
+    def questions(lesson):
+        return {q["id"]: q for stage in lesson["stages"] for q in stage["quizzes"]}
+
+    def setUp(self):
+        self.lesson = explain.build_lesson(
+            "hint fixture", SOURCES, "gen-hints", parser_ids=["itm2", "proxy"])
+        self.assertIsNotNone(self.lesson)
+        self.quizzes = self.questions(self.lesson)
+
+    def test_all_five_categories_have_a_hint(self):
+        self.assertEqual({q["category"] for q in self.quizzes.values()},
+                         set(explain.CATEGORY_LABEL))
+        for quiz in self.quizzes.values():
+            with self.subTest(question=quiz["id"]):
+                self.assertIsInstance(quiz.get("hint"), str)
+                self.assertTrue(quiz["hint"].strip())
+
+    def test_program_hint_names_the_actual_field_and_how_to_read_it(self):
+        hint = self.quizzes["q-endpoint-01"]["hint"]
+        self.assertIn("「psPath」", hint)
+        self.assertIn("ファイル名", hint)
+        self.assertIn("親プロセス", hint)
+
+    def test_fallback_field_is_not_mislabelled_as_pspath(self):
+        lesson = explain.build_lesson(
+            "fallback", {"host.log": ITM2_TEXT.replace("psPath=", "path=")},
+            "gen-fallback")
+        hint = self.questions(lesson)["q-endpoint-01"]["hint"]
+        self.assertIn("「path」", hint)
+        self.assertNotIn("psPath", hint)
+
+    def test_host_and_network_hints_name_their_own_fields(self):
+        self.assertIn("「com」", self.quizzes["q-endpoint-02"]["hint"])
+        self.assertIn("「行頭の要求元」", self.quizzes["q-network-01"]["hint"])
+
+    def test_dummy_format_uses_its_fields_without_generator_changes(self):
+        lesson = explain.build_lesson(
+            "dummy", {"dummy.log": DUMMY_TEXT}, "gen-dummy-hints",
+            registry=ParserRegistry([DummyParser()]))
+        questions = self.questions(lesson)
+        self.assertIn("「対象」", questions["q-endpoint-01"]["hint"])
+        self.assertIn("「対象」", questions["q-files-01"]["hint"])
+        self.assertIn("「端末」", questions["q-files-02"]["hint"])
+        self.assertIn("「端末」", questions["q-network-01"]["hint"])
+        for quiz in questions.values():
+            self.assertNotIn("psPath", quiz["hint"])
+            self.assertNotIn("com", quiz["hint"])
+
+    def test_hints_do_not_embed_answer_values_or_identify_the_right_evidence(self):
+        for quiz in self.quizzes.values():
+            answer = quiz["options"][quiz["correct"]]
+            if isinstance(answer, dict):
+                answer = answer["label"]
+            with self.subTest(question=quiz["id"]):
+                self.assertNotIn(answer, quiz["hint"])
+                for ident in quiz["evidenceIds"]:
+                    self.assertNotIn(ident, quiz["hint"])
+                    self.assertNotIn(
+                        self.lesson["evidence"][ident]["source"]["excerpt"], quiz["hint"])
+
+
 class TestLessonGenerationKnowsNoFormat(unittest.TestCase):
     """教材生成は形式を知らない。静的に確かめる。
 

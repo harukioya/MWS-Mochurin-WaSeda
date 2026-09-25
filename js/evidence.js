@@ -129,8 +129,10 @@ export function evidenceCard(item, note, anchor = true, scope = 'stage') {
  * 強調表示だけに頼らない。見出しとラベルでも位置が分かるようにし、移動後は
  * カードへフォーカスを移す。スクロールだけだと、キーボードと読み上げの利用者
  * には「どこへ着いたのか」が伝わらない。
+ *
+ * `text` はボタンの文言。解答前の「問題の行を見る」も同じ仕組みで飛ぶ。
  */
-export function jumpButtons(ids, map, scope = 'stage') {
+export function jumpButtons(ids, map, scope = 'stage', text = '根拠ログを見る') {
   const row = el('div', 'navbtns navbtns--wrap');
   const known = (ids || []).filter((i) => map[i]);
   if (!known.length) return null; // 旧形式の問題では出さない
@@ -140,8 +142,8 @@ export function jumpButtons(ids, map, scope = 'stage') {
     const src = item.source || {};
     const label =
       known.length > 1
-        ? `根拠ログを見る（${i + 1}）: ${visible(src.member)} ${src.line} 行目`
-        : `根拠ログを見る: ${visible(src.member)} ${src.line} 行目`;
+        ? `${text}（${i + 1}）: ${visible(src.member)} ${src.line} 行目`
+        : `${text}: ${visible(src.member)} ${src.line} 行目`;
     const btn = el('button', 'btn btn-ghost btn-sm', label);
     btn.type = 'button';
     btn.addEventListener('click', () => {
@@ -163,11 +165,11 @@ export function jumpButtons(ids, map, scope = 'stage') {
  *
  * ここに出すのは複製なので id は付けない。飛び先は段階上部の 1 枚に保つ。
  */
-export function citedEvidence(ids, map, note) {
+export function citedEvidence(ids, map, note, title = '根拠となる記録') {
   const known = (ids || []).filter((i) => map[i]);
   if (!known.length) return null;
   const box = el('div', 'evidence-list');
-  box.append(el('div', 'panel__label', '根拠となる記録'));
+  box.append(el('div', 'panel__label', title));
   known.forEach((ident) => box.append(evidenceCard(map[ident], note, false)));
   return box;
 }

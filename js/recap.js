@@ -52,6 +52,54 @@ function section(title, build) {
   return filled === false ? null : box;
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/**
+ * 正答率のリング。中央に % を出し、開いたときに弧が伸びる。
+ *
+ * 伸びる動きは CSS の keyframes（`from` だけを書く）で付ける。終点は
+ * `stroke-dashoffset` 属性に置いた値で、アニメーションが終わるとそこへ
+ * 落ち着く。JS でタイマーを回さないので、動きを減らす設定の利用者には
+ * CSS 側で止めるだけで済む。
+ *
+ * 数字は見出しの「正解 X / Y」と同じ値から出す。読み上げでは円は 1 枚の
+ * 画像として「正答率 N%」とだけ伝え、中の図形は読ませない。
+ */
+function scoreRing(correct, total) {
+  const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+  const wrap = el('div', 'ring');
+  wrap.setAttribute('role', 'img');
+  wrap.setAttribute('aria-label', `正答率 ${pct}%`);
+
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 120 120');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+
+  const circle = (cls) => {
+    const c = document.createElementNS(SVG_NS, 'circle');
+    c.setAttribute('class', cls);
+    c.setAttribute('cx', '60');
+    c.setAttribute('cy', '60');
+    c.setAttribute('r', '50');
+    // 円周を 100 と見なす。% をそのまま長さとして使える。
+    c.setAttribute('pathLength', '100');
+    return c;
+  };
+  svg.append(circle('ring__track'));
+  // 0% のときは弧を描かない。端が丸いので、長さ 0 でも点が 1 つ残る。
+  if (pct > 0) {
+    const bar = circle('ring__bar');
+    bar.setAttribute('stroke-dasharray', '100');
+    bar.setAttribute('stroke-dashoffset', String(100 - pct));
+    svg.append(bar);
+  }
+  wrap.append(svg);
+  wrap.append(el('span', 'ring__label', `${pct}%`));
+  return wrap;
+}
+
 /**
  * @param {HTMLElement} mount
  * @param {object} lesson
@@ -71,10 +119,12 @@ export function renderRecap(mount, lesson, stats) {
 
   // ---- 得点 ----
   root.appendChild(el('p', 'eyebrow', '調査レポート'));
+  const scoreRow = el('div', 'recap__score');
   const heading = document.createElement('h1');
   heading.textContent = `正解 ${correct} / ${total}`;
   heading.tabIndex = -1;
-  root.appendChild(heading);
+  scoreRow.append(heading, scoreRing(correct, total));
+  root.appendChild(scoreRow);
 
   // どのデータセット形式として読んだ教材か。データセット画面・導入画面と
   // 同じ 1 行を出す。レポートだけを見た人にも、分類の前提が分かるように。

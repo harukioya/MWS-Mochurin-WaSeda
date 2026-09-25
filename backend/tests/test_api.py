@@ -323,3 +323,43 @@ class TestNoYearInTheContract(unittest.TestCase):
         self.assertIsNone(body["profileId"])
         self.assertTrue(body["generic"])
         self.assertEqual(body["profiles"], [])
+
+
+class TestThirdPartyNotices(unittest.TestCase):
+    """第三者の著作物について、規約が求める表示と制限を守る。
+
+    MITRE ATT&CK は商用を含めて無償で使えるが、複製物に著作権表示を載せる
+    ことが条件（https://attack.mitre.org/resources/legal-and-branding/terms-of-use/）。
+    手法 ID と名前を画面と教材に出しているので、画面と README の両方に置く。
+
+    VirusTotal の公開 API は商用の製品・サービスでの利用が禁止されている。
+    使われていない補助コードとして残っていたので削除した。黙って戻らない
+    ようにここで固定する。
+    """
+
+    REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    NOTICE = ("The MITRE Corporation. This work is reproduced and distributed "
+              "with the permission of The MITRE Corporation.")
+
+    def _read(self, *parts):
+        with open(os.path.join(self.REPO, *parts), encoding="utf-8") as fh:
+            return " ".join(fh.read().split())  # 改行位置の違いを無視する
+
+    def test_screen_footer_carries_the_mitre_notice(self):
+        self.assertIn(self.NOTICE, self._read("index.html"))
+
+    def test_readme_carries_the_mitre_notice(self):
+        self.assertIn(self.NOTICE, self._read("README.md"))
+
+    def test_no_code_calls_the_virustotal_public_api(self):
+        hits = []
+        for folder in ("js", "backend"):
+            for root, _dirs, files in os.walk(os.path.join(self.REPO, folder)):
+                if "tests" in root.split(os.sep):
+                    continue
+                for name in files:
+                    if name.endswith((".js", ".py")):
+                        text = self._read(os.path.relpath(os.path.join(root, name), self.REPO))
+                        if "virustotal.com" in text.lower():
+                            hits.append(name)
+        self.assertEqual(hits, [], "VirusTotal 公開 API は商用利用が禁止されている")

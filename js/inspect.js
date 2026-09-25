@@ -1080,7 +1080,7 @@ async function renderDataset(mount, archiveId, forcedProfile) {
     gen.append(
       el('p', 'member__warn', '⚠ プロファイルが無いため、本番の問題ログ・平常時ログ・同梱ツールのサンプルを区別できません。読み取れたログはすべて教材の材料になります。暗号化されたログは読み取りません。')
     );
-    const actions = el('div', 'navbtns navbtns--wrap');
+    const actions = el('div', 'navbtns navbtns--wrap navbtns--generate');
     const generic = el('button', 'btn btn-primary', '汎用解析で教材を作る');
     generic.type = 'button';
     generic.addEventListener('click', () =>

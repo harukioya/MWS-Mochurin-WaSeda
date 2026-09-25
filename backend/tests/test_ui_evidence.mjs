@@ -83,6 +83,8 @@ function byId(node, id) {
 }
 globalThis.document = {
   createElement: (t) => new El(t),
+  // 正答率のリングは SVG。名前空間は見ないので、同じ El で足りる。
+  createElementNS: (_ns, t) => new El(t),
   getElementById: (id) => (id === 'app' ? app : byId(app, id)),
   querySelector: () => null,
   addEventListener() {},
@@ -178,6 +180,94 @@ async function test(name, fn) {
 }
 
 const { renderLesson } = await import(REPO + '/js/player.js');
+const { renderQuiz } = await import(REPO + '/js/quiz.js');
+
+function hintQuiz(overrides = {}, onAnswered = () => {}) {
+  const view = document.createElement('div');
+  app.replaceChildren(view);
+  renderQuiz(view, {
+    q: '起動したプログラムはどれですか。',
+    options: ['ANSWER_VALUE', 'OTHER_VALUE'], correct: 0,
+    explain: 'ANSWER_REVEALED_AFTER_RESPONSE',
+    ...overrides,
+  }, onAnswered);
+  return view;
+}
+
+await test('ヒントは設問と選択肢の間に、閉じた標準の折りたたみで出る', async () => {
+  const view = hintQuiz({ hint: 'psPath の末尾のファイル名を確認してください。' });
+  const details = view.cls('quiz__hint')[0];
+  assert.equal(details.tag, 'details');
+  assert.equal(details.open, false);
+  assert.equal(details.children[0].tag, 'summary');
+  assert.equal(details.children[0].textContent, 'ヒントを見る');
+  assert.match(view.cls('quiz__hint-body')[0].textContent, /psPath/);
+  const quiz = view.cls('quiz')[0];
+  assert.ok(quiz.children.indexOf(view.cls('quiz__q')[0]) < quiz.children.indexOf(details));
+  assert.ok(quiz.children.indexOf(details) < quiz.children.indexOf(view.cls('options')[0]));
+  assert.doesNotMatch(details.textContent, /ANSWER_VALUE|ANSWER_REVEALED/);
+  assert.equal(view.cls('reveal').length, 0);
+});
+
+await test('ヒントの開閉は回答に数えず、開いても正解は正解のまま', async () => {
+  const calls = [];
+  const view = hintQuiz({ hint: '項目を確認してください。' }, (right) => calls.push(right));
+  const details = view.cls('quiz__hint')[0];
+  // DOM シムにはブラウザのネイティブ開閉がないので、open 状態だけを変える。
+  details.open = true;
+  details.open = false;
+  details.open = true;
+  assert.deepEqual(calls, []);
+  assert.equal(view.cls('feedback').length, 0);
+  assert.ok(view.cls('option').every((b) => !b.disabled));
+  assert.match(details.textContent, /減点されません/);
+  await view.cls('option')[0].click();
+  await view.cls('option')[1].click();
+  assert.deepEqual(calls, [true], '採点は回答時に一度だけ');
+});
+
+await test('ヒントのない旧教材と不正なヒント値には共通ヒントを出す', async () => {
+  for (const hint of [undefined, null, '', '  ', {}, ['使わない']]) {
+    const view = hintQuiz({ hint });
+    assert.match(view.cls('quiz__hint-body')[0].textContent, /問題文が尋ねている対象/);
+    assert.doesNotMatch(view.cls('quiz__hint')[0].textContent, /ANSWER_VALUE|ANSWER_REVEALED/);
+    await view.cls('option')[0].click();
+    assert.match(view.cls('feedback')[0].textContent, /正解/);
+  }
+});
+
+await test('保存済み教材にも設問カテゴリに合った共通ヒントを出す', async () => {
+  for (const [category, word] of [
+    ['log-reading', 'ファイル名と行番号'], ['evidence', '証拠カード'],
+    ['correlation', 'タイムゾーン'], ['attck', '引数'], ['limits', '推測'],
+  ]) {
+    const view = hintQuiz({ category });
+    assert.ok(view.cls('quiz__hint-body')[0].textContent.includes(word));
+  }
+  assert.match(hintQuiz({ type: 'evidence_pick' }).cls('quiz__hint-body')[0].textContent, /証拠カード/);
+  assert.match(hintQuiz({ category: 'constructor' }).cls('quiz__hint-body')[0].textContent, /問題文が尋ねている対象/);
+});
+
+await test('ヒントの HTML は実行せず、制御文字も可視化する', async () => {
+  const view = hintQuiz({ hint: '<img src=x onerror=alert(1)>\u202e\u0000' });
+  const body = view.cls('quiz__hint-body')[0];
+  assert.match(body.textContent, /<img src=x/);
+  assert.match(body.textContent, /<U\+202E>/);
+  assert.match(body.textContent, /<U\+0000>/);
+  assert.equal(body.children.length, 0);
+});
+
+await test('次の設問ではヒントが閉じ、新しい内容に切り替わる', async () => {
+  const view = hintQuiz({ hint: '前のヒント' });
+  view.cls('quiz__hint')[0].open = true;
+  renderQuiz(view, {
+    q: '次の問い', options: ['A', 'B'], correct: 0, hint: '次のヒント',
+  }, () => {});
+  assert.equal(view.cls('quiz__hint').length, 1);
+  assert.equal(view.cls('quiz__hint')[0].open, false);
+  assert.equal(view.cls('quiz__hint-body')[0].textContent, '次のヒント');
+  assert.doesNotMatch(view.textContent, /前のヒント/);
+});
 
 // data.js の loadLesson は ESM なので差し替えられない。その下の fetch を
 // 差し替えて、通信せずに任意の演習を読ませる。
