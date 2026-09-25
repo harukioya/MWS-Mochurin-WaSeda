@@ -1,0 +1,83 @@
+{
+  "id": "example-mixed",
+  "label": "Example mixed-format logs",
+  "edition": "fixture v2",
+  "order": 40,
+  "metadata": {
+    "producer": "test suite"
+  },
+  "match": {
+    "requiredPathPatterns": [
+      "*/evidence/case.zip"
+    ],
+    "optionalNamePatterns": [
+      "*/evidence/case-key.txt",
+      "*/reference/baseline.zip",
+      "*/tools.zip :: tools/sample.log",
+      "*/evidence/case.zip :: case/*.log",
+      "*/brief.pdf"
+    ]
+  },
+  "roles": {
+    "ignore": [
+      "__MACOSX/*",
+      "*/__MACOSX/*",
+      "._*",
+      "*/._*",
+      "* :: __MACOSX/*",
+      "* :: ._*",
+      "* :: */._*"
+    ],
+    "tool": [
+      "*/tools.zip",
+      "*/tools.zip :: *"
+    ],
+    "challenge": [
+      "*/evidence/case.zip",
+      "*/evidence/case.zip :: case/*.log"
+    ],
+    "baseline": [
+      "*/reference/baseline.zip",
+      "*/reference/baseline.zip :: *"
+    ],
+    "artifact": [
+      "*/evidence/case.zip :: case/*.bin"
+    ],
+    "narrative": [
+      "*/*.md",
+      "*/*.pdf",
+      "*/*.txt",
+      "*/evidence/case.zip :: case/Readme*"
+    ],
+    "unrelated": [
+      "*/other-task/*"
+    ]
+  },
+  "passwordHintPatterns": [
+    "*/*.md",
+    "*/*.txt"
+  ],
+  "passwordFilePatterns": [
+    "*/evidence/case-key.txt"
+  ],
+  "parsers": [
+    "itm2",
+    "proxy"
+  ],
+  "unsupportedFormats": [
+    {
+      "label": "Web サーバーのアクセスログ",
+      "detail": "分類はできましたが、専用の解析に対応していないため教材の材料にしていません。プロキシ用の読み取りを流用すると、サーバーへの要求をプロキシの通信として誤って教材化します。",
+      "patterns": [
+        "*/evidence/case.zip :: case/web/*"
+      ]
+    },
+    {
+      "label": "Unix システムログ",
+      "detail": "分類はできましたが、専用の解析に対応していないため教材の材料にしていません。",
+      "patterns": [
+        "*/evidence/case.zip :: case/unix/*"
+      ]
+    }
+  ]
+}

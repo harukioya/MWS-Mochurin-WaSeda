@@ -114,7 +114,6 @@ a{color:var(--brand-ink)}
 .topbar__inner{max-width:1080px; margin:0 auto; padding:12px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap}
 .brand{display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:-.02em; font-size:1.05rem; color:var(--ink); text-decoration:none}
 .brand__mark{width:30px; height:30px; border-radius:9px; background:linear-gradient(135deg,var(--brand),var(--accent)); display:grid; place-items:center; color:#fff; font-weight:900; box-shadow:var(--shadow-sm)}
-.brand__wt{font:600 11px/1 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--faint); letter-spacing:.08em; text-transform:uppercase; padding:3px 7px; border:1px solid var(--line-2); border-radius:var(--r-pill)}
 .topbar__spacer{flex:1}
 .theme-toggle{
   font:600 12px/1 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--muted); background:var(--surface-2);
@@ -176,6 +175,16 @@ a{color:var(--brand-ink)}
 
 /* ---- Quiz — the heart of the interaction ---- */
 .quiz__q{font-size:1.2rem; font-weight:700; letter-spacing:-.01em; margin-bottom:16px; text-wrap:pretty}
+/* 問い文が名指しした行へ飛ぶボタン。問い文のすぐ下、ヒントの上に置く。 */
+.quiz__subject{margin:-4px 0 16px}
+.quiz__hint{margin-bottom:16px; padding:12px 16px; border:1px solid var(--line); border-radius:var(--r); background:var(--surface-2)}
+.quiz__hint-toggle{cursor:pointer; color:var(--brand-ink); font-weight:600}
+.quiz__hint-toggle:focus-visible{outline:2px solid var(--brand); outline-offset:4px; border-radius:var(--r-sm)}
+.quiz__hint-body{margin:12px 0 0; line-height:1.7; overflow-wrap:anywhere}
+.quiz__hint-note{margin:8px 0 0; color:var(--muted); font-size:.85rem}
+/* 回答後に設問の先頭へ視点を合わせるとき、上部の固定ヘッダー（約 55px）の
+   下に「設問 n/m」が隠れないよう、少し余白を取って止める。 */
+.quiz-panel{scroll-margin-top:76px}
 .options{display:flex; flex-direction:column; gap:11px}
 .option{
   text-align:left; font:inherit; color:var(--ink); cursor:pointer; width:100%;
@@ -185,7 +194,16 @@ a{color:var(--brand-ink)}
 .option:hover:not(:disabled){border-color:var(--brand)}
 .option:active:not(:disabled){transform:scale(.99)}
 .option__key{flex:0 0 26px; height:26px; border-radius:8px; display:grid; place-items:center; font:800 13px/1 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace; background:var(--surface-2); color:var(--muted); border:1px solid var(--line-2)}
-.option__label{flex:1; min-width:0}
+/* 選択肢の中身はログから来る。Windows のパス、URL、ハッシュのように
+   空白の無い長い値になるので、折り返せないと枠から溢れる。`\` は UAX#14 の
+   改行可能位置ではないため、既定 (overflow-wrap:normal) ではどこでも切れない。
+   実際、ハイフンを含むものだけが折り返り、含まないものが画面外へ出ていた。
+   `min-width:0` だけでは足りない（flex 項目は縮むが、中の語は切れない）。
+
+   `break-all` ではなく `anywhere` にしてある。選択肢には散文も入るので、
+   溢れるときだけ切りたい。`anywhere` は min-content の計算にも効くため、
+   flex の中でも意図どおり縮む。 */
+.option__label{flex:1; min-width:0; overflow-wrap:anywhere}
 /* post-answer marker ("✓ correct answer") — pushed to the right edge by the
    label's flex:1; never shrinks or wraps mid-phrase on narrow screens. */
 .option__label ~ .mono{flex:0 0 auto; white-space:nowrap; font-size:11px}
@@ -213,9 +231,21 @@ a{color:var(--brand-ink)}
 .navbtns--home{padding-bottom:18px}
 /* 候補フォルダのように、数が決まらない押しボタンを並べるとき。 */
 .navbtns--wrap{flex-wrap:wrap; justify-content:flex-start; margin-top:12px}
+.navbtns--generate{padding-block:16px}
 
 /* ---- Recap / kill-chain ---- */
 .recap{padding:20px 0 90px}
+/* 得点の見出しと正答率のリングを横に並べる。狭い画面では下へ回る。 */
+.recap__score{display:flex; align-items:center; gap:20px 28px; flex-wrap:wrap; margin-bottom:.4em}
+.recap__score h1{margin:0}
+.ring{position:relative; flex:0 0 auto; width:112px; height:112px}
+.ring svg{display:block; width:100%; height:100%; transform:rotate(-90deg)}
+.ring circle{fill:none; stroke-width:12}
+.ring__track{stroke:var(--brand-soft)}
+.ring__bar{stroke:var(--brand); stroke-linecap:round; animation:ring-fill 1.1s cubic-bezier(.22,1,.36,1) .15s both}
+/* 終点は要素の stroke-dashoffset 属性。from だけ書けば、そこまで伸びて止まる。 */
+@keyframes ring-fill{from{stroke-dashoffset:100}}
+.ring__label{position:absolute; inset:0; display:grid; place-items:center; font-weight:800; font-size:1.55rem; letter-spacing:-.02em; font-variant-numeric:tabular-nums}
 .killchain{display:flex; flex-direction:column; gap:0; margin:20px 0}
 .kc-step{position:relative; padding:0 0 26px 40px; border-left:2px solid var(--line-2)}
 .kc-step:last-child{border-left-color:transparent}
@@ -228,10 +258,11 @@ a{color:var(--brand-ink)}
 .badge{display:inline-flex; align-items:center; gap:6px; font:700 11px/1 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace; padding:5px 10px; border-radius:var(--r-pill); background:var(--surface-2); color:var(--muted); border:1px solid var(--line-2)}
 .safety-note{border-top:1px solid var(--line); margin-top:20px; padding:22px 0 40px; color:var(--faint); font-size:.85rem}
 .safety-note strong{color:var(--muted)}
+.safety-note__legal{margin:8px 0 0; font-size:.75rem; line-height:1.5}
 
 /* focus + motion */
 :focus-visible{outline:3px solid var(--brand); outline-offset:2px; border-radius:8px}
-@media (prefers-reduced-motion:reduce){*{transition:none!important; scroll-behavior:auto!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important; scroll-behavior:auto!important} .ring__bar{animation:none}}
 @media (max-width:600px){
   .stage-head{flex-wrap:wrap} .progress{margin-left:0; width:100%}
   .navbtns .btn{flex:1; justify-content:center}
@@ -299,7 +330,6 @@ a{color:var(--brand-ink)}
 .text-input:focus-visible{outline:2px solid var(--brand); outline-offset:1px}
 
 /* The "working title" badge is the first thing to go on a narrow screen. */
-@media (max-width:400px){ .brand__wt{display:none} }
 .hero-cta{display:flex; justify-content:center; margin-top:20px}
 
 /* ---- ページ内フォルダ選択 ----
@@ -347,3 +377,79 @@ a{color:var(--brand-ink)}
 .fold[open] .fold__head::before{transform:rotate(90deg)}
 .fold__head:focus-visible{outline:2px solid var(--brand); outline-offset:3px; border-radius:var(--r-sm)}
 .fold > p{margin:8px 0 0}
+
+/* ---- 証拠カード（フェーズ2） ----
+   原文は ZIP 由来なので、長い行や制御文字が来る前提で組む。 */
+.evidence-list{display:flex; flex-direction:column; gap:12px; margin-top:12px}
+.evidence{
+  background:var(--surface-2); border:1px solid var(--line-2);
+  border-left:3px solid var(--line-2); border-radius:var(--r-sm); padding:12px 14px;
+}
+.evidence:focus-visible{outline:3px solid var(--brand); outline-offset:2px}
+/* 引用された証拠。色だけでなく左の太さと見出しでも分かるようにする。 */
+.evidence.is-cited{border-left-color:var(--brand); background:var(--brand-soft)}
+.evidence__head{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.evidence__kind{
+  font:700 10px/1 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.06em; padding:5px 9px; border-radius:var(--r-pill);
+  background:var(--brand-soft); color:var(--brand-ink);
+}
+.evidence__confidence{font-size:.8rem; color:var(--muted)}
+.evidence__where{display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; font-size:.82rem}
+.evidence__member{color:var(--ink); word-break:break-all; unicode-bidi:isolate}
+.evidence__line{color:var(--muted); flex:0 0 auto}
+.evidence__path{margin-top:4px; font-size:.75rem; color:var(--faint); word-break:break-all; unicode-bidi:isolate}
+.evidence__excerpt{
+  margin:10px 0 0; padding:10px 12px; background:var(--surface);
+  border:1px solid var(--line); border-radius:var(--r-sm);
+  font-size:11.5px; line-height:1.7; max-height:220px;
+  overflow:auto; white-space:pre-wrap; word-break:break-all;
+  unicode-bidi:isolate;
+}
+.evidence__excerpt:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+.evidence__note{margin:8px 0 0; font-size:.88rem; color:var(--muted)}
+.event__source{display:block; margin-top:4px; font-size:.75rem; color:var(--faint); unicode-bidi:isolate}
+.quiz__aim{font-size:.82rem; color:var(--muted); margin-bottom:6px}
+.quiz__next{margin-top:12px; font-size:.9rem; color:var(--muted)}
+
+/* ---- 調査導入と最終レポート（フェーズ3） ---- */
+.glossary{margin:10px 0 0}
+.glossary__term{font-weight:700; margin-top:10px}
+.glossary__desc{margin:2px 0 0 0; color:var(--muted); font-size:.92rem}
+.factlist{display:grid; grid-template-columns:auto 1fr; gap:6px 16px; margin:10px 0 0}
+.factlist__key{color:var(--muted); font-size:.88rem}
+.factlist__value{margin:0; word-break:break-word; unicode-bidi:isolate}
+.bullets{margin:8px 0 0; padding-left:1.3em; color:var(--muted)}
+.bullets li{margin:4px 0}
+
+.scorelist{display:flex; flex-direction:column; gap:4px; margin:6px 0 14px}
+.scorelist__row{display:flex; gap:12px; align-items:baseline}
+.scorelist__name{flex:1 1 auto; min-width:0}
+.scorelist__val{flex:0 0 auto; color:var(--brand-ink); font-weight:700}
+
+.timeline{margin:10px 0 0; padding-left:1.4em}
+.timeline__row{margin:10px 0}
+.timeline__time{display:block; font-size:.8rem; color:var(--muted)}
+/* タイムゾーンが読めず、他の行と前後を比べられない行の印。色だけに
+   頼らず文言で出す。 */
+.timeline__basis{margin-left:.5em; padding:0 .35em; border-radius:3px;
+  border:1px solid var(--line); font-size:.72rem; color:var(--muted)}
+.timeline__title{display:block; word-break:break-all; unicode-bidi:isolate}
+.timeline__status{
+  display:inline-block; margin-top:4px; font-size:.75rem;
+  padding:3px 8px; border-radius:var(--r-pill);
+  background:var(--surface-2); color:var(--muted); border:1px solid var(--line-2);
+}
+.timeline__src{display:block; font-size:.75rem; color:var(--faint); unicode-bidi:isolate}
+
+.technique{border-left:3px solid var(--line-2); padding-left:12px; margin:14px 0}
+.technique__head{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+.technique__status{font-size:.8rem; color:var(--muted)}
+.technique__reason{margin:6px 0 0}
+.technique__rule{margin:2px 0 0; font-size:.72rem; color:var(--faint)}
+
+.review{border-top:1px solid var(--line); padding-top:12px; margin-top:12px}
+.review:first-of-type{border-top:0}
+.review__q{font-weight:700; word-break:break-word}
+.unknown__topic{font-weight:700; margin-top:10px}
+.unknown__detail{margin:2px 0 0; color:var(--muted); font-size:.93rem}

@@ -1,0 +1,61 @@
+{
+  "id": "example-incident",
+  "label": "Example incident logs",
+  "edition": "fixture v1",
+  "order": 10,
+  "metadata": {
+    "producer": "test suite",
+    "description": "平らな構造。問題ログ ZIP・平常時ログ・同梱ツール・案内文。"
+  },
+  "match": {
+    "requiredPathPatterns": [
+      "*/evidence/logs.zip"
+    ],
+    "optionalNamePatterns": [
+      "*/reference/baseline.zip",
+      "*/tools/sample.log",
+      "*/brief.md",
+      "*/evidence/logs.zip :: logs/*.log"
+    ]
+  },
+  "roles": {
+    "ignore": [
+      "__MACOSX/*",
+      "*/__MACOSX/*",
+      "._*",
+      "*/._*",
+      "* :: __MACOSX/*",
+      "* :: ._*",
+      "* :: */._*"
+    ],
+    "tool": [
+      "*/tools/*",
+      "*/tools/* :: *"
+    ],
+    "challenge": [
+      "*/evidence/logs.zip",
+      "*/evidence/logs.zip :: *"
+    ],
+    "baseline": [
+      "*/reference/baseline*.zip",
+      "*/reference/baseline*.zip :: *"
+    ],
+    "narrative": [
+      "*/*.md",
+      "*/*.pdf",
+      "*/*.png",
+      "*/*.txt"
+    ],
+    "unrelated": [
+      "*/other-task/*"
+    ]
+  },
+  "passwordHintPatterns": [
+    "*/*.md",
+    "*/*.txt"
+  ],
+  "parsers": [
+    "itm2",
+    "proxy"
+  ]
+}

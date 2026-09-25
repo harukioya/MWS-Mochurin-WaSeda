@@ -1,0 +1,60 @@
+{
+  "id": "example-nested",
+  "label": "Example nested bundle",
+  "order": 20,
+  "match": {
+    "requiredPathPatterns": [
+      "*/incident-bundle*.zip :: incident/*"
+    ],
+    "optionalNamePatterns": [
+      "*/incident-bundle*.zip :: incident/logs.zip",
+      "*/incident-bundle*.zip :: incident/baseline.zip",
+      "*/incident-bundle*.zip :: incident/tools/sample.log",
+      "*/incident-bundle*.zip :: incident/brief.md",
+      "*/incident-bundle*.zip :: incident/logs.zip :: host/*.log",
+      "*/incident-bundle*.zip :: incident/logs.zip :: net/*.log"
+    ]
+  },
+  "roles": {
+    "ignore": [
+      "__MACOSX/*",
+      "*/__MACOSX/*",
+      "._*",
+      "*/._*",
+      "* :: __MACOSX/*",
+      "* :: ._*",
+      "* :: */._*"
+    ],
+    "tool": [
+      "*/incident-bundle*.zip :: incident/tools/*"
+    ],
+    "challenge": [
+      "*/incident-bundle*.zip :: incident/logs.zip",
+      "*/incident-bundle*.zip :: incident/logs.zip :: *"
+    ],
+    "baseline": [
+      "*/incident-bundle*.zip :: incident/baseline.zip",
+      "*/incident-bundle*.zip :: incident/baseline.zip :: *"
+    ],
+    "narrative": [
+      "*/incident-bundle*.zip :: incident/*.md",
+      "*/incident-bundle*.zip :: incident/*.png",
+      "*/incident-bundle*.zip :: incident/*.txt"
+    ],
+    "unrelated": [
+      "*/other-task*.zip",
+      "*/other-task*.zip :: *"
+    ]
+  },
+  "passwordHintPatterns": [
+    "*/incident-bundle*.zip :: incident/*.md",
+    "*/incident-bundle*.zip :: incident/*.txt"
+  ],
+  "passwordHintContainerPatterns": [
+    "*/incident-bundle*.zip"
+  ],
+  "parsers": [
+    "itm2",
+    "proxy"
+  ]
+}

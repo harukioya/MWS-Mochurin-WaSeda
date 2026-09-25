@@ -10,11 +10,22 @@ import os
 import re
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import api  # noqa: E402
 from api import ROLE_CAPS, ROUTES, Capability, Handler  # noqa: E402
+
+
+class TestBrowseNavigation(unittest.TestCase):
+    def test_unreadable_folder_still_returns_its_parent(self):
+        """A permission error must not disable the in-page browser's Up button."""
+        with mock.patch.object(api.os, "scandir", side_effect=PermissionError):
+            result = api.browse_dir("/parent/locked")
+
+        self.assertEqual(result["parent"], "/parent")
+        self.assertIn("error", result)
 
 
 class TestRouteTable(unittest.TestCase):
@@ -195,3 +206,160 @@ class TestRoleLoading(unittest.TestCase):
     def test_trailing_whitespace_is_tolerated(self):
         self._write("  student \n")
         self.assertEqual(api.load_role(), "student")
+
+
+class TestProfileIdContract(unittest.TestCase):
+    """`profileId` selects a dataset format; nothing else in the contract does.
+
+    The id never reaches the filesystem -- `dataset.detect` only compares it
+    against the profiles it already loaded -- but it is still caller-supplied
+    text that ends up in an error message, so it gets the same bounded shape
+    the profile loader enforces.
+
+    `profile` is a DEPRECATED alias kept for pages built before profiles were
+    generalised. It is read in exactly one place (`_legacy_profile_alias`); the
+    tests below pin both that it still works and that the new contract does not
+    depend on it.
+    """
+
+    def _query(self, path: str):
+        handler = Handler.__new__(Handler)
+        handler.path = path
+        return Handler._profile_request(handler, Handler._query(handler))
+
+    def _body(self, payload: dict):
+        handler = Handler.__new__(Handler)
+        return Handler._profile_request(handler, payload)
+
+    def test_absent_means_automatic(self):
+        self.assertEqual(self._query("/api/archives/1/dataset"), (None, None))
+        self.assertEqual(self._query("/api/archives/1/dataset?other=x"), (None, None))
+        self.assertEqual(self._query("/api/archives/1/dataset?profileId="), (None, None))
+        self.assertEqual(self._body({"archive": 1}), (None, None))
+
+    def test_a_named_profile_is_passed_through(self):
+        self.assertEqual(
+            self._query("/api/archives/1/dataset?profileId=example-incident"),
+            ("example-incident", None),
+        )
+        self.assertEqual(self._body({"profileId": "example-incident"}),
+                         ("example-incident", None))
+
+    def test_auto_is_passed_through_unchanged(self):
+        """`detect` already treats "auto" as "decide for yourself"."""
+        self.assertEqual(self._query("/api/archives/1/dataset?profileId=auto"),
+                         ("auto", None))
+
+    def test_a_malformed_id_is_rejected_rather_than_ignored(self):
+        """Ignoring a malformed override would classify under the automatic
+        decision while the screen showed the chosen one."""
+        for bad in (
+            "/api/archives/1/dataset?profileId=../../etc/passwd",
+            "/api/archives/1/dataset?profileId=" + "x" * 65,
+            "/api/archives/1/dataset?profileId=a%20b",
+            "/api/archives/1/dataset?profileId=a/b",
+            "/api/archives/1/dataset?profileId=a%2Fb",
+        ):
+            with self.subTest(path=bad):
+                value, problem = self._query(bad)
+                self.assertIsNone(value)
+                self.assertTrue(problem)
+        for bad in (123, ["x"], {"a": 1}, "x" * 65):
+            with self.subTest(body=bad):
+                value, problem = self._body({"profileId": bad})
+                self.assertIsNone(value)
+                self.assertTrue(problem)
+
+    def test_deprecated_alias_still_works(self):
+        """旧名 `profile` は非推奨の互換として受け付ける。"""
+        self.assertEqual(
+            self._query("/api/archives/1/dataset?profile=example-incident"),
+            ("example-incident", None),
+        )
+        self.assertEqual(self._body({"profile": "example-incident"}),
+                         ("example-incident", None))
+
+    def test_the_new_name_and_the_alias_must_agree(self):
+        value, problem = self._body({"profileId": "a", "profile": "b"})
+        self.assertIsNone(value)
+        self.assertTrue(problem)
+        self.assertEqual(self._body({"profileId": "a", "profile": "a"}), ("a", None))
+
+    def test_the_contract_stands_without_the_alias(self):
+        """互換層を外しても、新しい契約（profileId）はそのまま成り立つ。"""
+        with mock.patch.object(Handler, "_legacy_profile_alias",
+                               staticmethod(lambda fields: None)):
+            self.assertEqual(self._body({"profileId": "example-incident"}),
+                             ("example-incident", None))
+            self.assertEqual(
+                self._query("/api/archives/1/dataset?profileId=example-incident"),
+                ("example-incident", None),
+            )
+            # 旧名だけを送ってきたものは、互換層が無ければ自動判定になる。
+            self.assertEqual(self._body({"profile": "example-incident"}), (None, None))
+
+    def test_every_loadable_profile_id_fits_the_pattern(self):
+        """A profile the loader accepts must be expressible in the query."""
+        import dataset
+
+        self.assertEqual(Handler.PROFILE_ID.pattern, dataset.PROFILE_ID)
+
+
+class TestNoYearInTheContract(unittest.TestCase):
+    """年度は新しい API 契約に出てこない。"""
+
+    def test_dataset_summary_has_no_year(self):
+        import dataset
+
+        view = dataset.detect(["a/b.log"], profiles=[])
+        body = dataset.summarise(view, [{"name": "a/b.log"}],
+                                 catalog=dataset.ProfileCatalog())
+        self.assertNotIn("year", body)
+        self.assertNotIn("profile", body, "旧名 profile を返さない（profileId を使う）")
+        for key in ("profileId", "label", "edition", "metadata", "forced",
+                    "confidence", "generic", "parsers", "parserLabels",
+                    "profiles", "profileErrors"):
+            self.assertIn(key, body)
+        self.assertIsNone(body["profileId"])
+        self.assertTrue(body["generic"])
+        self.assertEqual(body["profiles"], [])
+
+
+class TestThirdPartyNotices(unittest.TestCase):
+    """第三者の著作物について、規約が求める表示と制限を守る。
+
+    MITRE ATT&CK は商用を含めて無償で使えるが、複製物に著作権表示を載せる
+    ことが条件（https://attack.mitre.org/resources/legal-and-branding/terms-of-use/）。
+    手法 ID と名前を画面と教材に出しているので、画面と README の両方に置く。
+
+    VirusTotal の公開 API は商用の製品・サービスでの利用が禁止されている。
+    使われていない補助コードとして残っていたので削除した。黙って戻らない
+    ようにここで固定する。
+    """
+
+    REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    NOTICE = ("The MITRE Corporation. This work is reproduced and distributed "
+              "with the permission of The MITRE Corporation.")
+
+    def _read(self, *parts):
+        with open(os.path.join(self.REPO, *parts), encoding="utf-8") as fh:
+            return " ".join(fh.read().split())  # 改行位置の違いを無視する
+
+    def test_screen_footer_carries_the_mitre_notice(self):
+        self.assertIn(self.NOTICE, self._read("index.html"))
+
+    def test_readme_carries_the_mitre_notice(self):
+        self.assertIn(self.NOTICE, self._read("README.md"))
+
+    def test_no_code_calls_the_virustotal_public_api(self):
+        hits = []
+        for folder in ("js", "backend"):
+            for root, _dirs, files in os.walk(os.path.join(self.REPO, folder)):
+                if "tests" in root.split(os.sep):
+                    continue
+                for name in files:
+                    if name.endswith((".js", ".py")):
+                        text = self._read(os.path.relpath(os.path.join(root, name), self.REPO))
+                        if "virustotal.com" in text.lower():
+                            hits.append(name)
+        self.assertEqual(hits, [], "VirusTotal 公開 API は商用利用が禁止されている")
