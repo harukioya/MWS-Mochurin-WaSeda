@@ -120,7 +120,24 @@ const bucketOf = (m) => {
 // 一覧の画面
 // ---------------------------------------------------------------------------
 
-export async function renderInspect(mount) {
+/** ホームへ戻る導線。どの画面からでも抜けられるように、必ず一つは置く。 */
+function homeNav() {
+  const nav = el('div', 'navbtns navbtns--home');
+  const home = el('button', 'btn btn-ghost', '← ホームに戻る');
+  home.type = 'button';
+  home.setAttribute('aria-label', 'ホームに戻る');
+  home.addEventListener('click', () => {
+    location.hash = '#/';
+  });
+  nav.append(home);
+  return nav;
+}
+
+/**
+ * @param {HTMLElement} mount
+ * @param {string} [notice] 直前の読み取り結果など、再描画後に伝えたいこと。
+ */
+export async function renderInspect(mount, notice) {
   mount.textContent = '';
 
   const hero = el('section', 'hero');
@@ -135,19 +152,58 @@ export async function renderInspect(mount) {
     )
   );
   mount.append(hero);
+  // 戻る導線は、この後の通信が失敗しても残るように先に置く。
+  mount.append(homeNav());
   h1.focus({ preventScroll: true });
 
+  if (notice) {
+    mount.append(el('div', 'feedback is-ok', notice));
+  }
+
+  let role;
+  let claims;
+  let archives;
+  let canScan = false;
   try {
-    const [{ role, claims }, { archives }] = await Promise.all([
-      api('/api/status'),
-      api('/api/archives'),
-    ]);
+    const [status, list] = await Promise.all([api('/api/status'), api('/api/archives')]);
+    // 応答を待つ間に別の画面へ移られていたら、ここから先は描かない。
+    // ルーターが器ごと差し替えているので書いても見えないが、続きの通信まで
+    // 無駄に走らせない。
+    if (!mount.isConnected) return;
+    role = status.role;
+    claims = status.claims;
+    archives = list.archives;
+    canScan = (status.capabilities || []).includes('scan');
+  } catch (err) {
+    if (!mount.isConnected) return;
+    const panel = el('div', 'panel');
+    panel.append(el('div', 'panel__label', 'サーバーに接続できません'));
+    panel.append(
+      el('p', null, 'この画面を使うには、手元でサーバーを動かしておく必要があります。')
+    );
+    panel.append(el('p', 'mono', 'python3 backend/api.py'));
+    mount.append(panel);
+    return;
+  }
 
-    if (!archives.length) {
-      mount.append(renderScanPrompt(mount));
-      return;
-    }
+  // 読み取りの入口は常に出しておく。以前はまだ一件も読み込んでいないときだけ
+  // 表示していたため、一度読み取ったあとは二つ目のZIPを追加できなかった。
+  //
+  // ただし読み取る権限がないとき（student）は出さない。出しても操作はすべて
+  // 403 になり、拒否の赤字を読ませるだけで終わるため。
+  if (canScan) {
+    await renderScanPrompt(mount, archives.length > 0);
+  } else if (!archives.length) {
+    mount.append(
+      el(
+        'p',
+        'muted center',
+        'まだZIPファイルが読み込まれていません。読み込みは、この教材を配った人の側で行います。'
+      )
+    );
+  }
 
+  if (archives.length) {
     mount.append(el('h2', null, '読み込み済みのZIPファイル'));
     mount.append(el('p', 'muted', '見たいものを選んでください。'));
     const list = el('div', 'home-grid');
@@ -157,15 +213,9 @@ export async function renderInspect(mount) {
     const status = el('div', 'panel');
     renderClaims(status, role, claims);
     mount.append(status);
-  } catch (err) {
-    const panel = el('div', 'panel');
-    panel.append(el('div', 'panel__label', 'サーバーに接続できません'));
-    panel.append(
-      el('p', null, 'この画面を使うには、手元でサーバーを動かしておく必要があります。')
-    );
-    panel.append(el('p', 'mono', 'python3 backend/api.py'));
-    mount.append(panel);
   }
+
+  mount.append(homeNav());
 }
 
 /** 読み込んだZIPが後から書き換えられていないかの見張り。 */
@@ -228,51 +278,328 @@ function renderClaims(mount, role, claims) {
   mount.append(out);
 }
 
-function renderScanPrompt(mount) {
+/**
+ * ZIPを読み取る入口。一件も読み込んでいないときは最初の案内として、すでに
+ * 読み込んでいるときは「別のZIPを追加する」欄として、同じものを使う。
+ * @param {HTMLElement} mount
+ * @param {boolean} hasArchives すでに読み込み済みのZIPがあるか
+ */
+async function renderScanPrompt(mount, hasArchives) {
   const panel = el('div', 'panel');
   panel.append(
-    el('div', 'panel__label', 'まず、調べたいZIPファイルの置き場所を教えてください')
+    el(
+      'div',
+      'panel__label',
+      hasArchives
+        ? '別のZIPファイルを読み込む'
+        : 'まず、調べたいZIPファイルの置き場所を教えてください'
+    )
   );
   panel.append(
     el(
       'p',
       null,
-      'ZIPファイルが入っているフォルダの場所を書いて、下の押しボタンを押してください。ZIPは開かずに、中の目録だけを読み取ります。'
+      'ZIPファイルが入っているフォルダを選んでください。ZIPは開かずに、中の目録だけを読み取ります。'
     )
   );
+
+  // ---- フォルダ選択はページの中で完結させる -------------------------------
+  // OSのダイアログは別アプリの窓なので、ブラウザを全画面にしていると macOS が
+  // 別のスペースへ切り替えてしまい、開いていた画面から引き剥がされる。ここで
+  // 描けば、全画面のままひとつの窓の中で選び終えられる。
+  const browser = el('div', 'browser');
+  panel.append(browser);
+
+  // ---- 手入力とOSダイアログは畳んでおく（逃げ道） ------------------------
+  const manual = document.createElement('details');
+  manual.className = 'fold';
+  const manualHead = document.createElement('summary');
+  manualHead.className = 'fold__head';
+  manualHead.textContent = 'パスを直接入力する / OSの選択画面を使う';
+  manual.append(manualHead);
+
   const input = el('input', 'text-input');
   input.type = 'text';
   input.placeholder = '例）~/Documents/mws-data';
   input.setAttribute('aria-label', 'ZIPファイルが入っているフォルダの場所');
-  panel.append(input);
+  manual.append(input);
 
-  const nav = el('div', 'navbtns');
-  const go = el('button', 'btn btn-primary', '中身を読み取る');
+  const manualNav = el('div', 'navbtns navbtns--wrap');
+  const go = el('button', 'btn btn-ghost', 'このパスを読み取る');
   go.type = 'button';
-  go.addEventListener('click', async () => {
+  manualNav.append(go);
+  const pick = el('button', 'btn btn-ghost', 'OSの選択画面を開く');
+  pick.type = 'button';
+  pick.setAttribute('aria-label', 'OS標準のフォルダ選択画面を開く');
+  manualNav.append(pick);
+  manual.append(manualNav);
+  manual.append(
+    el(
+      'p',
+      'muted',
+      'OSの選択画面は別アプリの窓として開きます。ブラウザを全画面にしていると、別のスペースへ切り替わります。'
+    )
+  );
+  panel.append(manual);
+
+  // 結果を出す場所。押すたびに差し替えるので、積み上がらない。
+  const out = el('div');
+  panel.append(out);
+
+  const clear = () => {
+    out.textContent = '';
+  };
+  const fail = (text) => {
+    clear();
+    out.append(el('p', 'feedback is-bad', text));
+  };
+  const note = (text) => {
+    clear();
+    out.append(el('p', 'muted', text));
+  };
+
+  // ---- ページ内フォルダ選択 ---------------------------------------------
+  // 続けて別のフォルダを押すと要求が重なる。応答の戻る順は要求した順とは限ら
+  // ないので、最後に要求したものだけを採用する。これがないと、遅れて返った
+  // 古い応答が、今見ているフォルダの一覧を上書きする。
+  let browseSeq = 0;
+
+  /** 一覧を描き直す。dir を省略するとホームから始める。 */
+  const openDir = async (dir) => {
+    const seq = ++browseSeq;
+    browser.textContent = '';
+    browser.append(el('p', 'muted', '読み込んでいます…'));
+    let d;
+    try {
+      d = await api('/api/browse', {
+        method: 'POST',
+        body: JSON.stringify({ dir: dir || '' }),
+      });
+    } catch (err) {
+      if (seq !== browseSeq || !browser.isConnected) return;
+      browser.textContent = '';
+      browser.append(el('p', 'feedback is-bad', err.message));
+      return;
+    }
+    // 追い越された、または画面から離れた。描かずに捨てる。
+    if (seq !== browseSeq || !browser.isConnected) return;
+    browser.textContent = '';
+
+    // 近道。探し始める場所は数えるほどしかない。
+    const quick = el('div', 'browser__quick');
+    (d.shortcuts || []).forEach((s) => {
+      const b = el('button', 'btn btn-ghost btn-sm', s.name);
+      b.type = 'button';
+      b.addEventListener('click', () => openDir(s.path));
+      quick.append(b);
+    });
+    browser.append(quick);
+
+    // いまどこにいるか。
+    const bar = el('div', 'browser__bar');
+    const up = el('button', 'btn btn-ghost btn-sm', '↑ 上へ');
+    up.type = 'button';
+    up.disabled = !d.parent;
+    up.setAttribute('aria-label', '一つ上のフォルダへ');
+    up.addEventListener('click', () => openDir(d.parent));
+    bar.append(up);
+    bar.append(el('div', 'browser__path mono', d.path));
+    browser.append(bar);
+
+    if (d.error) {
+      browser.append(el('div', 'member__warn', `⚠ ${d.error}`));
+    }
+
+    // 中のフォルダ。ZIPを持つものが一目で分かるようにする。
+    const list = el('div', 'browser__list');
+    list.setAttribute('role', 'group');
+    list.setAttribute('aria-label', 'フォルダの一覧');
+    d.entries.forEach((e) => {
+      const row = el('button', 'browser__row');
+      row.type = 'button';
+      const countLabel = e.zipsPartial
+        ? `ZIP ${e.zips} 個以上`
+        : e.zips && `ZIP ${e.zips} 個`;
+      row.setAttribute(
+        'aria-label',
+        countLabel ? `${e.name} を開く（${countLabel}）` : `${e.name} を開く`
+      );
+      row.append(el('span', 'browser__icon', '📁'));
+      row.append(el('span', 'browser__name', e.name));
+      // 子フォルダの件数はサーバー側で打ち切られることがある。打ち切られた
+      // 数をそのまま出すと過少に見え、0 のときは「無い」と誤読させるので、
+      // 確定していないことが分かる形にする。
+      if (e.zipsPartial) {
+        row.append(
+          el('span', 'browser__count', e.zips ? `ZIP ${e.zips}+` : 'ZIP ?')
+        );
+      } else if (e.zips) {
+        row.append(el('span', 'browser__count', `ZIP ${e.zips}`));
+      }
+      row.addEventListener('click', () => openDir(e.path));
+      list.append(row);
+    });
+    if (!d.entries.length) {
+      list.append(el('p', 'muted', 'この中にフォルダはありません。'));
+    }
+    browser.append(list);
+    if (d.truncated) {
+      browser.append(
+        el('p', 'muted', 'フォルダが多いため、一部だけ表示しています。')
+      );
+    }
+
+    // いまのフォルダを読み取る。
+    //
+    // 個数はサーバー側で打ち切られることがあるので、「無い」と確定したとき
+    // だけ押せなくする。打ち切られた 0 は「不明」であって「無い」ではない。
+    // 数え切ってから有効にすると、遅い場所にあるフォルダで主経路が塞がる。
+    // 全件の確認は、押されたあとの読み取りが行う。
+    const noneForSure = !d.zips && !d.zipsPartial;
+    let takeLabel;
+    if (d.zips) {
+      takeLabel = d.zipsPartial
+        ? `このフォルダを読み取る（ZIP ${d.zips} 個以上）`
+        : `このフォルダを読み取る（ZIP ${d.zips} 個）`;
+    } else if (d.zipsPartial) {
+      takeLabel = 'このフォルダを読み取る（ZIPの有無は読み取り時に確認）';
+    } else {
+      takeLabel = 'このフォルダにZIPはありません';
+    }
+    const act = el('div', 'navbtns navbtns--wrap');
+    const take = el('button', noneForSure ? 'btn btn-ghost' : 'btn btn-primary', takeLabel);
+    take.type = 'button';
+    take.disabled = noneForSure;
+    take.addEventListener('click', () => scan(d.path));
+    act.append(take);
+    browser.append(act);
+  };
+
+  /** 読み取りを実行して、結果に応じて画面を進めるか、その場で理由を出す。 */
+  const scan = async (dir) => {
+    clear();
+    pick.disabled = true;
     go.disabled = true;
     go.textContent = '読み取っています…';
     try {
-      await api('/api/scan', { method: 'POST', body: JSON.stringify({ dir: input.value }) });
-      renderInspect(mount);
+      const { scanned, subdirs } = await api('/api/scan', {
+        method: 'POST',
+        body: JSON.stringify({ dir }),
+      });
+      const read = scanned.filter((s) => !s.skipped);
+      const skipped = scanned.filter((s) => s.skipped);
+
+      // 一件も読めなかったときに黙って再描画すると、押しても何も起きていない
+      // ように見える。理由をその場に出して、画面はそのままにしておく。
+      if (!read.length) {
+        fail('このフォルダには、読み取れるZIPファイルがありませんでした。');
+        out.append(el('p', 'muted mono', dir));
+        skipped.forEach((s) =>
+          out.append(el('div', 'member__warn', `⚠ ${s.name} — ${s.skipped}`))
+        );
+        // 一つ上のフォルダを選んでしまった場合の行き止まりを避ける。
+        if (subdirs && subdirs.length) {
+          out.append(
+            el('p', null, 'この中の次のフォルダにZIPファイルがあります。')
+          );
+          const list = el('div', 'navbtns navbtns--wrap');
+          subdirs.forEach((d) => {
+            const b = el(
+              'button',
+              'btn btn-ghost btn-sm',
+              d.zipsPartial ? `${d.name}（${d.zips} 個以上）` : `${d.name}（${d.zips} 個）`
+            );
+            b.type = 'button';
+            b.setAttribute('aria-label', `${d.name} を読み取る`);
+            b.addEventListener('click', () => scan(d.path));
+            list.append(b);
+          });
+          out.append(list);
+        }
+        return;
+      }
+
+      let notice = `${read.length} 個のZIPファイルを読み取りました。`;
+      if (skipped.length) {
+        notice += `（${skipped.length} 個は読み取れませんでした）`;
+      }
+      await renderInspect(mount, notice);
     } catch (err) {
+      fail(err.message);
+    } finally {
+      pick.disabled = false;
       go.disabled = false;
-      go.textContent = '中身を読み取る';
-      panel.append(el('p', 'feedback is-bad', err.message));
+      go.textContent = 'このパスを読み取る';
     }
+  };
+
+  pick.addEventListener('click', async () => {
+    clear();
+    pick.disabled = true;
+    pick.textContent = '選択画面を開いています…';
+    let picked;
+    try {
+      picked = await api('/api/choose-dir', { method: 'POST', body: '{}' });
+    } catch (err) {
+      fail(err.message);
+      return;
+    } finally {
+      pick.disabled = false;
+      pick.textContent = 'フォルダを選ぶ…';
+    }
+
+    // 取り消しは失敗ではない。何も言わずに元の状態へ戻す。
+    if (picked.cancelled) return;
+
+    // 選択画面が使えない環境。責めずに手入力へ誘導する。
+    if (picked.unavailable) {
+      manual.open = true;
+      note('この環境ではフォルダ選択画面を開けませんでした。下にパスを直接入力してください。');
+      input.focus();
+      return;
+    }
+
+    // 選んだ場所を手入力欄にも残す。選び直すときに打ち直さずに済む。
+    input.value = picked.dir;
+    await scan(picked.dir);
   });
-  nav.append(go);
-  panel.append(nav);
-  return panel;
+
+  go.addEventListener('click', async () => {
+    const dir = input.value.trim();
+    if (!dir) {
+      fail('フォルダの場所を入力してください。');
+      input.focus();
+      return;
+    }
+    await scan(dir);
+  });
+
+  // 最初のフォルダ一覧を取りに行く前に、panel を画面へ入れておく。openDir は
+  // 「離脱済みなら描かない」を isConnected で判断するので、未接続のまま呼ぶと
+  // 初回の一覧が描かれないまま「読み込んでいます…」で止まる。
+  mount.append(panel);
+
+  // 最初はホームから。押しボタンを一つ挟まず、開いた時点で選べる状態にする。
+  await openDir();
 }
 
 function archiveCard(a) {
   const card = el('button', 'lesson-card');
   card.type = 'button';
-  const name = a.path.split('/').pop();
-  card.setAttribute('aria-label', `${name} の中身を見る`);
+  // 同じ名前のZIPが別のフォルダにあることは珍しくない（配布物の控えなど）。
+  // 名前だけを出すと一覧で見分けが付かないので、入っているフォルダも添える。
+  const parts = a.path.split('/');
+  const name = parts.pop();
+  const folder = parts.pop() || '';
+  card.setAttribute(
+    'aria-label',
+    folder ? `${folder} フォルダの ${name} の中身を見る` : `${name} の中身を見る`
+  );
   card.append(el('span', 'lesson-card__tag', `${a.members} 個のファイル`));
   card.append(el('div', 'lesson-card__title', name));
+  if (folder) {
+    card.append(el('p', 'lesson-card__desc mono', `${folder}/`));
+  }
   const meta = el('div', 'lesson-card__meta');
   meta.append(el('span', null, `${(a.size / 1e6).toFixed(1)} MB`));
   meta.append(el('span', null, a.last_status === 'ok' ? '照合済み' : '要確認'));
