@@ -215,7 +215,7 @@ a{color:var(--brand-ink)}
 .option.is-wrong .option__key{background:var(--bad); color:#fff; border-color:var(--bad)}
 .option:disabled{cursor:default}
 
-.feedback{margin-top:16px; border-radius:var(--r); padding:14px 16px; font-weight:600; display:flex; gap:10px; align-items:flex-start}
+.feedback{margin-top:16px; border-radius:var(--r); padding:14px 16px; font-weight:600; display:flex; gap:10px; align-items:flex-start; overflow-wrap:anywhere}
 .feedback.is-ok{background:var(--ok-soft); color:var(--ok-ink); border:1px solid var(--ok)}
 .feedback.is-bad{background:var(--bad-soft); color:var(--bad-ink); border:1px solid var(--bad)}
 .feedback__icon{font-weight:900}
@@ -262,7 +262,13 @@ a{color:var(--brand-ink)}
 
 /* focus + motion */
 :focus-visible{outline:3px solid var(--brand); outline-offset:2px; border-radius:8px}
-@media (prefers-reduced-motion:reduce){*{transition:none!important; scroll-behavior:auto!important} .ring__bar{animation:none}}
+/* 処理中を示す 3 つの点（Ghidra 画面の処理状況）。順に弾んで「動いている」ことを示す。 */
+.working-dots{display:inline-flex; align-items:center; gap:3px; width:1.4em; margin-right:.3em; vertical-align:middle}
+.working-dots span{width:5px; height:5px; border-radius:50%; background:var(--brand); opacity:.3; animation:working-dot 1.2s ease-in-out infinite}
+.working-dots span:nth-child(2){animation-delay:.2s}
+.working-dots span:nth-child(3){animation-delay:.4s}
+@keyframes working-dot{0%,80%,100%{opacity:.3; transform:translateY(0)} 40%{opacity:1; transform:translateY(-3px)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important; scroll-behavior:auto!important} .ring__bar{animation:none} .working-dots span{animation:none; opacity:.7}}
 @media (max-width:600px){
   .stage-head{flex-wrap:wrap} .progress{margin-left:0; width:100%}
   .navbtns .btn{flex:1; justify-content:center}
@@ -305,7 +311,7 @@ a{color:var(--brand-ink)}
 .member__warn{
   margin-top:8px; font-size:.86rem; color:var(--bad-ink);
   background:var(--bad-soft); border-radius:var(--r-sm); padding:7px 10px;
-  unicode-bidi:isolate;
+  unicode-bidi:isolate; overflow-wrap:anywhere;
 }
 
 .btn-sm{padding:7px 13px; font-size:.82rem; margin-top:10px}
@@ -330,7 +336,7 @@ a{color:var(--brand-ink)}
 .text-input:focus-visible{outline:2px solid var(--brand); outline-offset:1px}
 
 /* The "working title" badge is the first thing to go on a narrow screen. */
-.hero-cta{display:flex; justify-content:center; margin-top:20px}
+.hero-cta{display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin-top:20px}
 
 /* ---- ページ内フォルダ選択 ----
    OSのダイアログは別アプリの窓なので、全画面のブラウザからだと別スペースへ
@@ -408,7 +414,7 @@ a{color:var(--brand-ink)}
 }
 .evidence__excerpt:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
 .evidence__note{margin:8px 0 0; font-size:.88rem; color:var(--muted)}
-.event__source{display:block; margin-top:4px; font-size:.75rem; color:var(--faint); unicode-bidi:isolate}
+.event__source{display:block; margin-top:4px; font-size:.75rem; color:var(--faint); unicode-bidi:isolate; overflow-wrap:anywhere}
 .quiz__aim{font-size:.82rem; color:var(--muted); margin-bottom:6px}
 .quiz__next{margin-top:12px; font-size:.9rem; color:var(--muted)}
 
@@ -418,7 +424,10 @@ a{color:var(--brand-ink)}
 .glossary__desc{margin:2px 0 0 0; color:var(--muted); font-size:.92rem}
 .factlist{display:grid; grid-template-columns:auto 1fr; gap:6px 16px; margin:10px 0 0}
 .factlist__key{color:var(--muted); font-size:.88rem}
-.factlist__value{margin:0; word-break:break-word; unicode-bidi:isolate}
+.factlist__value{margin:0; word-break:break-word; overflow-wrap:anywhere; unicode-bidi:isolate}
+/* 静的な証拠カード。ハッシュやアドレスは空白の無い長い値なので、項目名の列を
+   狭く固定して、値の列で折り返す。 */
+.evidence__facts{grid-template-columns:minmax(4.5em, max-content) minmax(0, 1fr)}
 .bullets{margin:8px 0 0; padding-left:1.3em; color:var(--muted)}
 .bullets li{margin:4px 0}
 

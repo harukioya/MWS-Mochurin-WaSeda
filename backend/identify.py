@@ -1,7 +1,8 @@
 """identify.py — classify a file by its bytes, never by its name.
 
-Answers the question the learner actually needs (BUILD-CONTRACT, teaching goal
-1a): *can the operating system run this, and what is it?*
+Answers the question the learner actually needs: *can the operating system
+run this, and what is it?* Explaining that, file by file, is the tool's first
+teaching goal.
 
 Two invariants govern everything here:
 
@@ -148,7 +149,8 @@ _SIGNATURES: list[tuple[bytes, str, Verdict, str]] = [
      "先頭が AFF の識別子です"),
     # --- inert -------------------------------------------------------------
     # PDF is NOT inert: /Launch, /JavaScript and /EmbeddedFile are part of the
-    # format, and BUILD-CONTRACT rule 5 does not list it in the inert allowlist.
+    # format. Only formats that cannot carry active content are on the inert
+    # allowlist (the list of types that may ever be written out), so PDF is not.
     (b"%PDF", "PDF 文書", Verdict.DOCUMENT_ACTIVE,
      "先頭が PDF の識別子です。PDF は /Launch や /JavaScript の動作を持てます"),
     (b"\x89PNG\r\n\x1a\n", "PNG 画像", Verdict.INERT_DATA,

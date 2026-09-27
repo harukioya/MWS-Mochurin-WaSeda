@@ -2,8 +2,9 @@
 
 Nothing here performs a network request. Every test exercises the validation
 logic directly, which is where the security properties actually live. That is
-deliberate: the machine this was written on prohibits downloading outright
-(BUILD-CONTRACT rule 2), and a test suite that needs the network to prove the
+deliberate: the tool does not download anything unless explicitly enabled,
+the machine this was written on prohibits downloading outright, and a test
+suite that needs the network to prove the
 SSRF guard works would be unable to run there at all.
 """
 

@@ -835,7 +835,7 @@ class TestCorrelationRejectsMixedTimeBases(unittest.TestCase):
 
 
 class TestLearningCategories(unittest.TestCase):
-    """仕様書 15.3。データが許す範囲で 4 つ以上の観点を出す。"""
+    """データが許す範囲で、4 つ以上の学習カテゴリを出す。"""
 
     def setUp(self):
         self.lesson = build()
@@ -947,7 +947,7 @@ class TestMixedTimeBasesAreDisclosed(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# 相関（仕様書 14.2）
+# 相関（同じ端末・近い時刻の記録を、説明できる規則だけで結び付ける）
 # ---------------------------------------------------------------------------
 
 class TestCorrelationFollowsTheSpecifiedRule(unittest.TestCase):
@@ -1005,7 +1005,7 @@ class TestCorrelationFollowsTheSpecifiedRule(unittest.TestCase):
         self.assertIsNone(quiz, "61 秒差が 60 秒の幅を通っている")
 
     def test_the_window_is_configurable(self):
-        """仕様書 14.2「近接時間幅はプロファイルで設定可能にし」。"""
+        """近接とみなす時間幅は、プロファイルで設定できる。"""
         text = "\n".join([
             itm2("10/05/2022 09:00:00.000 +0900", "WS99",
                  psPath="C:\\Windows\\System32\\cmd.exe"),

@@ -8,9 +8,10 @@ Two jobs:
   * INTEGRITY. Hashes tracked files and reports whether they still match, with
     the timestamp of the last successful check. This is the honest half of the
     "logger" requirement: it detects that a file CHANGED. It does not and
-    cannot detect that a file was EXECUTED (see docs/BUILD-CONTRACT.md).
+    cannot detect that a file was EXECUTED: no userspace check can observe
+    execution, so the UI must not claim that it does.
 
-Storage is content-addressed by design (BUILD-CONTRACT rule 3): a blob is
+Storage is content-addressed by design: a blob is
 written to `blobs/<sha256[:2]>/<sha256>.bin` and the original name is a column,
 never a path component. That is what makes traversal and zip-slip structurally
 impossible rather than merely filtered.
@@ -215,6 +216,15 @@ class Store:
             )
         self.log("lesson-generated", f"{lesson['id']} from {source}")
 
+    def delete_lesson(self, lesson_id: str) -> bool:
+        """保存した教材を 1 件消す。消したら True。"""
+        with self._tx() as c:
+            cur = c.execute("DELETE FROM lesson WHERE id = ?", (lesson_id,))
+            deleted = cur.rowcount > 0
+        if deleted:
+            self.log("lesson-deleted", lesson_id)
+        return deleted
+
     def lessons(self) -> list[dict]:
         return self._query(
             "SELECT id, title, made_at, source FROM lesson ORDER BY made_at DESC"
@@ -281,7 +291,7 @@ def sha256_file(path: str, chunk: int = 1024 * 1024) -> tuple[str, int]:
 
 def blob_path(root: str, digest: str) -> str:
     """Where a blob WOULD live. Name is generated from content, never from
-    remote or archive input — this is BUILD-CONTRACT rule 3 in one line."""
+    remote or archive input, so no archive or remote name can become a path."""
     if len(digest) != 64 or not all(c in "0123456789abcdef" for c in digest):
         raise ValueError("digest must be a lowercase hex sha256")
     return os.path.join(root, "blobs", digest[:2], f"{digest}.bin")
