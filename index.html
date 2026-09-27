@@ -13,7 +13,8 @@
       if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
     } catch (e) {}
   </script>
-  <!-- No webfonts: the app must work offline (BUILD-CONTRACT), and the
+  <!-- No webfonts: the app must work offline (no request leaves the machine
+       while it is used), and the
        backend's CSP allows only 'self' for styles and fonts. design.css falls
        back to the platform's own faces, which on macOS means Hiragino Sans for
        Japanese and SF Mono/Menlo for code. To use the intended typefaces,

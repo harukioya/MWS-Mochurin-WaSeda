@@ -5,9 +5,10 @@ Keeping every outbound byte in one small file is the point: the invariant
 list rather than by auditing the whole backend.
 
 DISABLED BY DEFAULT. `fetch()` refuses unless MWS_INTAKE_ENABLED=1 is set in
-the environment. On the machine this was written for, downloading is
-prohibited outright (BUILD-CONTRACT rule 2), so the switch stays off and the
-code path is exercised only by unit tests against locally authored fixtures.
+the environment. The project rule is that the tool does not download anything
+unless the person running it opts in explicitly; on the machine this was
+written for, downloading is prohibited outright, so the switch stays off and
+the code path is exercised only by unit tests against locally authored fixtures.
 
 Controls, each of which closes a specific hole:
 
@@ -189,7 +190,7 @@ def fetch(url: str, sink) -> Fetched:
     if not intake_enabled():
         raise IntakeDisabled(
             "Acquisition is disabled. Set MWS_INTAKE_ENABLED=1 to enable it, "
-            "and read BUILD-CONTRACT rule 2 before you do."
+            "only if downloading samples is permitted where you run this tool."
         )
 
     seen = 0

@@ -1,0 +1,11 @@
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+gcc -O0 -o termmines termmines.c -lncurses -lpthread (linux/amd64, not stripped)
+gcc 4:13.2.0-7ubuntu1 amd64
+libc6 2.39-0ubuntu8.9 amd64
+libc6-dev 2.39-0ubuntu8.9 amd64
+libncurses-dev 6.4+20240113-1ubuntu2.2 amd64
+libncurses6 6.4+20240113-1ubuntu2.2 amd64
+libtinfo6 6.4+20240113-1ubuntu2.2 amd64
+termmines (ELF, not executed): b84a3c42ddfafab4637ab34c12ffda69d90654e4e7d537d92f20726680466624
+ghidra image: mws-ghidra-static:12.1.4-c5cc2902e618 sha256:808e88478767fb8525e969881db31ebeb4f7b4ae3ec6ecb13cfd787b9b07fc1d
+docker server: 29.8.0 arm64

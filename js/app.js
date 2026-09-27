@@ -3,6 +3,7 @@
 import { renderHome } from "./home.js";
 import { renderLesson } from "./player.js";
 import { renderArchive, renderInspect } from "./inspect.js";
+import { renderGhidra } from "./ghidra.js";
 import { initTheme } from "./theme.js";
 
 const MOUNT_ID = "app";
@@ -31,6 +32,9 @@ function parseRoute() {
       return { view: "archive", id: parts[1] };
     }
     return { view: "inspect" };
+  }
+  if (parts[0] === "ghidra") {
+    return { view: "ghidra" };
   }
   return { view: "home" };
 }
@@ -61,6 +65,8 @@ async function render() {
       await renderInspect(view);
     } else if (route.view === "archive") {
       await renderArchive(view, route.id);
+    } else if (route.view === "ghidra") {
+      await renderGhidra(view);
     } else {
       await renderHome(view);
     }

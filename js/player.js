@@ -6,7 +6,7 @@
 import { loadLesson } from './data.js';
 import { renderQuiz } from './quiz.js';
 import { renderRecap } from './recap.js';
-import { evidenceCard, evidenceMap, visible } from './evidence.js';
+import { clearCited, evidenceCard, evidenceMap, isStatic, sourceLabel, visible } from './evidence.js';
 import { renderIntroduction } from './intro.js';
 
 // 事象の種別（データ側のキー）を、画面表示用の日本語に対応させる。
@@ -19,6 +19,11 @@ const EVENT_TYPE = {
   api: 'API 呼び出し',
   import: '取り込み',
   string: '文字列',
+  // 静的解析の教材（Ghidra の保存済み解析情報）
+  instruction: '命令',
+  call: '呼び出し命令',
+  function: '関数',
+  external: '外部関数',
 };
 
 const el = (tag, className, text) => {
@@ -52,6 +57,9 @@ export async function renderLesson(mount, lessonId) {
   const stages = Array.isArray(lesson.stages) ? lesson.stages : [];
   const total = stages.length;
   const evidence = evidenceMap(lesson);
+  // 静的解析の教材は「観測」ではなく、保存済みの記録を読む。実行したかの
+  // ように見える言い方をしない。
+  const staticLesson = lesson.kind === 'static';
 
   /** その段階の設問。旧形式は `quiz` が 1 つだけなので同じ形へ揃える。 */
   const quizzesOf = (stage) =>
@@ -93,6 +101,7 @@ export async function renderLesson(mount, lessonId) {
   mount.appendChild(player);
 
   const renderStage = (index) => {
+    clearCited();
     player.textContent = '';
     const stage = stages[index];
 
@@ -130,7 +139,9 @@ export async function renderLesson(mount, lessonId) {
 
     // --- Observed behavior panel ---
     const panel = el('div', 'panel');
-    panel.appendChild(el('div', 'panel__label', '観測された挙動'));
+    panel.appendChild(
+      el('div', 'panel__label', staticLesson ? '保存済みの解析情報（Ghidra）' : '観測された挙動')
+    );
 
     const list = el('div', 'event-list');
     (stage.events || []).forEach((event) => {
@@ -149,7 +160,7 @@ export async function renderLesson(mount, lessonId) {
       // 証拠があれば、その事象がどのログの何行目から来たのかを添える。
       // 旧形式の演習には evidenceIds が無いので、その場合は従来どおり。
       const cite = (event.evidenceIds || []).map((i) => evidence[i]).filter(Boolean)[0];
-      if (cite && cite.source) {
+      if (cite && cite.source && !isStatic(cite)) {
         // 出典名も ZIP 由来なので、ここでも visible() を通す。証拠カードと
         // ジャンプボタンだけ処理していたため、未処理のデータが渡ってきた
         // 場合に、この一覧にだけ改行やタブが不可視のまま残っていた。
@@ -159,6 +170,8 @@ export async function renderLesson(mount, lessonId) {
           `${visible(cite.source.member)} : ${cite.source.line} 行目`
         );
         body.appendChild(where);
+      } else if (cite && cite.source) {
+        body.appendChild(el('span', 'event__source mono', sourceLabel(cite)));
       }
       row.appendChild(body);
       list.appendChild(row);
@@ -191,7 +204,10 @@ export async function renderLesson(mount, lessonId) {
       const evPanel = el('div', 'panel');
       evPanel.appendChild(el('div', 'panel__label', '根拠となった記録'));
       evPanel.appendChild(
-        el('p', 'muted', '上の各行は、次のログの原文から読み取ったものです。')
+        el('p', 'muted',
+          staticLesson
+            ? '上の各行は、Ghidra が GZF に保存した次の記録から読み取ったものです。'
+            : '上の各行は、次のログの原文から読み取ったものです。')
       );
       const box = el('div', 'evidence-list');
       cited.forEach((i) => box.appendChild(evidenceCard(evidence[i])));
@@ -287,6 +303,8 @@ export async function renderLesson(mount, lessonId) {
         cont.focus({ preventScroll: true });
         return;
       }
+      // 前の設問の根拠の強調を外してから、次の設問を出す。
+      clearCited();
       quizPanel.textContent = '';
       if (quizzes.length > 1) {
         quizPanel.appendChild(

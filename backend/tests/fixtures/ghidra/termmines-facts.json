@@ -1,0 +1,3648 @@
+{
+ "_note": "事前抽出。ghidra_live_check.py --save-fixture が実コンテナの出力をそのまま保存したもの。受け入れ確認の代わりにはしない。",
+ "_image": {
+  "state": "ready",
+  "ref": "mws-ghidra-static:12.1.4-c5cc2902e618",
+  "id": "sha256:808e88478767fb8525e969881db31ebeb4f7b4ae3ec6ecb13cfd787b9b07fc1d",
+  "arch": "arm64"
+ },
+ "facts": {
+  "schemaVersion": "mws-ghidra-static/1",
+  "input": {
+   "sha256": "437a2f5b96b329a56045f4fe0618336825ebb02eeb612f3cfa3caf46471d1b3b",
+   "bytes": 114281
+  },
+  "tool": {
+   "ghidraVersion": "12.1.4",
+   "scriptVersion": "1.0.0"
+  },
+  "program": {
+   "name": "termmines",
+   "languageId": "x86:LE:64:default",
+   "compilerSpecId": "gcc",
+   "executableFormat": "Executable and Linking Format (ELF)",
+   "storedExecutableSha256": "b84a3c42ddfafab4637ab34c12ffda69d90654e4e7d537d92f20726680466624",
+   "imageBase": "ram:0000000000100000",
+   "analyzed": true
+  },
+  "functions": [
+   {
+    "id": "fn:ram:0000000000101000",
+    "name": "_init",
+    "entry": "ram:0000000000101000",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000101020",
+    "name": "FUN_00101020",
+    "entry": "ram:0000000000101020",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:00000000001011a0",
+    "name": "__cxa_finalize",
+    "entry": "ram:00000000001011a0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000019"
+   },
+   {
+    "id": "fn:ram:00000000001011b0",
+    "name": "wgetch",
+    "entry": "ram:00000000001011b0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000002"
+   },
+   {
+    "id": "fn:ram:00000000001011c0",
+    "name": "noecho",
+    "entry": "ram:00000000001011c0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000003"
+   },
+   {
+    "id": "fn:ram:00000000001011d0",
+    "name": "__stack_chk_fail",
+    "entry": "ram:00000000001011d0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000004"
+   },
+   {
+    "id": "fn:ram:00000000001011e0",
+    "name": "initscr",
+    "entry": "ram:00000000001011e0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000005"
+   },
+   {
+    "id": "fn:ram:00000000001011f0",
+    "name": "wrefresh",
+    "entry": "ram:00000000001011f0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000006"
+   },
+   {
+    "id": "fn:ram:0000000000101200",
+    "name": "memset",
+    "entry": "ram:0000000000101200",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000007"
+   },
+   {
+    "id": "fn:ram:0000000000101210",
+    "name": "start_color",
+    "entry": "ram:0000000000101210",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000008"
+   },
+   {
+    "id": "fn:ram:0000000000101220",
+    "name": "strnlen",
+    "entry": "ram:0000000000101220",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000009"
+   },
+   {
+    "id": "fn:ram:0000000000101230",
+    "name": "keypad",
+    "entry": "ram:0000000000101230",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:000000000000000a"
+   },
+   {
+    "id": "fn:ram:0000000000101240",
+    "name": "srand",
+    "entry": "ram:0000000000101240",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:000000000000000b"
+   },
+   {
+    "id": "fn:ram:0000000000101250",
+    "name": "strcmp",
+    "entry": "ram:0000000000101250",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:000000000000000c"
+   },
+   {
+    "id": "fn:ram:0000000000101260",
+    "name": "fprintf",
+    "entry": "ram:0000000000101260",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:000000000000000d"
+   },
+   {
+    "id": "fn:ram:0000000000101270",
+    "name": "mvprintw",
+    "entry": "ram:0000000000101270",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:000000000000000e"
+   },
+   {
+    "id": "fn:ram:0000000000101280",
+    "name": "time",
+    "entry": "ram:0000000000101280",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:000000000000000f"
+   },
+   {
+    "id": "fn:ram:0000000000101290",
+    "name": "init_pair",
+    "entry": "ram:0000000000101290",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000010"
+   },
+   {
+    "id": "fn:ram:00000000001012a0",
+    "name": "strtoul",
+    "entry": "ram:00000000001012a0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000011"
+   },
+   {
+    "id": "fn:ram:00000000001012b0",
+    "name": "wmove",
+    "entry": "ram:00000000001012b0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000012"
+   },
+   {
+    "id": "fn:ram:00000000001012c0",
+    "name": "__cxa_atexit",
+    "entry": "ram:00000000001012c0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000013"
+   },
+   {
+    "id": "fn:ram:00000000001012d0",
+    "name": "waddch",
+    "entry": "ram:00000000001012d0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000014"
+   },
+   {
+    "id": "fn:ram:00000000001012e0",
+    "name": "exit",
+    "entry": "ram:00000000001012e0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000015"
+   },
+   {
+    "id": "fn:ram:00000000001012f0",
+    "name": "endwin",
+    "entry": "ram:00000000001012f0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000016"
+   },
+   {
+    "id": "fn:ram:0000000000101300",
+    "name": "waddnstr",
+    "entry": "ram:0000000000101300",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000017"
+   },
+   {
+    "id": "fn:ram:0000000000101310",
+    "name": "rand",
+    "entry": "ram:0000000000101310",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000018"
+   },
+   {
+    "id": "fn:ram:0000000000101320",
+    "name": "_start",
+    "entry": "ram:0000000000101320",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000101350",
+    "name": "deregister_tm_clones",
+    "entry": "ram:0000000000101350",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000101380",
+    "name": "register_tm_clones",
+    "entry": "ram:0000000000101380",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:00000000001013c0",
+    "name": "__do_global_dtors_aux",
+    "entry": "ram:00000000001013c0",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000101400",
+    "name": "frame_dummy",
+    "entry": "ram:0000000000101400",
+    "thunk": true,
+    "thunkTarget": "fn:ram:0000000000101380"
+   },
+   {
+    "id": "fn:ram:0000000000101409",
+    "name": "print_usage",
+    "entry": "ram:0000000000101409",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:000000000010143e",
+    "name": "timer_func",
+    "entry": "ram:000000000010143e",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000101449",
+    "name": "parse_skill",
+    "entry": "ram:0000000000101449",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000101538",
+    "name": "parse_int",
+    "entry": "ram:0000000000101538",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:00000000001015f3",
+    "name": "parse_width",
+    "entry": "ram:00000000001015f3",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000101629",
+    "name": "parse_height",
+    "entry": "ram:0000000000101629",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:000000000010165f",
+    "name": "parse_mines",
+    "entry": "ram:000000000010165f",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:00000000001016ab",
+    "name": "parse_args",
+    "entry": "ram:00000000001016ab",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000101a19",
+    "name": "rand_rng",
+    "entry": "ram:0000000000101a19",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000101a35",
+    "name": "count_around",
+    "entry": "ram:0000000000101a35",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000101aaa",
+    "name": "count_flags_around",
+    "entry": "ram:0000000000101aaa",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000101b2b",
+    "name": "setup_board",
+    "entry": "ram:0000000000101b2b",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000101df2",
+    "name": "print_grid",
+    "entry": "ram:0000000000101df2",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:00000000001020a8",
+    "name": "display_board",
+    "entry": "ram:00000000001020a8",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000102278",
+    "name": "display_cursor",
+    "entry": "ram:0000000000102278",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:000000000010232d",
+    "name": "erase_cursor",
+    "entry": "ram:000000000010232d",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:00000000001023ba",
+    "name": "myexit",
+    "entry": "ram:00000000001023ba",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:00000000001023ca",
+    "name": "clear_status",
+    "entry": "ram:00000000001023ca",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:000000000010241a",
+    "name": "print_status",
+    "entry": "ram:000000000010241a",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000102479",
+    "name": "print_status_coord",
+    "entry": "ram:0000000000102479",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:00000000001024d4",
+    "name": "print_win",
+    "entry": "ram:00000000001024d4",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000102532",
+    "name": "clear_around",
+    "entry": "ram:0000000000102532",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:00000000001025e3",
+    "name": "do_clear_cell",
+    "entry": "ram:00000000001025e3",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000102774",
+    "name": "super_clear",
+    "entry": "ram:0000000000102774",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:000000000010280d",
+    "name": "clear_cell",
+    "entry": "ram:000000000010280d",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:00000000001028e4",
+    "name": "flag_cell",
+    "entry": "ram:00000000001028e4",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000102a2c",
+    "name": "check_win",
+    "entry": "ram:0000000000102a2c",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000102ac2",
+    "name": "main",
+    "entry": "ram:0000000000102ac2",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000102df0",
+    "name": "atexit",
+    "entry": "ram:0000000000102df0",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000102e04",
+    "name": "_fini",
+    "entry": "ram:0000000000102e04",
+    "thunk": false,
+    "thunkTarget": null
+   },
+   {
+    "id": "fn:ram:0000000000107000",
+    "name": "__libc_start_main",
+    "entry": "ram:0000000000107000",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000001"
+   },
+   {
+    "id": "fn:ram:0000000000107008",
+    "name": "_ITM_deregisterTMCloneTable",
+    "entry": "ram:0000000000107008",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:000000000000001a"
+   },
+   {
+    "id": "fn:ram:0000000000107010",
+    "name": "wgetch",
+    "entry": "ram:0000000000107010",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000002"
+   },
+   {
+    "id": "fn:ram:0000000000107018",
+    "name": "noecho",
+    "entry": "ram:0000000000107018",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000003"
+   },
+   {
+    "id": "fn:ram:0000000000107020",
+    "name": "__stack_chk_fail",
+    "entry": "ram:0000000000107020",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000004"
+   },
+   {
+    "id": "fn:ram:0000000000107028",
+    "name": "initscr",
+    "entry": "ram:0000000000107028",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000005"
+   },
+   {
+    "id": "fn:ram:0000000000107030",
+    "name": "wrefresh",
+    "entry": "ram:0000000000107030",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000006"
+   },
+   {
+    "id": "fn:ram:0000000000107038",
+    "name": "memset",
+    "entry": "ram:0000000000107038",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000007"
+   },
+   {
+    "id": "fn:ram:0000000000107040",
+    "name": "start_color",
+    "entry": "ram:0000000000107040",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000008"
+   },
+   {
+    "id": "fn:ram:0000000000107048",
+    "name": "strnlen",
+    "entry": "ram:0000000000107048",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000009"
+   },
+   {
+    "id": "fn:ram:0000000000107050",
+    "name": "keypad",
+    "entry": "ram:0000000000107050",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:000000000000000a"
+   },
+   {
+    "id": "fn:ram:0000000000107058",
+    "name": "srand",
+    "entry": "ram:0000000000107058",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:000000000000000b"
+   },
+   {
+    "id": "fn:ram:0000000000107060",
+    "name": "strcmp",
+    "entry": "ram:0000000000107060",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:000000000000000c"
+   },
+   {
+    "id": "fn:ram:0000000000107068",
+    "name": "fprintf",
+    "entry": "ram:0000000000107068",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:000000000000000d"
+   },
+   {
+    "id": "fn:ram:0000000000107070",
+    "name": "__gmon_start__",
+    "entry": "ram:0000000000107070",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:000000000000001c"
+   },
+   {
+    "id": "fn:ram:0000000000107078",
+    "name": "mvprintw",
+    "entry": "ram:0000000000107078",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:000000000000000e"
+   },
+   {
+    "id": "fn:ram:0000000000107080",
+    "name": "time",
+    "entry": "ram:0000000000107080",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:000000000000000f"
+   },
+   {
+    "id": "fn:ram:0000000000107088",
+    "name": "init_pair",
+    "entry": "ram:0000000000107088",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000010"
+   },
+   {
+    "id": "fn:ram:0000000000107090",
+    "name": "strtoul",
+    "entry": "ram:0000000000107090",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000011"
+   },
+   {
+    "id": "fn:ram:0000000000107098",
+    "name": "wmove",
+    "entry": "ram:0000000000107098",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000012"
+   },
+   {
+    "id": "fn:ram:00000000001070a0",
+    "name": "__cxa_atexit",
+    "entry": "ram:00000000001070a0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000013"
+   },
+   {
+    "id": "fn:ram:00000000001070a8",
+    "name": "waddch",
+    "entry": "ram:00000000001070a8",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000014"
+   },
+   {
+    "id": "fn:ram:00000000001070b0",
+    "name": "exit",
+    "entry": "ram:00000000001070b0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000015"
+   },
+   {
+    "id": "fn:ram:00000000001070b8",
+    "name": "_ITM_registerTMCloneTable",
+    "entry": "ram:00000000001070b8",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:000000000000001b"
+   },
+   {
+    "id": "fn:ram:00000000001070c0",
+    "name": "endwin",
+    "entry": "ram:00000000001070c0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000016"
+   },
+   {
+    "id": "fn:ram:00000000001070c8",
+    "name": "waddnstr",
+    "entry": "ram:00000000001070c8",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000017"
+   },
+   {
+    "id": "fn:ram:00000000001070d0",
+    "name": "rand",
+    "entry": "ram:00000000001070d0",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000018"
+   },
+   {
+    "id": "fn:ram:00000000001070d8",
+    "name": "__cxa_finalize",
+    "entry": "ram:00000000001070d8",
+    "thunk": true,
+    "thunkTarget": "ext:EXTERNAL:0000000000000019"
+   }
+  ],
+  "externals": [
+   {
+    "id": "ext:EXTERNAL:0000000000000001",
+    "name": "__libc_start_main",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000001"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000002",
+    "name": "wgetch",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000002"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000003",
+    "name": "noecho",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000003"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000004",
+    "name": "__stack_chk_fail",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000004"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000005",
+    "name": "initscr",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000005"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000006",
+    "name": "wrefresh",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000006"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000007",
+    "name": "memset",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000007"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000008",
+    "name": "start_color",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000008"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000009",
+    "name": "strnlen",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000009"
+   },
+   {
+    "id": "ext:EXTERNAL:000000000000000a",
+    "name": "keypad",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:000000000000000a"
+   },
+   {
+    "id": "ext:EXTERNAL:000000000000000b",
+    "name": "srand",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:000000000000000b"
+   },
+   {
+    "id": "ext:EXTERNAL:000000000000000c",
+    "name": "strcmp",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:000000000000000c"
+   },
+   {
+    "id": "ext:EXTERNAL:000000000000000d",
+    "name": "fprintf",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:000000000000000d"
+   },
+   {
+    "id": "ext:EXTERNAL:000000000000000e",
+    "name": "mvprintw",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:000000000000000e"
+   },
+   {
+    "id": "ext:EXTERNAL:000000000000000f",
+    "name": "time",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:000000000000000f"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000010",
+    "name": "init_pair",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000010"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000011",
+    "name": "strtoul",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000011"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000012",
+    "name": "wmove",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000012"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000013",
+    "name": "__cxa_atexit",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000013"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000014",
+    "name": "waddch",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000014"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000015",
+    "name": "exit",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000015"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000016",
+    "name": "endwin",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000016"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000017",
+    "name": "waddnstr",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000017"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000018",
+    "name": "rand",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000018"
+   },
+   {
+    "id": "ext:EXTERNAL:0000000000000019",
+    "name": "__cxa_finalize",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:0000000000000019"
+   },
+   {
+    "id": "ext:EXTERNAL:000000000000001a",
+    "name": "_ITM_deregisterTMCloneTable",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:000000000000001a"
+   },
+   {
+    "id": "ext:EXTERNAL:000000000000001b",
+    "name": "_ITM_registerTMCloneTable",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:000000000000001b"
+   },
+   {
+    "id": "ext:EXTERNAL:000000000000001c",
+    "name": "__gmon_start__",
+    "library": "<EXTERNAL>",
+    "address": "EXTERNAL:000000000000001c"
+   }
+  ],
+  "strings": [
+   {
+    "id": "str:ram:0000000000100001",
+    "address": "ram:0000000000100001",
+    "length": 3,
+    "value": "ELF",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100318",
+    "address": "ram:0000000000100318",
+    "length": 27,
+    "value": "/lib64/ld-linux-x86-64.so.2",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100344",
+    "address": "ram:0000000000100344",
+    "length": 3,
+    "value": "GNU",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100374",
+    "address": "ram:0000000000100374",
+    "length": 3,
+    "value": "GNU",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100398",
+    "address": "ram:0000000000100398",
+    "length": 3,
+    "value": "GNU",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001006c9",
+    "address": "ram:00000000001006c9",
+    "length": 27,
+    "value": "_ITM_deregisterTMCloneTable",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001006e5",
+    "address": "ram:00000000001006e5",
+    "length": 14,
+    "value": "__gmon_start__",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001006f4",
+    "address": "ram:00000000001006f4",
+    "length": 25,
+    "value": "_ITM_registerTMCloneTable",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:000000000010070e",
+    "address": "ram:000000000010070e",
+    "length": 6,
+    "value": "waddch",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100715",
+    "address": "ram:0000000000100715",
+    "length": 6,
+    "value": "noecho",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:000000000010071c",
+    "address": "ram:000000000010071c",
+    "length": 8,
+    "value": "mvprintw",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100725",
+    "address": "ram:0000000000100725",
+    "length": 6,
+    "value": "wgetch",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:000000000010072c",
+    "address": "ram:000000000010072c",
+    "length": 8,
+    "value": "waddnstr",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100735",
+    "address": "ram:0000000000100735",
+    "length": 6,
+    "value": "endwin",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:000000000010073c",
+    "address": "ram:000000000010073c",
+    "length": 8,
+    "value": "wrefresh",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100745",
+    "address": "ram:0000000000100745",
+    "length": 5,
+    "value": "wmove",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:000000000010074b",
+    "address": "ram:000000000010074b",
+    "length": 9,
+    "value": "init_pair",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100755",
+    "address": "ram:0000000000100755",
+    "length": 7,
+    "value": "initscr",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:000000000010075d",
+    "address": "ram:000000000010075d",
+    "length": 11,
+    "value": "start_color",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100769",
+    "address": "ram:0000000000100769",
+    "length": 6,
+    "value": "stdscr",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100770",
+    "address": "ram:0000000000100770",
+    "length": 6,
+    "value": "keypad",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100777",
+    "address": "ram:0000000000100777",
+    "length": 16,
+    "value": "__stack_chk_fail",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100788",
+    "address": "ram:0000000000100788",
+    "length": 4,
+    "value": "time",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:000000000010078d",
+    "address": "ram:000000000010078d",
+    "length": 7,
+    "value": "strnlen",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100795",
+    "address": "ram:0000000000100795",
+    "length": 17,
+    "value": "__libc_start_main",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001007a7",
+    "address": "ram:00000000001007a7",
+    "length": 6,
+    "value": "stderr",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001007ae",
+    "address": "ram:00000000001007ae",
+    "length": 7,
+    "value": "fprintf",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001007b6",
+    "address": "ram:00000000001007b6",
+    "length": 5,
+    "value": "srand",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001007bc",
+    "address": "ram:00000000001007bc",
+    "length": 14,
+    "value": "__cxa_finalize",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001007cb",
+    "address": "ram:00000000001007cb",
+    "length": 6,
+    "value": "memset",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001007d2",
+    "address": "ram:00000000001007d2",
+    "length": 7,
+    "value": "strtoul",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001007da",
+    "address": "ram:00000000001007da",
+    "length": 6,
+    "value": "strcmp",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001007e1",
+    "address": "ram:00000000001007e1",
+    "length": 12,
+    "value": "__cxa_atexit",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001007ee",
+    "address": "ram:00000000001007ee",
+    "length": 15,
+    "value": "libncurses.so.6",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001007fe",
+    "address": "ram:00000000001007fe",
+    "length": 13,
+    "value": "libtinfo.so.6",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:000000000010080c",
+    "address": "ram:000000000010080c",
+    "length": 9,
+    "value": "libc.so.6",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100816",
+    "address": "ram:0000000000100816",
+    "length": 27,
+    "value": "NCURSES6_TINFO_5.0.19991023",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100832",
+    "address": "ram:0000000000100832",
+    "length": 21,
+    "value": "NCURSES6_5.0.19991023",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100848",
+    "address": "ram:0000000000100848",
+    "length": 11,
+    "value": "GLIBC_2.2.5",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000100854",
+    "address": "ram:0000000000100854",
+    "length": 9,
+    "value": "GLIBC_2.4",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:000000000010085e",
+    "address": "ram:000000000010085e",
+    "length": 10,
+    "value": "GLIBC_2.34",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103008",
+    "address": "ram:0000000000103008",
+    "length": 2436,
+    "value": "Usage: %s [-s SKILL] [-W WIDTH] [-H HEIGHT] [-M MINES] [-h]\n\n    -s SKILL    Select a preset dimension and mine count. One of:\n                    Beginner:     9x9 with 10 mines. (default)\n                    Intermediate: 16x16 with 40 mines.\n                    Advanced:     30x16 with 99 mines.\n    -W WIDTH    Set the width of the game board.\n                Must be between 8 and 30\n    -H HEIGHT   Set the height of the game board.\n                Must be between 8 and 24\n    -M MINES    Set the number ",
+    "clipped": true
+   },
+   {
+    "id": "str:ram:000000000010398d",
+    "address": "ram:000000000010398d",
+    "length": 8,
+    "value": "Beginner",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103996",
+    "address": "ram:0000000000103996",
+    "length": 12,
+    "value": "Intermediate",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001039a3",
+    "address": "ram:00000000001039a3",
+    "length": 8,
+    "value": "Advanced",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001039ac",
+    "address": "ram:00000000001039ac",
+    "length": 18,
+    "value": "Invalid SKILL: %s\n",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001039c0",
+    "address": "ram:00000000001039c0",
+    "length": 56,
+    "value": "Invalid %s: %s. Must be an integer between %ld and %ld.\n",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001039f9",
+    "address": "ram:00000000001039f9",
+    "length": 5,
+    "value": "WIDTH",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:00000000001039ff",
+    "address": "ram:00000000001039ff",
+    "length": 6,
+    "value": "HEIGHT",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103a06",
+    "address": "ram:0000000000103a06",
+    "length": 5,
+    "value": "MINES",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103a0c",
+    "address": "ram:0000000000103a0c",
+    "length": 5,
+    "value": "?????",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103a12",
+    "address": "ram:0000000000103a12",
+    "length": 21,
+    "value": "Invalid argument: %s\n",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103a28",
+    "address": "ram:0000000000103a28",
+    "length": 5,
+    "value": "SKILL",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103a2e",
+    "address": "ram:0000000000103a2e",
+    "length": 21,
+    "value": "Missing argument: %s\n",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103a50",
+    "address": "ram:0000000000103a50",
+    "length": 42,
+    "value": "                                          ",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103a7b",
+    "address": "ram:0000000000103a7b",
+    "length": 10,
+    "value": "%s (%d,%d)",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103a86",
+    "address": "ram:0000000000103a86",
+    "length": 26,
+    "value": "You win! Score: %d seconds",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103aa1",
+    "address": "ram:0000000000103aa1",
+    "length": 15,
+    "value": "Tripped mine at",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103ab1",
+    "address": "ram:0000000000103ab1",
+    "length": 13,
+    "value": "Super cleared",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103abf",
+    "address": "ram:0000000000103abf",
+    "length": 28,
+    "value": "Incorrect flag number around",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103adc",
+    "address": "ram:0000000000103adc",
+    "length": 25,
+    "value": "Cannot clear flagged cell",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103af6",
+    "address": "ram:0000000000103af6",
+    "length": 7,
+    "value": "Cleared",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103afe",
+    "address": "ram:0000000000103afe",
+    "length": 12,
+    "value": "Removed flag",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103b0b",
+    "address": "ram:0000000000103b0b",
+    "length": 12,
+    "value": "Flagged cell",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103b18",
+    "address": "ram:0000000000103b18",
+    "length": 5,
+    "value": "Reset",
+    "clipped": false
+   },
+   {
+    "id": "str:ram:0000000000103c41",
+    "address": "ram:0000000000103c41",
+    "length": 2,
+    "value": "zR",
+    "clipped": false
+   },
+   {
+    "id": "str:.comment:0000000000000000",
+    "address": ".comment:0000000000000000",
+    "length": 44,
+    "value": "GCC: (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:0000000000000001",
+    "address": ".shstrtab:0000000000000001",
+    "length": 7,
+    "value": ".symtab",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:0000000000000009",
+    "address": ".shstrtab:0000000000000009",
+    "length": 7,
+    "value": ".strtab",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:0000000000000011",
+    "address": ".shstrtab:0000000000000011",
+    "length": 9,
+    "value": ".shstrtab",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:000000000000001b",
+    "address": ".shstrtab:000000000000001b",
+    "length": 7,
+    "value": ".interp",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:0000000000000023",
+    "address": ".shstrtab:0000000000000023",
+    "length": 18,
+    "value": ".note.gnu.property",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:0000000000000036",
+    "address": ".shstrtab:0000000000000036",
+    "length": 18,
+    "value": ".note.gnu.build-id",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:0000000000000049",
+    "address": ".shstrtab:0000000000000049",
+    "length": 13,
+    "value": ".note.ABI-tag",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:0000000000000057",
+    "address": ".shstrtab:0000000000000057",
+    "length": 9,
+    "value": ".gnu.hash",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:0000000000000061",
+    "address": ".shstrtab:0000000000000061",
+    "length": 7,
+    "value": ".dynsym",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:0000000000000069",
+    "address": ".shstrtab:0000000000000069",
+    "length": 7,
+    "value": ".dynstr",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:0000000000000071",
+    "address": ".shstrtab:0000000000000071",
+    "length": 12,
+    "value": ".gnu.version",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:000000000000007e",
+    "address": ".shstrtab:000000000000007e",
+    "length": 14,
+    "value": ".gnu.version_r",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:000000000000008d",
+    "address": ".shstrtab:000000000000008d",
+    "length": 9,
+    "value": ".rela.dyn",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:0000000000000097",
+    "address": ".shstrtab:0000000000000097",
+    "length": 9,
+    "value": ".rela.plt",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:00000000000000a1",
+    "address": ".shstrtab:00000000000000a1",
+    "length": 5,
+    "value": ".init",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:00000000000000a7",
+    "address": ".shstrtab:00000000000000a7",
+    "length": 8,
+    "value": ".plt.got",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:00000000000000b0",
+    "address": ".shstrtab:00000000000000b0",
+    "length": 8,
+    "value": ".plt.sec",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:00000000000000b9",
+    "address": ".shstrtab:00000000000000b9",
+    "length": 5,
+    "value": ".text",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:00000000000000bf",
+    "address": ".shstrtab:00000000000000bf",
+    "length": 5,
+    "value": ".fini",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:00000000000000c5",
+    "address": ".shstrtab:00000000000000c5",
+    "length": 7,
+    "value": ".rodata",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:00000000000000cd",
+    "address": ".shstrtab:00000000000000cd",
+    "length": 13,
+    "value": ".eh_frame_hdr",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:00000000000000db",
+    "address": ".shstrtab:00000000000000db",
+    "length": 9,
+    "value": ".eh_frame",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:00000000000000e5",
+    "address": ".shstrtab:00000000000000e5",
+    "length": 11,
+    "value": ".init_array",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:00000000000000f1",
+    "address": ".shstrtab:00000000000000f1",
+    "length": 11,
+    "value": ".fini_array",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:00000000000000fd",
+    "address": ".shstrtab:00000000000000fd",
+    "length": 8,
+    "value": ".dynamic",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:0000000000000106",
+    "address": ".shstrtab:0000000000000106",
+    "length": 5,
+    "value": ".data",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:000000000000010c",
+    "address": ".shstrtab:000000000000010c",
+    "length": 4,
+    "value": ".bss",
+    "clipped": false
+   },
+   {
+    "id": "str:.shstrtab:0000000000000111",
+    "address": ".shstrtab:0000000000000111",
+    "length": 8,
+    "value": ".comment",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000001",
+    "address": ".strtab:0000000000000001",
+    "length": 7,
+    "value": "Scrt1.o",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000009",
+    "address": ".strtab:0000000000000009",
+    "length": 9,
+    "value": "__abi_tag",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000013",
+    "address": ".strtab:0000000000000013",
+    "length": 10,
+    "value": "crtstuff.c",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000001e",
+    "address": ".strtab:000000000000001e",
+    "length": 20,
+    "value": "deregister_tm_clones",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000033",
+    "address": ".strtab:0000000000000033",
+    "length": 21,
+    "value": "__do_global_dtors_aux",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000049",
+    "address": ".strtab:0000000000000049",
+    "length": 11,
+    "value": "completed.0",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000055",
+    "address": ".strtab:0000000000000055",
+    "length": 38,
+    "value": "__do_global_dtors_aux_fini_array_entry",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000007c",
+    "address": ".strtab:000000000000007c",
+    "length": 11,
+    "value": "frame_dummy",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000088",
+    "address": ".strtab:0000000000000088",
+    "length": 30,
+    "value": "__frame_dummy_init_array_entry",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000000a7",
+    "address": ".strtab:00000000000000a7",
+    "length": 11,
+    "value": "termmines.c",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000000b3",
+    "address": ".strtab:00000000000000b3",
+    "length": 13,
+    "value": "__FRAME_END__",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000000c1",
+    "address": ".strtab:00000000000000c1",
+    "length": 6,
+    "value": "atexit",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000000c8",
+    "address": ".strtab:00000000000000c8",
+    "length": 8,
+    "value": "_DYNAMIC",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000000d1",
+    "address": ".strtab:00000000000000d1",
+    "length": 18,
+    "value": "__GNU_EH_FRAME_HDR",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000000e4",
+    "address": ".strtab:00000000000000e4",
+    "length": 21,
+    "value": "_GLOBAL_OFFSET_TABLE_",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000000fa",
+    "address": ".strtab:00000000000000fa",
+    "length": 14,
+    "value": "display_cursor",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000109",
+    "address": ".strtab:0000000000000109",
+    "length": 18,
+    "value": "print_status_coord",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000011c",
+    "address": ".strtab:000000000000011c",
+    "length": 28,
+    "value": "__libc_start_main@GLIBC_2.34",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000139",
+    "address": ".strtab:0000000000000139",
+    "length": 27,
+    "value": "_ITM_deregisterTMCloneTable",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000155",
+    "address": ".strtab:0000000000000155",
+    "length": 28,
+    "value": "wgetch@NCURSES6_5.0.19991023",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000172",
+    "address": ".strtab:0000000000000172",
+    "length": 5,
+    "value": "state",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000178",
+    "address": ".strtab:0000000000000178",
+    "length": 6,
+    "value": "_edata",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000017f",
+    "address": ".strtab:000000000000017f",
+    "length": 12,
+    "value": "erase_cursor",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000018c",
+    "address": ".strtab:000000000000018c",
+    "length": 6,
+    "value": "myexit",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000193",
+    "address": ".strtab:0000000000000193",
+    "length": 5,
+    "value": "_fini",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000199",
+    "address": ".strtab:0000000000000199",
+    "length": 28,
+    "value": "noecho@NCURSES6_5.0.19991023",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000001b6",
+    "address": ".strtab:00000000000001b6",
+    "length": 26,
+    "value": "__stack_chk_fail@GLIBC_2.4",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000001d1",
+    "address": ".strtab:00000000000001d1",
+    "length": 13,
+    "value": "do_clear_cell",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000001df",
+    "address": ".strtab:00000000000001df",
+    "length": 11,
+    "value": "parse_width",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000001eb",
+    "address": ".strtab:00000000000001eb",
+    "length": 11,
+    "value": "parse_mines",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000001f7",
+    "address": ".strtab:00000000000001f7",
+    "length": 10,
+    "value": "print_grid",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000202",
+    "address": ".strtab:0000000000000202",
+    "length": 9,
+    "value": "check_win",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000020c",
+    "address": ".strtab:000000000000020c",
+    "length": 29,
+    "value": "initscr@NCURSES6_5.0.19991023",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000022a",
+    "address": ".strtab:000000000000022a",
+    "length": 30,
+    "value": "wrefresh@NCURSES6_5.0.19991023",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000249",
+    "address": ".strtab:0000000000000249",
+    "length": 18,
+    "value": "memset@GLIBC_2.2.5",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000025c",
+    "address": ".strtab:000000000000025c",
+    "length": 33,
+    "value": "start_color@NCURSES6_5.0.19991023",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000027e",
+    "address": ".strtab:000000000000027e",
+    "length": 34,
+    "value": "stdscr@NCURSES6_TINFO_5.0.19991023",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000002a1",
+    "address": ".strtab:00000000000002a1",
+    "length": 19,
+    "value": "strnlen@GLIBC_2.2.5",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000002b5",
+    "address": ".strtab:00000000000002b5",
+    "length": 13,
+    "value": "display_board",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000002c3",
+    "address": ".strtab:00000000000002c3",
+    "length": 34,
+    "value": "keypad@NCURSES6_TINFO_5.0.19991023",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000002e6",
+    "address": ".strtab:00000000000002e6",
+    "length": 10,
+    "value": "parse_args",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000002f1",
+    "address": ".strtab:00000000000002f1",
+    "length": 12,
+    "value": "print_status",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000002fe",
+    "address": ".strtab:00000000000002fe",
+    "length": 17,
+    "value": "srand@GLIBC_2.2.5",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000310",
+    "address": ".strtab:0000000000000310",
+    "length": 9,
+    "value": "cheat_seq",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000031a",
+    "address": ".strtab:000000000000031a",
+    "length": 12,
+    "value": "__data_start",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000327",
+    "address": ".strtab:0000000000000327",
+    "length": 18,
+    "value": "strcmp@GLIBC_2.2.5",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000033a",
+    "address": ".strtab:000000000000033a",
+    "length": 19,
+    "value": "fprintf@GLIBC_2.2.5",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000034e",
+    "address": ".strtab:000000000000034e",
+    "length": 14,
+    "value": "__gmon_start__",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000035d",
+    "address": ".strtab:000000000000035d",
+    "length": 12,
+    "value": "__dso_handle",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000036a",
+    "address": ".strtab:000000000000036a",
+    "length": 30,
+    "value": "mvprintw@NCURSES6_5.0.19991023",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000389",
+    "address": ".strtab:0000000000000389",
+    "length": 14,
+    "value": "_IO_stdin_used",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000398",
+    "address": ".strtab:0000000000000398",
+    "length": 12,
+    "value": "parse_height",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000003a5",
+    "address": ".strtab:00000000000003a5",
+    "length": 16,
+    "value": "time@GLIBC_2.2.5",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000003b6",
+    "address": ".strtab:00000000000003b6",
+    "length": 12,
+    "value": "clear_status",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000003c3",
+    "address": ".strtab:00000000000003c3",
+    "length": 18,
+    "value": "count_flags_around",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000003d6",
+    "address": ".strtab:00000000000003d6",
+    "length": 12,
+    "value": "count_around",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000003e3",
+    "address": ".strtab:00000000000003e3",
+    "length": 9,
+    "value": "flag_cell",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000003ed",
+    "address": ".strtab:00000000000003ed",
+    "length": 31,
+    "value": "init_pair@NCURSES6_5.0.19991023",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000040d",
+    "address": ".strtab:000000000000040d",
+    "length": 4,
+    "value": "_end",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000412",
+    "address": ".strtab:0000000000000412",
+    "length": 9,
+    "value": "print_win",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000041c",
+    "address": ".strtab:000000000000041c",
+    "length": 12,
+    "value": "around_attrs",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000429",
+    "address": ".strtab:0000000000000429",
+    "length": 11,
+    "value": "super_clear",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000435",
+    "address": ".strtab:0000000000000435",
+    "length": 11,
+    "value": "__bss_start",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000441",
+    "address": ".strtab:0000000000000441",
+    "length": 10,
+    "value": "timer_func",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000044c",
+    "address": ".strtab:000000000000044c",
+    "length": 4,
+    "value": "main",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000451",
+    "address": ".strtab:0000000000000451",
+    "length": 5,
+    "value": "cheat",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000457",
+    "address": ".strtab:0000000000000457",
+    "length": 19,
+    "value": "strtoul@GLIBC_2.2.5",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000046b",
+    "address": ".strtab:000000000000046b",
+    "length": 27,
+    "value": "wmove@NCURSES6_5.0.19991023",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000487",
+    "address": ".strtab:0000000000000487",
+    "length": 24,
+    "value": "__cxa_atexit@GLIBC_2.2.5",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000004a0",
+    "address": ".strtab:00000000000004a0",
+    "length": 12,
+    "value": "clear_around",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000004ad",
+    "address": ".strtab:00000000000004ad",
+    "length": 28,
+    "value": "waddch@NCURSES6_5.0.19991023",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000004ca",
+    "address": ".strtab:00000000000004ca",
+    "length": 11,
+    "value": "setup_board",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000004d6",
+    "address": ".strtab:00000000000004d6",
+    "length": 11,
+    "value": "__TMC_END__",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000004e2",
+    "address": ".strtab:00000000000004e2",
+    "length": 11,
+    "value": "print_usage",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:00000000000004ee",
+    "address": ".strtab:00000000000004ee",
+    "length": 25,
+    "value": "_ITM_registerTMCloneTable",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000508",
+    "address": ".strtab:0000000000000508",
+    "length": 28,
+    "value": "endwin@NCURSES6_5.0.19991023",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000525",
+    "address": ".strtab:0000000000000525",
+    "length": 9,
+    "value": "parse_int",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000052f",
+    "address": ".strtab:000000000000052f",
+    "length": 30,
+    "value": "waddnstr@NCURSES6_5.0.19991023",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000054e",
+    "address": ".strtab:000000000000054e",
+    "length": 26,
+    "value": "__cxa_finalize@GLIBC_2.2.5",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000569",
+    "address": ".strtab:0000000000000569",
+    "length": 5,
+    "value": "_init",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000056f",
+    "address": ".strtab:000000000000056f",
+    "length": 8,
+    "value": "rand_rng",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:0000000000000578",
+    "address": ".strtab:0000000000000578",
+    "length": 18,
+    "value": "stderr@GLIBC_2.2.5",
+    "clipped": false
+   },
+   {
+    "id": "str:.strtab:000000000000058b",
+    "address": ".strtab:000000000000058b",
+    "length": 11,
+    "value": "parse_skill",
+    "clipped": false
+   }
+  ],
+  "stringRefs": [
+   {
+    "from": "ram:0000000000101424",
+    "function": "fn:ram:0000000000101409",
+    "string": "str:ram:0000000000103008",
+    "instruction": "LEA RCX,[0x103008]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:000000000010142b",
+    "function": "fn:ram:0000000000101409",
+    "string": "str:ram:0000000000103008",
+    "instruction": "MOV RSI,RCX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:0000000000101460",
+    "function": "fn:ram:0000000000101449",
+    "string": "str:ram:000000000010398d",
+    "instruction": "LEA RAX,[0x10398d]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:0000000000101467",
+    "function": "fn:ram:0000000000101449",
+    "string": "str:ram:000000000010398d",
+    "instruction": "MOV RDI,RAX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:000000000010149d",
+    "function": "fn:ram:0000000000101449",
+    "string": "str:ram:0000000000103996",
+    "instruction": "LEA RAX,[0x103996]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:00000000001014a4",
+    "function": "fn:ram:0000000000101449",
+    "string": "str:ram:0000000000103996",
+    "instruction": "MOV RDI,RAX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:00000000001014d7",
+    "function": "fn:ram:0000000000101449",
+    "string": "str:ram:00000000001039a3",
+    "instruction": "LEA RAX,[0x1039a3]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:00000000001014de",
+    "function": "fn:ram:0000000000101449",
+    "string": "str:ram:00000000001039a3",
+    "instruction": "MOV RDI,RAX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:0000000000101515",
+    "function": "fn:ram:0000000000101449",
+    "string": "str:ram:00000000001039ac",
+    "instruction": "LEA RCX,[0x1039ac]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:000000000010151c",
+    "function": "fn:ram:0000000000101449",
+    "string": "str:ram:00000000001039ac",
+    "instruction": "MOV RSI,RCX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:00000000001015bb",
+    "function": "fn:ram:0000000000101538",
+    "string": "str:ram:00000000001039c0",
+    "instruction": "LEA RSI,[0x1039c0]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:0000000000101611",
+    "function": "fn:ram:00000000001015f3",
+    "string": "str:ram:00000000001039f9",
+    "instruction": "LEA RSI,[0x1039f9]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:0000000000101647",
+    "function": "fn:ram:0000000000101629",
+    "string": "str:ram:00000000001039ff",
+    "instruction": "LEA RSI,[0x1039ff]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:0000000000101693",
+    "function": "fn:ram:000000000010165f",
+    "string": "str:ram:0000000000103a06",
+    "instruction": "LEA RSI,[0x103a06]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:00000000001016c4",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a0c",
+    "instruction": "LEA RAX,[0x103a0c]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:00000000001016cb",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a0c",
+    "instruction": "MOV RDI,RAX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:000000000010174f",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a12",
+    "instruction": "LEA RCX,[0x103a12]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:0000000000101756",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a12",
+    "instruction": "MOV RSI,RCX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:00000000001017fc",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a28",
+    "instruction": "LEA RDX,[0x103a28]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:0000000000101803",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a2e",
+    "instruction": "LEA RCX,[0x103a2e]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:000000000010180a",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a2e",
+    "instruction": "MOV RSI,RCX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:000000000010186a",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:00000000001039f9",
+    "instruction": "LEA RDX,[0x1039f9]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:0000000000101871",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a2e",
+    "instruction": "LEA RCX,[0x103a2e]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:0000000000101878",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a2e",
+    "instruction": "MOV RSI,RCX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:00000000001018d8",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:00000000001039ff",
+    "instruction": "LEA RDX,[0x1039ff]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:00000000001018df",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a2e",
+    "instruction": "LEA RCX,[0x103a2e]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:00000000001018e6",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a2e",
+    "instruction": "MOV RSI,RCX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:0000000000101946",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a06",
+    "instruction": "LEA RDX,[0x103a06]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:000000000010194d",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a2e",
+    "instruction": "LEA RCX,[0x103a2e]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:0000000000101954",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a2e",
+    "instruction": "MOV RSI,RCX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:00000000001019d5",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a12",
+    "instruction": "LEA RCX,[0x103a12]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:00000000001019dc",
+    "function": "fn:ram:00000000001016ab",
+    "string": "str:ram:0000000000103a12",
+    "instruction": "MOV RSI,RCX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:0000000000102405",
+    "function": "fn:ram:00000000001023ca",
+    "string": "str:ram:0000000000103a50",
+    "instruction": "LEA RCX,[0x103a50]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:000000000010240c",
+    "function": "fn:ram:00000000001023ca",
+    "string": "str:ram:0000000000103a50",
+    "instruction": "MOV RSI,RCX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:00000000001024b8",
+    "function": "fn:ram:0000000000102479",
+    "string": "str:ram:0000000000103a7b",
+    "instruction": "LEA RAX,[0x103a7b]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:00000000001024bf",
+    "function": "fn:ram:0000000000102479",
+    "string": "str:ram:0000000000103a7b",
+    "instruction": "MOV RDX,RAX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:0000000000102516",
+    "function": "fn:ram:00000000001024d4",
+    "string": "str:ram:0000000000103a86",
+    "instruction": "LEA RAX,[0x103a86]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:000000000010251d",
+    "function": "fn:ram:00000000001024d4",
+    "string": "str:ram:0000000000103a86",
+    "instruction": "MOV RDX,RAX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:0000000000102713",
+    "function": "fn:ram:00000000001025e3",
+    "string": "str:ram:0000000000103aa1",
+    "instruction": "LEA RAX,[0x103aa1]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:000000000010271a",
+    "function": "fn:ram:00000000001025e3",
+    "string": "str:ram:0000000000103aa1",
+    "instruction": "MOV RDI,RAX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:00000000001027e8",
+    "function": "fn:ram:0000000000102774",
+    "string": "str:ram:0000000000103ab1",
+    "instruction": "LEA RAX,[0x103ab1]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:00000000001027ef",
+    "function": "fn:ram:0000000000102774",
+    "string": "str:ram:0000000000103ab1",
+    "instruction": "MOV RDI,RAX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:00000000001027f9",
+    "function": "fn:ram:0000000000102774",
+    "string": "str:ram:0000000000103abf",
+    "instruction": "LEA RAX,[0x103abf]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:0000000000102800",
+    "function": "fn:ram:0000000000102774",
+    "string": "str:ram:0000000000103abf",
+    "instruction": "MOV RDI,RAX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:0000000000102868",
+    "function": "fn:ram:000000000010280d",
+    "string": "str:ram:0000000000103adc",
+    "instruction": "LEA RAX,[0x103adc]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:000000000010286f",
+    "function": "fn:ram:000000000010280d",
+    "string": "str:ram:0000000000103adc",
+    "instruction": "MOV RDI,RAX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:00000000001028d2",
+    "function": "fn:ram:000000000010280d",
+    "string": "str:ram:0000000000103af6",
+    "instruction": "LEA RAX,[0x103af6]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:00000000001028d9",
+    "function": "fn:ram:000000000010280d",
+    "string": "str:ram:0000000000103af6",
+    "instruction": "MOV RDI,RAX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:0000000000102966",
+    "function": "fn:ram:00000000001028e4",
+    "string": "str:ram:0000000000103afe",
+    "instruction": "LEA RAX,[0x103afe]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:000000000010296d",
+    "function": "fn:ram:00000000001028e4",
+    "string": "str:ram:0000000000103afe",
+    "instruction": "MOV RDI,RAX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:00000000001029c6",
+    "function": "fn:ram:00000000001028e4",
+    "string": "str:ram:0000000000103b0b",
+    "instruction": "LEA RAX,[0x103b0b]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:00000000001029cd",
+    "function": "fn:ram:00000000001028e4",
+    "string": "str:ram:0000000000103b0b",
+    "instruction": "MOV RDI,RAX",
+    "refType": "PARAM"
+   },
+   {
+    "from": "ram:0000000000102caa",
+    "function": "fn:ram:0000000000102ac2",
+    "string": "str:ram:0000000000103b18",
+    "instruction": "LEA RAX,[0x103b18]",
+    "refType": "DATA"
+   },
+   {
+    "from": "ram:0000000000102cb1",
+    "function": "fn:ram:0000000000102ac2",
+    "string": "str:ram:0000000000103b18",
+    "instruction": "MOV RDI,RAX",
+    "refType": "PARAM"
+   }
+  ],
+  "calls": [
+   {
+    "from": "ram:00000000001013e2",
+    "function": "fn:ram:00000000001013c0",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001011a0",
+    "target": "fn:ram:00000000001011a0",
+    "targetAddress": "ram:00000000001011a0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000019"
+   },
+   {
+    "from": "ram:00000000001013e7",
+    "function": "fn:ram:00000000001013c0",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101350",
+    "target": "fn:ram:0000000000101350",
+    "targetAddress": "ram:0000000000101350",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000101436",
+    "function": "fn:ram:0000000000101409",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101260",
+    "target": "fn:ram:0000000000101260",
+    "targetAddress": "ram:0000000000101260",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000d"
+   },
+   {
+    "from": "ram:000000000010146a",
+    "function": "fn:ram:0000000000101449",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101250",
+    "target": "fn:ram:0000000000101250",
+    "targetAddress": "ram:0000000000101250",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000c"
+   },
+   {
+    "from": "ram:00000000001014a7",
+    "function": "fn:ram:0000000000101449",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101250",
+    "target": "fn:ram:0000000000101250",
+    "targetAddress": "ram:0000000000101250",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000c"
+   },
+   {
+    "from": "ram:00000000001014e1",
+    "function": "fn:ram:0000000000101449",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101250",
+    "target": "fn:ram:0000000000101250",
+    "targetAddress": "ram:0000000000101250",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000c"
+   },
+   {
+    "from": "ram:0000000000101527",
+    "function": "fn:ram:0000000000101449",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101260",
+    "target": "fn:ram:0000000000101260",
+    "targetAddress": "ram:0000000000101260",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000d"
+   },
+   {
+    "from": "ram:0000000000101531",
+    "function": "fn:ram:0000000000101449",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012e0",
+    "target": "fn:ram:00000000001012e0",
+    "targetAddress": "ram:00000000001012e0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000015"
+   },
+   {
+    "from": "ram:0000000000101576",
+    "function": "fn:ram:0000000000101538",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012a0",
+    "target": "fn:ram:00000000001012a0",
+    "targetAddress": "ram:00000000001012a0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000011"
+   },
+   {
+    "from": "ram:00000000001015ca",
+    "function": "fn:ram:0000000000101538",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101260",
+    "target": "fn:ram:0000000000101260",
+    "targetAddress": "ram:0000000000101260",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000d"
+   },
+   {
+    "from": "ram:00000000001015d4",
+    "function": "fn:ram:0000000000101538",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012e0",
+    "target": "fn:ram:00000000001012e0",
+    "targetAddress": "ram:00000000001012e0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000015"
+   },
+   {
+    "from": "ram:00000000001015ec",
+    "function": "fn:ram:0000000000101538",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001011d0",
+    "target": "fn:ram:00000000001011d0",
+    "targetAddress": "ram:00000000001011d0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000004"
+   },
+   {
+    "from": "ram:000000000010161b",
+    "function": "fn:ram:00000000001015f3",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101538",
+    "target": "fn:ram:0000000000101538",
+    "targetAddress": "ram:0000000000101538",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000101651",
+    "function": "fn:ram:0000000000101629",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101538",
+    "target": "fn:ram:0000000000101538",
+    "targetAddress": "ram:0000000000101538",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:000000000010169d",
+    "function": "fn:ram:000000000010165f",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101538",
+    "target": "fn:ram:0000000000101538",
+    "targetAddress": "ram:0000000000101538",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001016ce",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101409",
+    "target": "fn:ram:0000000000101409",
+    "targetAddress": "ram:0000000000101409",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001016d8",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012e0",
+    "target": "fn:ram:00000000001012e0",
+    "targetAddress": "ram:00000000001012e0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000015"
+   },
+   {
+    "from": "ram:0000000000101708",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101220",
+    "target": "fn:ram:0000000000101220",
+    "targetAddress": "ram:0000000000101220",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000009"
+   },
+   {
+    "from": "ram:0000000000101761",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101260",
+    "target": "fn:ram:0000000000101260",
+    "targetAddress": "ram:0000000000101260",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000d"
+   },
+   {
+    "from": "ram:0000000000101770",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101409",
+    "target": "fn:ram:0000000000101409",
+    "targetAddress": "ram:0000000000101409",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:000000000010177a",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012e0",
+    "target": "fn:ram:00000000001012e0",
+    "targetAddress": "ram:00000000001012e0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000015"
+   },
+   {
+    "from": "ram:0000000000101815",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101260",
+    "target": "fn:ram:0000000000101260",
+    "targetAddress": "ram:0000000000101260",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000d"
+   },
+   {
+    "from": "ram:0000000000101824",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101409",
+    "target": "fn:ram:0000000000101409",
+    "targetAddress": "ram:0000000000101409",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:000000000010182e",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012e0",
+    "target": "fn:ram:00000000001012e0",
+    "targetAddress": "ram:00000000001012e0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000015"
+   },
+   {
+    "from": "ram:000000000010184d",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101449",
+    "target": "fn:ram:0000000000101449",
+    "targetAddress": "ram:0000000000101449",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000101883",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101260",
+    "target": "fn:ram:0000000000101260",
+    "targetAddress": "ram:0000000000101260",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000d"
+   },
+   {
+    "from": "ram:0000000000101892",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101409",
+    "target": "fn:ram:0000000000101409",
+    "targetAddress": "ram:0000000000101409",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:000000000010189c",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012e0",
+    "target": "fn:ram:00000000001012e0",
+    "targetAddress": "ram:00000000001012e0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000015"
+   },
+   {
+    "from": "ram:00000000001018bb",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001015f3",
+    "target": "fn:ram:00000000001015f3",
+    "targetAddress": "ram:00000000001015f3",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001018f1",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101260",
+    "target": "fn:ram:0000000000101260",
+    "targetAddress": "ram:0000000000101260",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000d"
+   },
+   {
+    "from": "ram:0000000000101900",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101409",
+    "target": "fn:ram:0000000000101409",
+    "targetAddress": "ram:0000000000101409",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:000000000010190a",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012e0",
+    "target": "fn:ram:00000000001012e0",
+    "targetAddress": "ram:00000000001012e0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000015"
+   },
+   {
+    "from": "ram:0000000000101929",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101629",
+    "target": "fn:ram:0000000000101629",
+    "targetAddress": "ram:0000000000101629",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:000000000010195f",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101260",
+    "target": "fn:ram:0000000000101260",
+    "targetAddress": "ram:0000000000101260",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000d"
+   },
+   {
+    "from": "ram:000000000010196e",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101409",
+    "target": "fn:ram:0000000000101409",
+    "targetAddress": "ram:0000000000101409",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000101978",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012e0",
+    "target": "fn:ram:00000000001012e0",
+    "targetAddress": "ram:00000000001012e0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000015"
+   },
+   {
+    "from": "ram:0000000000101997",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x0010165f",
+    "target": "fn:ram:000000000010165f",
+    "targetAddress": "ram:000000000010165f",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001019a8",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101409",
+    "target": "fn:ram:0000000000101409",
+    "targetAddress": "ram:0000000000101409",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001019b2",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012e0",
+    "target": "fn:ram:00000000001012e0",
+    "targetAddress": "ram:00000000001012e0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000015"
+   },
+   {
+    "from": "ram:00000000001019e7",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101260",
+    "target": "fn:ram:0000000000101260",
+    "targetAddress": "ram:0000000000101260",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000d"
+   },
+   {
+    "from": "ram:00000000001019f6",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101409",
+    "target": "fn:ram:0000000000101409",
+    "targetAddress": "ram:0000000000101409",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000101a00",
+    "function": "fn:ram:00000000001016ab",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012e0",
+    "target": "fn:ram:00000000001012e0",
+    "targetAddress": "ram:00000000001012e0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000015"
+   },
+   {
+    "from": "ram:0000000000101a28",
+    "function": "fn:ram:0000000000101a19",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101310",
+    "target": "fn:ram:0000000000101310",
+    "targetAddress": "ram:0000000000101310",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000018"
+   },
+   {
+    "from": "ram:0000000000101b4b",
+    "function": "fn:ram:0000000000101b2b",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101200",
+    "target": "fn:ram:0000000000101200",
+    "targetAddress": "ram:0000000000101200",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000007"
+   },
+   {
+    "from": "ram:0000000000101b64",
+    "function": "fn:ram:0000000000101b2b",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101a19",
+    "target": "fn:ram:0000000000101a19",
+    "targetAddress": "ram:0000000000101a19",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000101b74",
+    "function": "fn:ram:0000000000101b2b",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101a19",
+    "target": "fn:ram:0000000000101a19",
+    "targetAddress": "ram:0000000000101a19",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000101c49",
+    "function": "fn:ram:0000000000101b2b",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101a35",
+    "target": "fn:ram:0000000000101a35",
+    "targetAddress": "ram:0000000000101a35",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000101e32",
+    "function": "fn:ram:0000000000101df2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012b0",
+    "target": "fn:ram:00000000001012b0",
+    "targetAddress": "ram:00000000001012b0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000012"
+   },
+   {
+    "from": "ram:0000000000101efa",
+    "function": "fn:ram:0000000000101df2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012d0",
+    "target": "fn:ram:00000000001012d0",
+    "targetAddress": "ram:00000000001012d0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000014"
+   },
+   {
+    "from": "ram:0000000000101f10",
+    "function": "fn:ram:0000000000101df2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012d0",
+    "target": "fn:ram:00000000001012d0",
+    "targetAddress": "ram:00000000001012d0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000014"
+   },
+   {
+    "from": "ram:0000000000101f3a",
+    "function": "fn:ram:0000000000101df2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012b0",
+    "target": "fn:ram:00000000001012b0",
+    "targetAddress": "ram:00000000001012b0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000012"
+   },
+   {
+    "from": "ram:0000000000101fad",
+    "function": "fn:ram:0000000000101df2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101300",
+    "target": "fn:ram:0000000000101300",
+    "targetAddress": "ram:0000000000101300",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000017"
+   },
+   {
+    "from": "ram:0000000000101fcd",
+    "function": "fn:ram:0000000000101df2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101300",
+    "target": "fn:ram:0000000000101300",
+    "targetAddress": "ram:0000000000101300",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000017"
+   },
+   {
+    "from": "ram:0000000000101ffa",
+    "function": "fn:ram:0000000000101df2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012b0",
+    "target": "fn:ram:00000000001012b0",
+    "targetAddress": "ram:00000000001012b0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000012"
+   },
+   {
+    "from": "ram:0000000000102063",
+    "function": "fn:ram:0000000000101df2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012d0",
+    "target": "fn:ram:00000000001012d0",
+    "targetAddress": "ram:00000000001012d0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000014"
+   },
+   {
+    "from": "ram:0000000000102079",
+    "function": "fn:ram:0000000000101df2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012d0",
+    "target": "fn:ram:00000000001012d0",
+    "targetAddress": "ram:00000000001012d0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000014"
+   },
+   {
+    "from": "ram:00000000001020e9",
+    "function": "fn:ram:00000000001020a8",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012b0",
+    "target": "fn:ram:00000000001012b0",
+    "targetAddress": "ram:00000000001012b0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000012"
+   },
+   {
+    "from": "ram:000000000010212c",
+    "function": "fn:ram:00000000001020a8",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012d0",
+    "target": "fn:ram:00000000001012d0",
+    "targetAddress": "ram:00000000001012d0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000014"
+   },
+   {
+    "from": "ram:0000000000102189",
+    "function": "fn:ram:00000000001020a8",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012d0",
+    "target": "fn:ram:00000000001012d0",
+    "targetAddress": "ram:00000000001012d0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000014"
+   },
+   {
+    "from": "ram:00000000001021cb",
+    "function": "fn:ram:00000000001020a8",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012d0",
+    "target": "fn:ram:00000000001012d0",
+    "targetAddress": "ram:00000000001012d0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000014"
+   },
+   {
+    "from": "ram:0000000000102215",
+    "function": "fn:ram:00000000001020a8",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012d0",
+    "target": "fn:ram:00000000001012d0",
+    "targetAddress": "ram:00000000001012d0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000014"
+   },
+   {
+    "from": "ram:0000000000102249",
+    "function": "fn:ram:00000000001020a8",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012d0",
+    "target": "fn:ram:00000000001012d0",
+    "targetAddress": "ram:00000000001012d0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000014"
+   },
+   {
+    "from": "ram:00000000001022a3",
+    "function": "fn:ram:0000000000102278",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012b0",
+    "target": "fn:ram:00000000001012b0",
+    "targetAddress": "ram:00000000001012b0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000012"
+   },
+   {
+    "from": "ram:00000000001022bc",
+    "function": "fn:ram:0000000000102278",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012d0",
+    "target": "fn:ram:00000000001012d0",
+    "targetAddress": "ram:00000000001012d0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000014"
+   },
+   {
+    "from": "ram:00000000001022e4",
+    "function": "fn:ram:0000000000102278",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012b0",
+    "target": "fn:ram:00000000001012b0",
+    "targetAddress": "ram:00000000001012b0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000012"
+   },
+   {
+    "from": "ram:00000000001022fd",
+    "function": "fn:ram:0000000000102278",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012d0",
+    "target": "fn:ram:00000000001012d0",
+    "targetAddress": "ram:00000000001012d0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000014"
+   },
+   {
+    "from": "ram:0000000000102325",
+    "function": "fn:ram:0000000000102278",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012b0",
+    "target": "fn:ram:00000000001012b0",
+    "targetAddress": "ram:00000000001012b0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000012"
+   },
+   {
+    "from": "ram:0000000000102358",
+    "function": "fn:ram:000000000010232d",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012b0",
+    "target": "fn:ram:00000000001012b0",
+    "targetAddress": "ram:00000000001012b0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000012"
+   },
+   {
+    "from": "ram:0000000000102371",
+    "function": "fn:ram:000000000010232d",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012d0",
+    "target": "fn:ram:00000000001012d0",
+    "targetAddress": "ram:00000000001012d0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000014"
+   },
+   {
+    "from": "ram:0000000000102399",
+    "function": "fn:ram:000000000010232d",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012b0",
+    "target": "fn:ram:00000000001012b0",
+    "targetAddress": "ram:00000000001012b0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000012"
+   },
+   {
+    "from": "ram:00000000001023b2",
+    "function": "fn:ram:000000000010232d",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012d0",
+    "target": "fn:ram:00000000001012d0",
+    "targetAddress": "ram:00000000001012d0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000014"
+   },
+   {
+    "from": "ram:00000000001023c2",
+    "function": "fn:ram:00000000001023ba",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012f0",
+    "target": "fn:ram:00000000001012f0",
+    "targetAddress": "ram:00000000001012f0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000016"
+   },
+   {
+    "from": "ram:00000000001023ef",
+    "function": "fn:ram:00000000001023ca",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012b0",
+    "target": "fn:ram:00000000001012b0",
+    "targetAddress": "ram:00000000001012b0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000012"
+   },
+   {
+    "from": "ram:0000000000102412",
+    "function": "fn:ram:00000000001023ca",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101300",
+    "target": "fn:ram:0000000000101300",
+    "targetAddress": "ram:0000000000101300",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000017"
+   },
+   {
+    "from": "ram:000000000010242f",
+    "function": "fn:ram:000000000010241a",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001023ca",
+    "target": "fn:ram:00000000001023ca",
+    "targetAddress": "ram:00000000001023ca",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102451",
+    "function": "fn:ram:000000000010241a",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001012b0",
+    "target": "fn:ram:00000000001012b0",
+    "targetAddress": "ram:00000000001012b0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000012"
+   },
+   {
+    "from": "ram:0000000000102471",
+    "function": "fn:ram:000000000010241a",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101300",
+    "target": "fn:ram:0000000000101300",
+    "targetAddress": "ram:0000000000101300",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000017"
+   },
+   {
+    "from": "ram:000000000010248e",
+    "function": "fn:ram:0000000000102479",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001023ca",
+    "target": "fn:ram:00000000001023ca",
+    "targetAddress": "ram:00000000001023ca",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001024cc",
+    "function": "fn:ram:0000000000102479",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101270",
+    "target": "fn:ram:0000000000101270",
+    "targetAddress": "ram:0000000000101270",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000e"
+   },
+   {
+    "from": "ram:00000000001024e5",
+    "function": "fn:ram:00000000001024d4",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001023ca",
+    "target": "fn:ram:00000000001023ca",
+    "targetAddress": "ram:00000000001023ca",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001024ef",
+    "function": "fn:ram:00000000001024d4",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101280",
+    "target": "fn:ram:0000000000101280",
+    "targetAddress": "ram:0000000000101280",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000f"
+   },
+   {
+    "from": "ram:000000000010252a",
+    "function": "fn:ram:00000000001024d4",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101270",
+    "target": "fn:ram:0000000000101270",
+    "targetAddress": "ram:0000000000101270",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000e"
+   },
+   {
+    "from": "ram:0000000000102554",
+    "function": "fn:ram:0000000000102532",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001025e3",
+    "target": "fn:ram:00000000001025e3",
+    "targetAddress": "ram:00000000001025e3",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102566",
+    "function": "fn:ram:0000000000102532",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001025e3",
+    "target": "fn:ram:00000000001025e3",
+    "targetAddress": "ram:00000000001025e3",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:000000000010257b",
+    "function": "fn:ram:0000000000102532",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001025e3",
+    "target": "fn:ram:00000000001025e3",
+    "targetAddress": "ram:00000000001025e3",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:000000000010258d",
+    "function": "fn:ram:0000000000102532",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001025e3",
+    "target": "fn:ram:00000000001025e3",
+    "targetAddress": "ram:00000000001025e3",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:000000000010259f",
+    "function": "fn:ram:0000000000102532",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001025e3",
+    "target": "fn:ram:00000000001025e3",
+    "targetAddress": "ram:00000000001025e3",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001025b4",
+    "function": "fn:ram:0000000000102532",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001025e3",
+    "target": "fn:ram:00000000001025e3",
+    "targetAddress": "ram:00000000001025e3",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001025c6",
+    "function": "fn:ram:0000000000102532",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001025e3",
+    "target": "fn:ram:00000000001025e3",
+    "targetAddress": "ram:00000000001025e3",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001025db",
+    "function": "fn:ram:0000000000102532",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001025e3",
+    "target": "fn:ram:00000000001025e3",
+    "targetAddress": "ram:00000000001025e3",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:000000000010271d",
+    "function": "fn:ram:00000000001025e3",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00102479",
+    "target": "fn:ram:0000000000102479",
+    "targetAddress": "ram:0000000000102479",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102767",
+    "function": "fn:ram:00000000001025e3",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00102532",
+    "target": "fn:ram:0000000000102532",
+    "targetAddress": "ram:0000000000102532",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:000000000010279a",
+    "function": "fn:ram:0000000000102774",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101aaa",
+    "target": "fn:ram:0000000000101aaa",
+    "targetAddress": "ram:0000000000101aaa",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001027d9",
+    "function": "fn:ram:0000000000102774",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00102532",
+    "target": "fn:ram:0000000000102532",
+    "targetAddress": "ram:0000000000102532",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001027f2",
+    "function": "fn:ram:0000000000102774",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00102479",
+    "target": "fn:ram:0000000000102479",
+    "targetAddress": "ram:0000000000102479",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102803",
+    "function": "fn:ram:0000000000102774",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00102479",
+    "target": "fn:ram:0000000000102479",
+    "targetAddress": "ram:0000000000102479",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:000000000010282e",
+    "function": "fn:ram:000000000010280d",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101280",
+    "target": "fn:ram:0000000000101280",
+    "targetAddress": "ram:0000000000101280",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000f"
+   },
+   {
+    "from": "ram:0000000000102872",
+    "function": "fn:ram:000000000010280d",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00102479",
+    "target": "fn:ram:0000000000102479",
+    "targetAddress": "ram:0000000000102479",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001028b2",
+    "function": "fn:ram:000000000010280d",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00102774",
+    "target": "fn:ram:0000000000102774",
+    "targetAddress": "ram:0000000000102774",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001028c3",
+    "function": "fn:ram:000000000010280d",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001025e3",
+    "target": "fn:ram:00000000001025e3",
+    "targetAddress": "ram:00000000001025e3",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001028dc",
+    "function": "fn:ram:000000000010280d",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00102479",
+    "target": "fn:ram:0000000000102479",
+    "targetAddress": "ram:0000000000102479",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102970",
+    "function": "fn:ram:00000000001028e4",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00102479",
+    "target": "fn:ram:0000000000102479",
+    "targetAddress": "ram:0000000000102479",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:00000000001029d0",
+    "function": "fn:ram:00000000001028e4",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00102479",
+    "target": "fn:ram:0000000000102479",
+    "targetAddress": "ram:0000000000102479",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102aae",
+    "function": "fn:ram:0000000000102a2c",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001024d4",
+    "target": "fn:ram:00000000001024d4",
+    "targetAddress": "ram:00000000001024d4",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102ae1",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001016ab",
+    "target": "fn:ram:00000000001016ab",
+    "targetAddress": "ram:00000000001016ab",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102aeb",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101280",
+    "target": "fn:ram:0000000000101280",
+    "targetAddress": "ram:0000000000101280",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000f"
+   },
+   {
+    "from": "ram:0000000000102afa",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101240",
+    "target": "fn:ram:0000000000101240",
+    "targetAddress": "ram:0000000000101240",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000b"
+   },
+   {
+    "from": "ram:0000000000102b04",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101b2b",
+    "target": "fn:ram:0000000000101b2b",
+    "targetAddress": "ram:0000000000101b2b",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102b09",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001011e0",
+    "target": "fn:ram:00000000001011e0",
+    "targetAddress": "ram:00000000001011e0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000005"
+   },
+   {
+    "from": "ram:0000000000102b18",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00102df0",
+    "target": "fn:ram:0000000000102df0",
+    "targetAddress": "ram:0000000000102df0",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102b1d",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001011c0",
+    "target": "fn:ram:00000000001011c0",
+    "targetAddress": "ram:00000000001011c0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000003"
+   },
+   {
+    "from": "ram:0000000000102b31",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101230",
+    "target": "fn:ram:0000000000101230",
+    "targetAddress": "ram:0000000000101230",
+    "resolvedTarget": "ext:EXTERNAL:000000000000000a"
+   },
+   {
+    "from": "ram:0000000000102b36",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101210",
+    "target": "fn:ram:0000000000101210",
+    "targetAddress": "ram:0000000000101210",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000008"
+   },
+   {
+    "from": "ram:0000000000102b4a",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101290",
+    "target": "fn:ram:0000000000101290",
+    "targetAddress": "ram:0000000000101290",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000010"
+   },
+   {
+    "from": "ram:0000000000102b5e",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101290",
+    "target": "fn:ram:0000000000101290",
+    "targetAddress": "ram:0000000000101290",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000010"
+   },
+   {
+    "from": "ram:0000000000102b72",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101290",
+    "target": "fn:ram:0000000000101290",
+    "targetAddress": "ram:0000000000101290",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000010"
+   },
+   {
+    "from": "ram:0000000000102b86",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101290",
+    "target": "fn:ram:0000000000101290",
+    "targetAddress": "ram:0000000000101290",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000010"
+   },
+   {
+    "from": "ram:0000000000102b9a",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101290",
+    "target": "fn:ram:0000000000101290",
+    "targetAddress": "ram:0000000000101290",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000010"
+   },
+   {
+    "from": "ram:0000000000102bae",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101290",
+    "target": "fn:ram:0000000000101290",
+    "targetAddress": "ram:0000000000101290",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000010"
+   },
+   {
+    "from": "ram:0000000000102bc2",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101290",
+    "target": "fn:ram:0000000000101290",
+    "targetAddress": "ram:0000000000101290",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000010"
+   },
+   {
+    "from": "ram:0000000000102bcc",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101df2",
+    "target": "fn:ram:0000000000101df2",
+    "targetAddress": "ram:0000000000101df2",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102bd6",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001020a8",
+    "target": "fn:ram:00000000001020a8",
+    "targetAddress": "ram:00000000001020a8",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102be0",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00102278",
+    "target": "fn:ram:0000000000102278",
+    "targetAddress": "ram:0000000000102278",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102bef",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001011f0",
+    "target": "fn:ram:00000000001011f0",
+    "targetAddress": "ram:00000000001011f0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000006"
+   },
+   {
+    "from": "ram:0000000000102bfe",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001011b0",
+    "target": "fn:ram:00000000001011b0",
+    "targetAddress": "ram:00000000001011b0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000002"
+   },
+   {
+    "from": "ram:0000000000102c0b",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x0010232d",
+    "target": "fn:ram:000000000010232d",
+    "targetAddress": "ram:000000000010232d",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102ca5",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00101b2b",
+    "target": "fn:ram:0000000000101b2b",
+    "targetAddress": "ram:0000000000101b2b",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102cb4",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x0010241a",
+    "target": "fn:ram:000000000010241a",
+    "targetAddress": "ram:000000000010241a",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102d61",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x0010280d",
+    "target": "fn:ram:000000000010280d",
+    "targetAddress": "ram:000000000010280d",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102d6b",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x00102a2c",
+    "target": "fn:ram:0000000000102a2c",
+    "targetAddress": "ram:0000000000102a2c",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102d82",
+    "function": "fn:ram:0000000000102ac2",
+    "mnemonic": "CALL",
+    "instruction": "CALL 0x001028e4",
+    "target": "fn:ram:00000000001028e4",
+    "targetAddress": "ram:00000000001028e4",
+    "resolvedTarget": null
+   },
+   {
+    "from": "ram:0000000000102dfd",
+    "function": "fn:ram:0000000000102df0",
+    "mnemonic": "JMP",
+    "instruction": "JMP 0x001012c0",
+    "target": "fn:ram:00000000001012c0",
+    "targetAddress": "ram:00000000001012c0",
+    "resolvedTarget": "ext:EXTERNAL:0000000000000013"
+   }
+  ],
+  "callStats": {
+   "indirect": 4,
+   "unresolved": 0
+  },
+  "truncated": [],
+  "end": "mws-ghidra-static-end"
+ }
+}

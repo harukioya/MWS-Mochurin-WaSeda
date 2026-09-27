@@ -64,6 +64,10 @@ const VALUE_SURFACES = [
   ['.timeline__title', '最終レポートの時系列の見出し'],
   ['.review__q', '復習一覧の設問文'],
   ['.quiz__hint-body', 'ヒント本文'],
+  // Ghidra 静的解析教材。関数名・文字列・命令・ハッシュ・ZIP 内の名前。
+  ['.event__source', '事象の出典（関数とアドレス）'],
+  ['.member__warn', '警告・読めなかった理由（ZIP 内の名前を含む）'],
+  ['.feedback', '処理結果の文言（教材名を含む）'],
 ];
 
 const results = [];

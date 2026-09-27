@@ -28,9 +28,34 @@ class TestBrowseNavigation(unittest.TestCase):
         self.assertIn("error", result)
 
 
+class TestRecheckSeesInPlaceRewrites(unittest.TestCase):
+    """_recheck must notice a rewrite of the same inode, even of bytes that
+    are still sitting in the reader's buffer from an earlier small read."""
+
+    def test_rewrite_of_buffered_bytes_is_detected(self):
+        import tempfile
+        for size in (600, 20000):
+            with self.subTest(size=size):
+                fd, path = tempfile.mkstemp()
+                self.addCleanup(os.remove, path)
+                os.write(fd, b"a" * size)
+                os.close(fd)
+                with open(path, "rb") as fh:
+                    before = Handler._hash_descriptor(fh)
+                    fh.seek(0)
+                    fh.read(30)          # zipfile reads the local header like this
+                    with open(path, "r+b") as out:
+                        out.write(b"X" * 16)
+                    self.assertNotEqual(Handler._hash_descriptor(fh), before)
+
+
 class TestRouteTable(unittest.TestCase):
     def test_every_route_declares_a_capability(self):
-        """Security invariant 1 from BUILD-CONTRACT."""
+        """Every route declares the capability it needs (default-deny).
+
+        A route without one would be reachable by every role, including
+        `student`, the moment it is added.
+        """
         known = {
             v for k, v in vars(Capability).items() if not k.startswith("_")
         }

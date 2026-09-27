@@ -328,7 +328,7 @@ class TestQuestionsAreGrounded(unittest.TestCase):
             explain._stage_files = original
         stage = next(s for s in lesson["stages"] if s["id"] == "files")
         # フェーズ3以降、段階は消さない。観測できた事実は見せたうえで、
-        # 設問を作れなかったことを言う（仕様書 5 節「空状態」）。
+        # 設問を作れなかったことを言う（空の段階を黙って消さない）。
         self.assertEqual(stage["quizzes"], [])
         self.assertIn("根拠が不足", stage.get("note", ""))
 
@@ -759,12 +759,20 @@ class TestLongRealisticLines(unittest.TestCase):
 
     def line(self, seq: int, exe: str) -> str:
         # 実データと同じ並び: 先頭に識別子が続き、psPath は後ろに来る。
+        #
+        # 値はすべてテスト用に作った合成値で、実在の端末・利用者を指さない。
+        # 長さと形式（GUID の桁と区切り、SID の構造、IPv4/IPv6 の組、MAC）は、
+        # 行の長さと項目の位置を再現するために元の並びと同じに保っている。
+        #   GUID … 7e57（"test"）と 0 だけで作った値
+        #   SID  … 各部を 1/2/3 の繰り返しにした、実在しない値
+        #   IP   … IPv4 は RFC 5737、IPv6 は RFC 3849 の文書用アドレス
+        #   MAC  … RFC 7042 の文書用アドレス（00-00-5E-00-53-xx）
         pad = (
-            f'tmid=f02cca14-4aae-402b-a8d9-2a287395709{seq} '
-            'csid=S-1-5-21-1720067203-2924128797-2708492278 '
-            'ip=172.16.2.101,fe80::74c9:7795:eb11:ce0 mac=06:00:f2:4b:34:cd '
+            f'tmid=7e570000-0000-4000-8000-00000000000{seq} '
+            'csid=S-1-5-21-1111111111-2222222222-3333333333 '
+            'ip=192.0.2.101,2001:db8::7e57:0:0:101:11 mac=00:00:5e:00:53:01 '
             'rcCom="WS02" rcIP=192.0.2.10 usr="tester" usrDomain="EXAMPLE" '
-            'sessionID=2 psGUID={9B28000B-0000-0000-0000-00000000000' + str(seq) + '} '
+            'sessionID=2 psGUID={7E570000-0000-0000-0000-00000000000' + str(seq) + '} '
         )
         return (
             f'10/05/2022 14:0{seq}:00.000 +0900 loc=en-US type=ITM2 sn={seq} lv=5 '

@@ -6,6 +6,8 @@ node_modules/
 *.key
 # never commit real malware samples or dataset material
 *.gzf
+# 例外は監査済みの同梱サンプル 1 件だけ（来歴: ghidra/sample/PROVENANCE.md）
+!ghidra/sample/termmines.gzf
 *.vir
 samples/
 
@@ -14,6 +16,7 @@ docs/BUILD-CONTRACT.md
 docs/THREAT-MODEL.md
 docs/MWS_Cup過去問フォレンジック学習ツール_実装仕様書.md
 docs/汎用データセット教材生成基盤_実装指示書.md
+docs/Ghidra静的解析教材_Docker連携_実装指示書.md
 
 # stray screenshots
 Screenshot*.png
