@@ -258,7 +258,6 @@ a{color:var(--brand-ink)}
 .badge{display:inline-flex; align-items:center; gap:6px; font:700 11px/1 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace; padding:5px 10px; border-radius:var(--r-pill); background:var(--surface-2); color:var(--muted); border:1px solid var(--line-2)}
 .safety-note{border-top:1px solid var(--line); margin-top:20px; padding:22px 0 40px; color:var(--faint); font-size:.85rem}
 .safety-note strong{color:var(--muted)}
-.safety-note__legal{margin:8px 0 0; font-size:.75rem; line-height:1.5}
 
 /* focus + motion */
 :focus-visible{outline:3px solid var(--brand); outline-offset:2px; border-radius:8px}

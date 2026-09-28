@@ -1,8 +1,7 @@
 # Zip2Learn
 
-配布された ZIP を**展開せず・実行せずに**スキャンし、中のログから
-**証拠付きの DFIR 演習**を作る教育用ツールです。
-Ghidra で解析した `.gzf` ファイルから、**静的解析の演習**も作れます。
+ZIP ファイルや Ghidra の解析ファイル（`.gzf`）を**展開・実行せずに**読み取り、
+**証拠付きの DFIR・静的解析の演習**を作る教育用ツールです。
 
 1. **スキャン** — ZIP の中身を読み取り、ログ・資料・注意が必要なファイルに分けて示す
 2. **教材化** — ログの 1 行 1 行を根拠に、段階ごとの設問と時系列をつくる
@@ -91,14 +90,10 @@ for f in backend/tests/test_ui_*.mjs; do node "$f"; done
 
 ---
 
-## ライセンスと表示
+## ライセンス
 
 外部のライブラリは使っていません。Ghidra・JDK・同梱サンプルのライセンスは
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) を参照してください。
-
-教材には MITRE ATT&CK® の手法 ID と名前を使っています。
-
-> © 2026 The MITRE Corporation. This work is reproduced and distributed with the permission of The MITRE Corporation.
 
 ---
 
