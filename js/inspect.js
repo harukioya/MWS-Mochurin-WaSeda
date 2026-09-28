@@ -26,14 +26,14 @@ const el = (tag, className, text) => {
 };
 
 function token() {
-  const meta = document.querySelector('meta[name="mws-token"]');
+  const meta = document.querySelector('meta[name="zip2learn-token"]');
   return meta ? meta.content : '';
 }
 
 async function api(path, options) {
   const res = await fetch(path, {
     ...options,
-    headers: { 'Content-Type': 'application/json', 'X-MWS-Token': token() },
+    headers: { 'Content-Type': 'application/json', 'X-Zip2Learn-Token': token() },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -1219,7 +1219,7 @@ function gzfAction(m, archiveId) {
     try {
       res = await fetch('/api/ghidra/jobs/from-archive', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-MWS-Token': token() },
+        headers: { 'Content-Type': 'application/json', 'X-Zip2Learn-Token': token() },
         body: JSON.stringify(body),
       });
       data = await res.json().catch(() => ({}));

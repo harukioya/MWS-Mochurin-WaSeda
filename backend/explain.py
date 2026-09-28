@@ -278,7 +278,7 @@ def display_events(events: list[NormalizedEvent], store: EvidenceStore,
 def _pick(events: list[dict], limit: int = STAGE_EVENTS) -> list[dict]:
     """段階に載せる事象を選ぶ。根拠の付いたものを先に取る。
 
-    単純な先頭 n 件だと、実データでは起動直後のシステムプロセス
+    単純な先頭 n 件だと、実際の端末ログでは起動直後のシステムプロセス
     （smss.exe、csrss.exe、winlogon.exe …）だけで埋まる。本番の問題ログは
     時系列で始まるため、調査対象になる事象は必ず後ろにあり、先頭を切り取る
     と教材から丸ごと抜け落ちる。

@@ -223,13 +223,13 @@ class TestLiveCheckProcessAllowlist(unittest.TestCase):
 
     def test_the_normal_extraction_processes_are_not_flagged(self):
         # エントリポイントが入力を /tmp へ写している最中に観測した場合も正常。
-        seen = ["/bin/sh", "/opt/mws/bin/run-extract.sh", "cp", "/usr/bin/cp", "mkdir",
+        seen = ["/bin/sh", "/opt/zip2learn/bin/run-extract.sh", "cp", "/usr/bin/cp", "mkdir",
                 "/opt/ghidra/support/analyzeHeadless", "/opt/ghidra/support/launch.sh",
                 "/opt/java/openjdk/bin/java", "bash", "grep", "tail", "cat"]
         self.assertEqual(self.live.unexpected_executables(seen), [])
 
     def test_target_like_processes_are_flagged(self):
-        seen = ["/input/input.gzf", "/tmp/mws/in/input.gzf", "/tmp/x/termmines", "termmines",
+        seen = ["/input/input.gzf", "/tmp/zip2learn/in/input.gzf", "/tmp/x/termmines", "termmines",
                 "gdb", "qemu-x86_64", "/opt/java/openjdk/bin/java"]
         self.assertEqual(self.live.unexpected_executables(seen),
                          sorted(set(seen) - {"/opt/java/openjdk/bin/java"}))

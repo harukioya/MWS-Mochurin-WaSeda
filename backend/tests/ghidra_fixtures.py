@@ -2,7 +2,7 @@
 
   * make_gzf     … Ghidra 12.1.4 の ItemSerializer と同じ並びのバイト列を作る。
                    中身（FOLDER_ITEM）は意味のない埋め草で、Ghidra では開けない。
-  * facts_doc    … 抽出スクリプトの出力（schema mws-ghidra-static/1）と同じ形の、
+  * facts_doc    … 抽出スクリプトの出力（schema zip2learn-ghidra-static/1）と同じ形の、
                    架空の小さなゲームを模した静的事実。
 """
 
@@ -78,7 +78,7 @@ def _call(frm: int, fn: int, target: str, target_addr: str, resolved=None) -> di
 
 
 BASE = {
-    "schemaVersion": "mws-ghidra-static/1",
+    "schemaVersion": "zip2learn-ghidra-static/1",
     "input": {"sha256": PROGRAM_SHA, "bytes": 12345},
     "tool": {"ghidraVersion": "12.1.4", "scriptVersion": "1.0.0"},
     "program": {
@@ -125,7 +125,7 @@ BASE = {
     ],
     "callStats": {"indirect": 2, "unresolved": 1},
     "truncated": [],
-    "end": "mws-ghidra-static-end",
+    "end": "zip2learn-ghidra-static-end",
 }
 
 
@@ -154,7 +154,7 @@ def static_lesson() -> dict:
                                expected_ghidra="12.1.4", expected_script="1.0.0")
     return builder.build(
         facts,
-        image={"imageRef": "mws-ghidra-static:12.1.4-test", "imageId": "sha256:" + "4" * 64,
+        image={"imageRef": "zip2learn-ghidra-static:12.1.4-test", "imageId": "sha256:" + "4" * 64,
                "arch": "arm64", "scriptSha256": "5" * 64},
         origin={"kind": "upload", "name": "minigame.gzf"},
     )

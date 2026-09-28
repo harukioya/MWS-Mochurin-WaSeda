@@ -6,7 +6,7 @@
 
 作業データの寿命:
 
-  * 入力のコピー `.mws-state/ghidra-jobs/<job>/input/input.gzf` は、抽出が
+  * 入力のコピー `.zip2learn-state/ghidra-jobs/<job>/input/input.gzf` は、抽出が
     終わった時点（成功・失敗・キャンセル・期限切れのどれでも）で消す。
   * Ghidra の一時プロジェクトと抽出 JSON はコンテナ内の tmpfs にしかなく、
     コンテナの終了とともに消える（--rm）。
@@ -369,7 +369,7 @@ class JobManager:
         try:
             self._analyze_inner(job)
         except Exception as exc:  # noqa: BLE001 - 失敗は固定の符号で返す
-            if os.environ.get("MWS_GHIDRA_DEBUG") == "1":
+            if os.environ.get("ZIP2LEARN_GHIDRA_DEBUG") == "1":
                 print(f"[ghidra] internal error: {type(exc).__name__}", file=sys.stderr)
             self.fail(job, "internal")
 
@@ -389,7 +389,7 @@ class JobManager:
             argv = gd.run_argv(envi, job_id=job.id, owner=self.owner, session=self.session,
                                input_dir=os.path.realpath(self.input_dir(job)),
                                uid=self.uid, gid=self.gid,
-                               diag=os.environ.get("MWS_GHIDRA_DEBUG") == "1")
+                               diag=os.environ.get("ZIP2LEARN_GHIDRA_DEBUG") == "1")
         except ValueError:
             return self.fail(job, "path-unsafe")
 
@@ -412,7 +412,7 @@ class JobManager:
             return self.fail(job, "output-too-large")
         if result.returncode != 0:
             code = gd.reason_code(result.stderr) or "container-failed"
-            if os.environ.get("MWS_GHIDRA_DEBUG") == "1":
+            if os.environ.get("ZIP2LEARN_GHIDRA_DEBUG") == "1":
                 # 開発者が明示したときだけ、手元の端末に診断を出す。利用者の
                 # 画面・API・ログには出さない。
                 print(result.stderr[-6000:].decode("utf-8", "replace"), file=sys.stderr)
@@ -483,7 +483,7 @@ class JobManager:
             return self.fail(job, "prepare-timeout")
         if result.returncode != 0:
             text = (result.stderr + result.stdout)[-8000:].decode("utf-8", "replace")
-            if os.environ.get("MWS_GHIDRA_DEBUG") == "1":
+            if os.environ.get("ZIP2LEARN_GHIDRA_DEBUG") == "1":
                 print(text, file=sys.stderr)
             code = "disk-full" if "no space left" in text.lower() else "prepare-failed"
             return self.fail(job, code)

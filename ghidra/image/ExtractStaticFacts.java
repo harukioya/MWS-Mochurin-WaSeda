@@ -1,6 +1,6 @@
 // ExtractStaticFacts.java — GZF に保存済みの解析情報だけを JSON へ書き出す固定スクリプト。
 //
-// MWS Mochurin WaSeda の Ghidra 静的解析教材が使う。開発側で用意したもので、
+// Zip2Learn の Ghidra 静的解析教材が使う。開発側で用意したもので、
 // 利用者から差し替えさせない（イメージ内の読み取り専用ディレクトリに置く）。
 //
 // してよいこと:
@@ -16,7 +16,7 @@
 // 出力は固定名の 1 ファイルだけ。上限で打ち切った場合は truncated に記録し、
 // 完全な解析結果とは名乗らない。列挙順はアドレス順に固定して決定的にする。
 //
-//@category MWS
+//@category Zip2Learn
 //@runtime Java
 
 import java.io.InputStream;
@@ -58,7 +58,7 @@ import ghidra.program.util.GhidraProgramUtilities;
 
 public class ExtractStaticFacts extends GhidraScript {
 
-	static final String SCHEMA = "mws-ghidra-static/1";
+	static final String SCHEMA = "zip2learn-ghidra-static/1";
 	static final String SCRIPT_VERSION = "1.0.0";
 
 	// 件数の上限。超えた分は出さず、truncated に記録する。
@@ -323,7 +323,7 @@ public class ExtractStaticFacts extends GhidraScript {
 		}
 		j.endArray();
 		// 末尾の印。これが無い出力は途中で切れたものとして扱う。
-		j.key("end").value("mws-ghidra-static-end");
+		j.key("end").value("zip2learn-ghidra-static-end");
 		j.endObject();
 
 		// 途中まで書かれたファイルを完成品と取り違えないよう、一時名で書いてから置き換える。

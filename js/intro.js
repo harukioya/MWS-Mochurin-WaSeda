@@ -203,7 +203,7 @@ export function staticGlossary() {
 }
 
 function token() {
-  const meta = document.querySelector('meta[name="mws-token"]');
+  const meta = document.querySelector('meta[name="zip2learn-token"]');
   return meta ? meta.content : '';
 }
 
@@ -335,7 +335,7 @@ function renderStaticIntroduction(mount, lesson, onStart) {
     try {
       const res = await fetch(`/api/lessons/${encodeURIComponent(lesson.id)}/delete`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-MWS-Token': token() },
+        headers: { 'Content-Type': 'application/json', 'X-Zip2Learn-Token': token() },
         body: '{}',
       });
       ok = res.ok;

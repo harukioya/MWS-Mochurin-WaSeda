@@ -136,7 +136,7 @@ function lesson(overrides = {}) {
       techniques: [
         { id: 'T1059.003', name: 'Windows Command Shell',
           reason: '起動したプログラムがコマンドシェルだと psPath にあります。',
-          evidenceIds: [EV_A], ruleVersion: '2026-09-mws-1',
+          evidenceIds: [EV_A], ruleVersion: '2026-09-zip2learn-1',
           confidence: 'high', status: 'observed' },
       ],
       unknowns: [
@@ -606,7 +606,7 @@ await test('ATT&CK に理由と根拠と規則版が出る', async () => {
   const text = card.textContent;
   assert.ok(text.includes('T1059.003'), 'Technique ID');
   assert.ok(text.includes('psPath にあります'), '日本語の対応理由');
-  assert.ok(text.includes('2026-09-mws-1'), '規則の版');
+  assert.ok(text.includes('2026-09-zip2learn-1'), '規則の版');
   assert.ok(text.includes('確信度'), '確信度');
   assert.ok(text.includes('観測された事実'), '状態');
   assert.ok(card.button(/根拠ログを見る/), '根拠への導線');
@@ -779,7 +779,7 @@ function lessonWithReportOnlyEvidence() {
     reason: 'path がログオン時に自動実行される場所を指しています。',
     reasons: [{ reason: 'path がログオン時に自動実行される場所を指しています。',
                 evidenceIds: [EV_C] }],
-    evidenceIds: [EV_C], ruleVersion: '2026-09-mws-2',
+    evidenceIds: [EV_C], ruleVersion: '2026-09-zip2learn-2',
     confidence: 'high', status: 'observed',
   });
   // 設問は EV_C を指さない。レポートだけが参照する証拠であること。
@@ -839,7 +839,7 @@ await test('同じ手法でも理由が違えば、理由ごとに根拠を出�
       { reason: 'vssadmin が復元用の控えを削除しています。', evidenceIds: [EV_A] },
       { reason: 'bcdedit が回復機能を無効化しています。', evidenceIds: [EV_B] },
     ],
-    evidenceIds: [EV_A, EV_B], ruleVersion: '2026-09-mws-2',
+    evidenceIds: [EV_A, EV_B], ruleVersion: '2026-09-zip2learn-2',
     confidence: 'high', status: 'observed',
   }];
   const view = await open(l);

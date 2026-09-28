@@ -1,7 +1,7 @@
 """Tests for identify.py and archive.py.
 
 Every fixture here is authored in this file from harmless content. Nothing in
-this suite touches the dataset, downloads anything, or executes anything.
+this suite touches real data, downloads anything, or executes anything.
 A file whose first two bytes are "MZ" is not malware; it is two bytes.
 """
 
@@ -244,7 +244,7 @@ def _zip_bytes(entries, ratio_bomb=False) -> bytes:
 class TestEnumerate(unittest.TestCase):
     def setUp(self):
         self.tmp = os.path.join(
-            os.environ.get("TMPDIR", "/tmp"), f"mws-test-{os.getpid()}.zip"
+            os.environ.get("TMPDIR", "/tmp"), f"zip2learn-test-{os.getpid()}.zip"
         )
         self.addCleanup(lambda: os.path.exists(self.tmp) and os.remove(self.tmp))
 
@@ -302,7 +302,7 @@ class TestEnumerate(unittest.TestCase):
     def test_applesingle_sidecar_gets_its_own_verdict(self):
         """macOS の付随情報は「判別できない」ではない。何かは分かっている。
 
-        以前は unknown 扱いのうえ警告まで付けていたため、実データでは大量の
+        以前は unknown 扱いのうえ警告まで付けていたため、macOS で作った ZIP では大量の
         付随ファイルが「注意が必要」に並び、本当に注意すべき数件が埋もれて
         いた。取り出しを許さない点は変えず、区別だけを付ける。
         """
@@ -390,7 +390,7 @@ class TestFullStreamScan(unittest.TestCase):
 class TestNestedArchives(unittest.TestCase):
     def setUp(self):
         self.tmp = os.path.join(
-            os.environ.get("TMPDIR", "/tmp"), f"mws-nest-{os.getpid()}.zip"
+            os.environ.get("TMPDIR", "/tmp"), f"zip2learn-nest-{os.getpid()}.zip"
         )
         self.addCleanup(lambda: os.path.exists(self.tmp) and os.remove(self.tmp))
 

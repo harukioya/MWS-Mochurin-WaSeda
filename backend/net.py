@@ -4,7 +4,7 @@ Keeping every outbound byte in one small file is the point: the invariant
 "nothing else talks to the network" is then checkable by reading one import
 list rather than by auditing the whole backend.
 
-DISABLED BY DEFAULT. `fetch()` refuses unless MWS_INTAKE_ENABLED=1 is set in
+DISABLED BY DEFAULT. `fetch()` refuses unless ZIP2LEARN_INTAKE_ENABLED=1 is set in
 the environment. The project rule is that the tool does not download anything
 unless the person running it opts in explicitly; on the machine this was
 written for, downloading is prohibited outright, so the switch stays off and
@@ -58,7 +58,7 @@ class IntakeRefused(ValueError):
 
 
 def intake_enabled() -> bool:
-    return os.environ.get("MWS_INTAKE_ENABLED") == "1"
+    return os.environ.get("ZIP2LEARN_INTAKE_ENABLED") == "1"
 
 
 @dataclass
@@ -174,7 +174,7 @@ def _open(scheme: str, host: str, port: int, path: str):
             # Identity: a compressed response must not be able to expand past
             # the byte cap after we have already accepted it.
             "Accept-Encoding": "identity",
-            "User-Agent": "mws-inspector/1.0",
+            "User-Agent": "zip2learn/1.0",
             "Host": host,
         },
     )
@@ -189,7 +189,7 @@ def fetch(url: str, sink) -> Fetched:
     """
     if not intake_enabled():
         raise IntakeDisabled(
-            "Acquisition is disabled. Set MWS_INTAKE_ENABLED=1 to enable it, "
+            "Acquisition is disabled. Set ZIP2LEARN_INTAKE_ENABLED=1 to enable it, "
             "only if downloading samples is permitted where you run this tool."
         )
 

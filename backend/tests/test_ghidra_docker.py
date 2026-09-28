@@ -51,7 +51,7 @@ def version_ok(arch="arm64"):
 class SocketDir(unittest.TestCase):
     def setUp(self):
         # AF_UNIX のパス長制限（macOS は 104 バイト）に収まる短い場所を使う。
-        self.tmp = tempfile.mkdtemp(prefix="mws", dir="/tmp")
+        self.tmp = tempfile.mkdtemp(prefix="zip2learn", dir="/tmp")
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.sock_path = os.path.join(self.tmp, "d.sock")
         self.sock = socket.socket(socket.AF_UNIX)
@@ -226,8 +226,8 @@ class TestRunArgv(unittest.TestCase):
                     self.argv(**kw)
 
     def test_diagnostics_only_when_asked(self):
-        self.assertNotIn("MWS_DIAG=1", self.argv())
-        self.assertIn("MWS_DIAG=1", self.argv(diag=True))
+        self.assertNotIn("ZIP2LEARN_DIAG=1", self.argv())
+        self.assertIn("ZIP2LEARN_DIAG=1", self.argv(diag=True))
 
 
 class TestBuild(unittest.TestCase):
@@ -268,11 +268,11 @@ class TestBuild(unittest.TestCase):
 class TestImageState(unittest.TestCase):
     def labels(self, **over):
         labels = {
-            "org.mws.ghidra.version": gd.GHIDRA_VERSION,
-            "org.mws.ghidra.zip-sha256": gd.GHIDRA_ZIP_SHA256,
-            "org.mws.script.sha256": gd.script_sha256(),
-            "org.mws.entry.sha256": gd.entry_sha256(),
-            "org.mws.context": gd.context_digest(),
+            "org.zip2learn.ghidra.version": gd.GHIDRA_VERSION,
+            "org.zip2learn.ghidra.zip-sha256": gd.GHIDRA_ZIP_SHA256,
+            "org.zip2learn.script.sha256": gd.script_sha256(),
+            "org.zip2learn.entry.sha256": gd.entry_sha256(),
+            "org.zip2learn.context": gd.context_digest(),
         }
         labels.update(over)
         return labels
@@ -286,16 +286,16 @@ class TestImageState(unittest.TestCase):
 
     def test_ready_only_when_every_label_matches(self):
         self.assertEqual(self.state(self.labels()), "ready")
-        self.assertEqual(self.state(self.labels(**{"org.mws.script.sha256": "0" * 64})), "outdated")
-        self.assertEqual(self.state(self.labels(**{"org.mws.ghidra.version": "11.0"})), "outdated")
+        self.assertEqual(self.state(self.labels(**{"org.zip2learn.script.sha256": "0" * 64})), "outdated")
+        self.assertEqual(self.state(self.labels(**{"org.zip2learn.ghidra.version": "11.0"})), "outdated")
         self.assertEqual(self.state(self.labels(), arch="amd64"), "outdated")
 
     def test_missing_and_outdated(self):
-        gone = proc(1, b"", b"Error: No such image: mws-ghidra-static:x")
+        gone = proc(1, b"", b"Error: No such image: zip2learn-ghidra-static:x")
         runner = FakeRunner({("image", "inspect"): gone, ("image", "ls"): proc(0, b"")})
         self.assertEqual(gd.image_state(envi(), runner=runner)["state"], "missing")
         runner = FakeRunner({("image", "inspect"): gone,
-                             ("image", "ls"): proc(0, b"mws-ghidra-static:old\n")})
+                             ("image", "ls"): proc(0, b"zip2learn-ghidra-static:old\n")})
         self.assertEqual(gd.image_state(envi(), runner=runner)["state"], "outdated")
 
     def test_a_failed_query_is_unknown_not_missing(self):
@@ -358,19 +358,19 @@ class TestCleanup(unittest.TestCase):
     def test_container_state_separates_absent_from_unknown(self):
         cases = [
             (proc(0, b"abc\n"), "present"),
-            (proc(1, b"", b"Error: No such container: mws-ghidra-x"), "absent"),
+            (proc(1, b"", b"Error: No such container: zip2learn-ghidra-x"), "absent"),
             (proc(1, b"", b"error during connect: connection reset"), None),
             (proc(1, b"", b""), None),
         ]
         for result, expected in cases:
             with self.subTest(expected=expected):
                 runner = FakeRunner({("container", "inspect"): result})
-                self.assertEqual(gd.container_state(envi(), "mws-ghidra-x", runner=runner),
+                self.assertEqual(gd.container_state(envi(), "zip2learn-ghidra-x", runner=runner),
                                  expected)
 
         def slow(argv, **kw):
             raise subprocess.TimeoutExpired(argv, 1)
-        self.assertIsNone(gd.container_state(envi(), "mws-ghidra-x", runner=slow))
+        self.assertIsNone(gd.container_state(envi(), "zip2learn-ghidra-x", runner=slow))
 
     def test_stop_targets_only_the_named_job(self):
         runner = FakeRunner({("kill",): proc(0), ("rm",): proc(0)})
@@ -379,9 +379,9 @@ class TestCleanup(unittest.TestCase):
                          [["kill", gd.NAME_PREFIX + JOB], ["rm", "-f", gd.NAME_PREFIX + JOB]])
 
     def test_reason_code_is_the_only_text_taken_from_stderr(self):
-        self.assertEqual(gd.reason_code(b"noise\nMWS-REASON: not-gzf rc=1\n"), "not-gzf")
+        self.assertEqual(gd.reason_code(b"noise\nZIP2LEARN-REASON: not-gzf rc=1\n"), "not-gzf")
         self.assertIsNone(gd.reason_code(b"Exception: <script>alert(1)</script>"))
-        self.assertIsNone(gd.reason_code(b"MWS-REASON: ../../etc"))
+        self.assertIsNone(gd.reason_code(b"ZIP2LEARN-REASON: ../../etc"))
 
 
 PY = sys.executable
@@ -522,8 +522,8 @@ class TestJobManager(unittest.TestCase):
 
     def test_container_failures_become_fixed_codes(self):
         cases = [
-            (b"MWS-REASON: version-unsupported rc=1\nStack trace with /Users/me", "version-unsupported"),
-            (b"MWS-REASON: something-new rc=1", "container-failed"),
+            (b"ZIP2LEARN-REASON: version-unsupported rc=1\nStack trace with /Users/me", "version-unsupported"),
+            (b"ZIP2LEARN-REASON: something-new rc=1", "container-failed"),
             (b"raw java exception text", "container-failed"),
         ]
         for err, code in cases:

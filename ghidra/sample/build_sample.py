@@ -154,7 +154,7 @@ def analyze_argv(envi: gd.Environment, *, run_id: str, owner: str, bin_dir: str,
         "--stop-timeout", "5",
         # Ghidra の起動部品は HOME が既にあることを前提にする。tmpfs の /tmp を使う。
         "--env", "HOME=/tmp",
-        "--env", "GHIDRA_HEADLESS_JAVA_OPTIONS=-Duser.name=mws -XX:-UsePerfData",
+        "--env", "GHIDRA_HEADLESS_JAVA_OPTIONS=-Duser.name=zip2learn -XX:-UsePerfData",
         "--mount", f"type=bind,source={_safe_dir(bin_dir)},target=/in,readonly",
         "--mount", f"type=bind,source={_safe_dir(TOOLS_DIR)},target=/tools,readonly",
         "--mount", f"type=bind,source={_safe_dir(out_dir)},target=/out",
@@ -253,7 +253,7 @@ def main(resolver=gd.resolve, run_process=gd.run_process) -> int:
     owner = gd.owner_id(HERE)
     cancel = threading.Event()
     previous = signal.signal(signal.SIGINT, lambda *_: cancel.set())
-    work = tempfile.mkdtemp(prefix="mws-sample-")
+    work = tempfile.mkdtemp(prefix="zip2learn-sample-")
     ids = []
     try:
         src, bindir, out = (os.path.join(work, d) for d in ("src", "bin", "out"))

@@ -9,9 +9,9 @@ Two invariants govern everything here:
   1. DEFAULT-DENY. Anything unrecognised, unreadable, or unsupported returns
      Verdict.UNKNOWN, which gates exactly as strictly as a native executable.
      A classifier that guesses "probably fine" is worse than no classifier.
-  2. EXTENSION IS NEVER EVIDENCE. A file named `program.dll.gzf` can be
-     (a Ghidra database, not a DLL) and `__MACOSX` entries named `*.zip` that
-     are AppleDouble headers. Names are display data; bytes decide.
+  2. EXTENSION IS NEVER EVIDENCE. A file named `program.dll.gzf` can be a
+     Ghidra database, not a DLL, and `__MACOSX` entries named `*.zip` are
+     AppleDouble headers. Names are display data; bytes decide.
 
 Nothing in this module opens a file, writes a file, or executes anything. It is
 a pure function over a bounded prefix of bytes.

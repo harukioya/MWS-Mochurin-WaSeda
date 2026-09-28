@@ -166,7 +166,7 @@ def check_inspect(info, uid, gid, input_dir) -> list[str]:
              or m.get("Source", "").endswith(os.path.relpath(input_dir, "/")), "mount source")
     labels = cfg.get("Labels") or {}
     need(labels.get(gd.LABEL_APP) == gd.LABEL_APP_VALUE, "app label")
-    need(cfg.get("Entrypoint") == ["/opt/mws/bin/run-extract.sh"], f"entrypoint {cfg.get('Entrypoint')}")
+    need(cfg.get("Entrypoint") == ["/opt/zip2learn/bin/run-extract.sh"], f"entrypoint {cfg.get('Entrypoint')}")
     need(not cfg.get("Cmd"), f"cmd {cfg.get('Cmd')}")
     return problems
 
@@ -193,7 +193,7 @@ def main() -> int:
     before = sha256(sample["path"])
     report["sample"] = {"sha256": before, "matchesManifest": before == sample.get("sha256")}
 
-    tmp = tempfile.mkdtemp(prefix="mws-live-")
+    tmp = tempfile.mkdtemp(prefix="zip2learn-live-")
     saved = []
     captured = {}
     real_run = gd.run_process

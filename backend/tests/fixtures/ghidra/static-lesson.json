@@ -270,13 +270,13 @@
     "string": 2
    },
    "sample": null,
-   "schemaVersion": "mws-ghidra-static/1",
+   "schemaVersion": "zip2learn-ghidra-static/1",
    "skipped": [],
    "tool": {
     "arch": "arm64",
     "ghidraVersion": "12.1.4",
     "imageId": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
-    "imageRef": "mws-ghidra-static:12.1.4-test",
+    "imageRef": "zip2learn-ghidra-static:12.1.4-test",
     "scriptSha256": "5555555555555555555555555555555555555555555555555555555555555555",
     "scriptVersion": "1.0.0"
    },
@@ -747,13 +747,13 @@
    "string": 2
   },
   "sample": null,
-  "schemaVersion": "mws-ghidra-static/1",
+  "schemaVersion": "zip2learn-ghidra-static/1",
   "skipped": [],
   "tool": {
    "arch": "arm64",
    "ghidraVersion": "12.1.4",
    "imageId": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
-   "imageRef": "mws-ghidra-static:12.1.4-test",
+   "imageRef": "zip2learn-ghidra-static:12.1.4-test",
    "scriptSha256": "5555555555555555555555555555555555555555555555555555555555555555",
    "scriptVersion": "1.0.0"
   },

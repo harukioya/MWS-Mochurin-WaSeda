@@ -20,7 +20,7 @@ const el = (tag, className, text) => {
 };
 
 function token() {
-  const meta = document.querySelector('meta[name="mws-token"]');
+  const meta = document.querySelector('meta[name="zip2learn-token"]');
   return meta ? meta.content : '';
 }
 
@@ -30,7 +30,7 @@ async function call(path, options = {}) {
   try {
     res = await fetch(path, {
       ...options,
-      headers: { 'Content-Type': 'application/json', 'X-MWS-Token': token(), ...(options.headers || {}) },
+      headers: { 'Content-Type': 'application/json', 'X-Zip2Learn-Token': token(), ...(options.headers || {}) },
     });
   } catch (err) {
     if (err && err.name === 'AbortError') {

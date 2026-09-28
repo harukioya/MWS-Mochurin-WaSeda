@@ -78,7 +78,7 @@ class TestExtractionScript(unittest.TestCase):
 
     def test_versions_match_the_python_side(self):
         self.assertIn(f'SCRIPT_VERSION = "{gd.SCRIPT_VERSION}"', self.SCRIPT)
-        self.assertIn('SCHEMA = "mws-ghidra-static/1"', self.SCRIPT)
+        self.assertIn('SCHEMA = "zip2learn-ghidra-static/1"', self.SCRIPT)
 
     def test_output_is_written_atomically_without_following_links(self):
         self.assertIn("CREATE_NEW", self.SCRIPT)
@@ -92,7 +92,7 @@ class TestEntrypoint(unittest.TestCase):
 
     def test_fixed_headless_arguments(self):
         for flag in ("-import \"$COPY\"", "-loader GzfLoader", "-noanalysis", "-readOnly",
-                     "-deleteProject", "-scriptPath /opt/mws/scripts",
+                     "-deleteProject", "-scriptPath /opt/zip2learn/scripts",
                      "-postScript ExtractStaticFacts.java"):
             with self.subTest(flag=flag):
                 self.assertIn(flag, self.SH)
@@ -127,7 +127,7 @@ class TestDockerfile(unittest.TestCase):
         self.assertNotIn(":latest", self.DF)
         self.assertIn(f"--checksum=sha256:{gd.GHIDRA_ZIP_SHA256}", self.DF)
         self.assertIn(gd.GHIDRA_ZIP, self.DF)
-        self.assertIn(f'org.mws.ghidra.version="{gd.GHIDRA_VERSION}"', self.DF)
+        self.assertIn(f'org.zip2learn.ghidra.version="{gd.GHIDRA_VERSION}"', self.DF)
 
     def test_no_unpinned_downloads_or_package_installs(self):
         body = code_only(self.DF, "#")
@@ -136,7 +136,7 @@ class TestDockerfile(unittest.TestCase):
 
     def test_runs_as_non_root_with_the_fixed_entrypoint(self):
         self.assertRegex(self.DF, r"(?m)^USER 65532:65532$")
-        self.assertIn('ENTRYPOINT ["/opt/mws/bin/run-extract.sh"]', self.DF)
+        self.assertIn('ENTRYPOINT ["/opt/zip2learn/bin/run-extract.sh"]', self.DF)
         self.assertNotIn("CMD", code_only(self.DF, "#"))
 
 
@@ -165,7 +165,7 @@ class TestRepositoryHygiene(unittest.TestCase):
 
     def test_real_data_protection_is_kept(self):
         lines = [l.strip() for l in self.GITIGNORE.splitlines()]
-        for rule in ("*.gzf", "*.vir", "samples/", ".mws-state/", ".local-validation/",
+        for rule in ("*.gzf", "*.vir", "samples/", ".zip2learn-state/",
                      "docs/Ghidra静的解析教材_Docker連携_実装指示書.md"):
             self.assertIn(rule, lines)
 

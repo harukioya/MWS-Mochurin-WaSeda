@@ -2,12 +2,12 @@
  "_note": "事前抽出。ghidra_live_check.py --save-fixture が実コンテナの出力をそのまま保存したもの。受け入れ確認の代わりにはしない。",
  "_image": {
   "state": "ready",
-  "ref": "mws-ghidra-static:12.1.4-c5cc2902e618",
+  "ref": "zip2learn-ghidra-static:12.1.4-c5cc2902e618",
   "id": "sha256:808e88478767fb8525e969881db31ebeb4f7b4ae3ec6ecb13cfd787b9b07fc1d",
   "arch": "arm64"
  },
  "facts": {
-  "schemaVersion": "mws-ghidra-static/1",
+  "schemaVersion": "zip2learn-ghidra-static/1",
   "input": {
    "sha256": "437a2f5b96b329a56045f4fe0618336825ebb02eeb612f3cfa3caf46471d1b3b",
    "bytes": 114281
@@ -3643,6 +3643,6 @@
    "unresolved": 0
   },
   "truncated": [],
-  "end": "mws-ghidra-static-end"
+  "end": "zip2learn-ghidra-static-end"
  }
 }

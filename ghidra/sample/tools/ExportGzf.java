@@ -5,7 +5,7 @@
 // 使われることはない。書き出すのは Ghidra の解析データベース（GZF）だけで、
 // 元の実行ファイルの書き出しや、対象の起動は行わない。
 //
-//@category MWS
+//@category Zip2Learn
 //@runtime Java
 
 import java.io.File;

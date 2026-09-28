@@ -51,7 +51,7 @@ BASE_IMAGE = (
     "@sha256:d1eb0297924c2d5a37ba7042a59ae84a3487e086b077ac054019a423767d4311"
 )
 SCRIPT_VERSION = "1.0.0"
-IMAGE_REPO = "mws-ghidra-static"
+IMAGE_REPO = "zip2learn-ghidra-static"
 
 # ---- 処理コンテナの資源上限 ----------------------------------------------
 LIMITS = {
@@ -73,14 +73,14 @@ BUILD_DEADLINE = 45 * 60
 #: 状態確認に使う短いコマンドの上限。
 PROBE_TIMEOUT = 15
 
-LABEL_APP = "org.mws.app"
+LABEL_APP = "org.zip2learn.app"
 LABEL_APP_VALUE = "ghidra-static"
-LABEL_OWNER = "org.mws.owner"
-LABEL_JOB = "org.mws.job"
+LABEL_OWNER = "org.zip2learn.owner"
+LABEL_JOB = "org.zip2learn.job"
 #: サーバーの起動ごとに変わる値。起動時の回収で、前回以前のコンテナと、
 #: 今回の起動で動き始めたコンテナを取り違えないために使う。
-LABEL_SESSION = "org.mws.session"
-NAME_PREFIX = "mws-ghidra-"
+LABEL_SESSION = "org.zip2learn.session"
+NAME_PREFIX = "zip2learn-ghidra-"
 
 JOB_ID = re.compile(r"[0-9a-f]{32}")
 OWNER = re.compile(r"[0-9a-f]{16}")
@@ -335,11 +335,11 @@ def image_state(envi: Environment, runner=subprocess.run) -> dict:
             return {"state": "unknown", "ref": ref}
         labels = ((info.get("Config") or {}).get("Labels") or {}) if isinstance(info, dict) else {}
         ok = (
-            labels.get("org.mws.ghidra.version") == GHIDRA_VERSION
-            and labels.get("org.mws.ghidra.zip-sha256") == GHIDRA_ZIP_SHA256
-            and labels.get("org.mws.script.sha256") == script_sha256()
-            and labels.get("org.mws.entry.sha256") == entry_sha256()
-            and labels.get("org.mws.context") == context_digest()
+            labels.get("org.zip2learn.ghidra.version") == GHIDRA_VERSION
+            and labels.get("org.zip2learn.ghidra.zip-sha256") == GHIDRA_ZIP_SHA256
+            and labels.get("org.zip2learn.script.sha256") == script_sha256()
+            and labels.get("org.zip2learn.entry.sha256") == entry_sha256()
+            and labels.get("org.zip2learn.context") == context_digest()
             and info.get("Architecture") == envi.server_arch
             and info.get("Os") == "linux"
         )
@@ -395,9 +395,9 @@ def build_argv(envi: Environment) -> list[str]:
         "--sbom=false",
         "--progress=plain",
         "--tag", image_ref(),
-        "--build-arg", f"MWS_SCRIPT_SHA256={script_sha256()}",
-        "--build-arg", f"MWS_ENTRY_SHA256={entry_sha256()}",
-        "--label", f"org.mws.context={context_digest()}",
+        "--build-arg", f"ZIP2LEARN_SCRIPT_SHA256={script_sha256()}",
+        "--build-arg", f"ZIP2LEARN_ENTRY_SHA256={entry_sha256()}",
+        "--label", f"org.zip2learn.context={context_digest()}",
         "--file", os.path.join(CONTEXT_DIR, "Dockerfile"),
         CONTEXT_DIR,
     ]
@@ -456,7 +456,7 @@ def run_argv(envi: Environment, *, job_id: str, owner: str, session: str, input_
         "--workdir", "/tmp",
     ]
     if diag:
-        argv += ["--env", "MWS_DIAG=1"]
+        argv += ["--env", "ZIP2LEARN_DIAG=1"]
     argv.append(image_ref())
     return argv
 
@@ -662,7 +662,7 @@ def remove_owned(envi: Environment, owner: str, *, keep_session: str | None = No
     return len(ids)
 
 
-_REASON = re.compile(rb"MWS-REASON: ([a-z-]{1,40})")
+_REASON = re.compile(rb"ZIP2LEARN-REASON: ([a-z-]{1,40})")
 
 
 def reason_code(stderr: bytes) -> str | None:

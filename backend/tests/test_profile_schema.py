@@ -28,7 +28,6 @@ import api  # noqa: E402
 import dataset  # noqa: E402
 import parsers  # noqa: E402
 
-REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 #: 公開版が標準で同梱するプロファイル（data/profiles/*.json）。今は 0 件。
 #: 汎用のプロファイルを同梱すると決めたときにだけ、ここへ名前を足す。
@@ -288,11 +287,6 @@ class TestPublicBoundary(unittest.TestCase):
     def test_every_shipped_profile_loads_cleanly(self):
         cat = dataset.load_catalog([], include_builtin=True)
         self.assertEqual(cat.errors, [])
-
-    def test_the_local_validation_area_is_kept_out_of_git(self):
-        with open(os.path.join(REPO, ".gitignore"), encoding="utf-8") as fh:
-            lines = [ln.strip() for ln in fh]
-        self.assertIn(".local-validation/", lines)
 
 
 if __name__ == "__main__":

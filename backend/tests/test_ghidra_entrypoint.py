@@ -52,7 +52,7 @@ class TestEntrypoint(unittest.TestCase):
         with open(ENTRY, encoding="utf-8") as fh:
             script = fh.read()
         script = script.replace("IN=/input/input.gzf", f"IN={self.input}")
-        script = script.replace("WORK=/tmp/mws", f"WORK={self.tmp}/work")
+        script = script.replace("WORK=/tmp/zip2learn", f"WORK={self.tmp}/work")
         self.script = os.path.join(self.tmp, "run.sh")
         with open(self.script, "w") as fh:
             fh.write(script)
@@ -73,15 +73,15 @@ class TestEntrypoint(unittest.TestCase):
         r = self.run_mode("crash-after-output")
         self.assertNotEqual(r.returncode, 0)
         self.assertEqual(r.stdout, b"", "a partial success must not reach stdout")
-        self.assertIn(b"MWS-REASON: out-of-memory", r.stderr)
+        self.assertIn(b"ZIP2LEARN-REASON: out-of-memory", r.stderr)
 
     def test_known_failures_get_fixed_reason_codes(self):
         r = self.run_mode("fail-no-output")
         self.assertNotEqual(r.returncode, 0)
-        self.assertIn(b"MWS-REASON: not-gzf", r.stderr)
+        self.assertIn(b"ZIP2LEARN-REASON: not-gzf", r.stderr)
         r = self.run_mode("zero-no-output")
         self.assertNotEqual(r.returncode, 0)
-        self.assertIn(b"MWS-REASON: extract-failed", r.stderr)
+        self.assertIn(b"ZIP2LEARN-REASON: extract-failed", r.stderr)
 
     def test_symlinked_output_is_not_followed(self):
         r = self.run_mode("symlink-output")
@@ -95,7 +95,7 @@ class TestEntrypoint(unittest.TestCase):
     def test_arguments_are_refused(self):
         r = self.run_mode("ok", "--extra")
         self.assertEqual(r.returncode, 64)
-        self.assertIn(b"MWS-REASON: bad-invocation", r.stderr)
+        self.assertIn(b"ZIP2LEARN-REASON: bad-invocation", r.stderr)
 
     def test_fixed_arguments_reach_ghidra(self):
         self.run_mode("ok")

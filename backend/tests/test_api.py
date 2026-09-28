@@ -195,7 +195,7 @@ class TestRoleLoading(unittest.TestCase):
 
     def setUp(self):
         self.tmp = os.path.join(
-            os.environ.get("TMPDIR", "/tmp"), f"mws-role-{os.getpid()}"
+            os.environ.get("TMPDIR", "/tmp"), f"zip2learn-role-{os.getpid()}"
         )
         self._orig = api.ROLE_FILE
         api.ROLE_FILE = self.tmp

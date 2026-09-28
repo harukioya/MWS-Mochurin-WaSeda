@@ -1,6 +1,6 @@
 // theme.js — theme toggle: switches between light and dark, persists the choice.
 
-const STORAGE_KEY = "mws-theme";
+const STORAGE_KEY = "zip2learn-theme";
 
 const LABELS = {
   light: "☀ ライト",

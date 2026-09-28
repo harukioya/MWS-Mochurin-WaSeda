@@ -28,7 +28,7 @@ from net import (  # noqa: E402
 
 class TestDisabledByDefault(unittest.TestCase):
     def test_intake_is_off_unless_explicitly_enabled(self):
-        os.environ.pop("MWS_INTAKE_ENABLED", None)
+        os.environ.pop("ZIP2LEARN_INTAKE_ENABLED", None)
         self.assertFalse(intake_enabled())
         with self.assertRaises(IntakeDisabled):
             fetch("https://example.com/x", io.BytesIO())
@@ -36,9 +36,9 @@ class TestDisabledByDefault(unittest.TestCase):
     def test_the_switch_is_an_exact_match(self):
         for value in ("0", "true", "yes", "", "2"):
             with self.subTest(value=value):
-                os.environ["MWS_INTAKE_ENABLED"] = value
+                os.environ["ZIP2LEARN_INTAKE_ENABLED"] = value
                 self.assertFalse(intake_enabled())
-        os.environ.pop("MWS_INTAKE_ENABLED", None)
+        os.environ.pop("ZIP2LEARN_INTAKE_ENABLED", None)
 
 
 class TestSchemeAllowlist(unittest.TestCase):

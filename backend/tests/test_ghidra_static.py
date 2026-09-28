@@ -123,7 +123,7 @@ class TestFactsContract(unittest.TestCase):
         self.assertNotEqual(facts.program["storedExecutableSha256"], facts.input_sha256)
 
     def test_unknown_schema_is_refused(self):
-        self.assertRefused(self.mutate(lambda d: d.update(schemaVersion="mws-ghidra-static/2")),
+        self.assertRefused(self.mutate(lambda d: d.update(schemaVersion="zip2learn-ghidra-static/2")),
                            "schema-unsupported")
 
     def test_partial_output_is_refused(self):

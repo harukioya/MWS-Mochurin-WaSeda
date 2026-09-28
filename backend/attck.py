@@ -21,7 +21,7 @@ from __future__ import annotations
 
 #: 対応規則の版。教材に残すことで、後から「どの規則で付けたタグか」を
 #: 追える。規則を足し引きしたら上げる。
-RULE_VERSION = "2026-09-mws-3"
+RULE_VERSION = "2026-09-zip2learn-3"
 
 
 def tokens(cmd: str) -> list[str]:

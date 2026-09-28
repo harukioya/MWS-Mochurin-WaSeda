@@ -14,7 +14,6 @@ samples/
 # internal design contract - local only, never push (collaborative repo)
 docs/BUILD-CONTRACT.md
 docs/THREAT-MODEL.md
-docs/初期実装仕様書.md
 docs/汎用データセット教材生成基盤_実装指示書.md
 docs/Ghidra静的解析教材_Docker連携_実装指示書.md
 
@@ -22,11 +21,7 @@ docs/Ghidra静的解析教材_Docker連携_実装指示書.md
 Screenshot*.png
 
 # local runtime state (manifest DB) - never commit
-.mws-state/
-
-# local validation against real datasets (profiles, manifests, notes) -
-# dataset-specific material that must never be published
-.local-validation/
+.zip2learn-state/
 
 # Python bytecode
 __pycache__/

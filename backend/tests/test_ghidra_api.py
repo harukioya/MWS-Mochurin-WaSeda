@@ -317,7 +317,7 @@ class Server(Tmp):
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
         h = {"Host": host or f"127.0.0.1:{self.port}"}
         if token:
-            h["X-MWS-Token"] = token
+            h["X-Zip2Learn-Token"] = token
         h.update(headers or {})
         if isinstance(body, (dict, list)):
             body = json.dumps(body).encode()
@@ -397,7 +397,7 @@ class TestGhidraHttp(Server):
         sock = socket.create_connection(("127.0.0.1", self.port), timeout=30)
         self.addCleanup(sock.close)
         head = (f"POST /api/ghidra/jobs/{job_id}/upload HTTP/1.1\r\nHost: 127.0.0.1:{self.port}\r\n"
-                f"X-MWS-Token: tok\r\nContent-Type: application/octet-stream\r\n"
+                f"X-Zip2Learn-Token: tok\r\nContent-Type: application/octet-stream\r\n"
                 f"Content-Length: {total}\r\n\r\n").encode()
         sock.sendall(head)
         stop = threading.Event()
@@ -495,7 +495,7 @@ class TestGhidraHttp(Server):
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
         conn.putrequest("POST", f"/api/ghidra/jobs/{'d' * 32}/upload", skip_host=True)
         conn.putheader("Host", f"127.0.0.1:{self.port}")
-        conn.putheader("X-MWS-Token", "tok")
+        conn.putheader("X-Zip2Learn-Token", "tok")
         conn.putheader("Content-Type", "application/octet-stream")
         conn.putheader("Content-Length", str(gzf.MAX_GZF_BYTES + 1))
         conn.endheaders()
@@ -592,7 +592,7 @@ class TestGhidraHttp(Server):
         self.assertEqual(status, 404)
 
     def test_token_host_and_capability_are_enforced(self):
-        status, _ = self.upload(GZF, **{"X-MWS-Token": "wrong"})
+        status, _ = self.upload(GZF, **{"X-Zip2Learn-Token": "wrong"})
         self.assertEqual(status, 403)
         status, _ = self.request("GET", "/api/ghidra/status", host="evil.example")
         self.assertEqual(status, 421)

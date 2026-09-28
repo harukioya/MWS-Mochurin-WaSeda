@@ -12,17 +12,17 @@ set -u
 umask 077
 
 if [ "$#" -ne 0 ]; then
-  echo "MWS-REASON: bad-invocation" >&2
+  echo "ZIP2LEARN-REASON: bad-invocation" >&2
   exit 64
 fi
 
 IN=/input/input.gzf
-WORK=/tmp/mws
+WORK=/tmp/zip2learn
 OUT="$WORK/out/facts.json"
-mkdir -p "$WORK/out" "$WORK/project" "$HOME" || { echo "MWS-REASON: workspace" >&2; exit 70; }
+mkdir -p "$WORK/out" "$WORK/project" "$HOME" || { echo "ZIP2LEARN-REASON: workspace" >&2; exit 70; }
 
 if [ ! -f "$IN" ] || [ -L "$IN" ]; then
-  echo "MWS-REASON: input-missing" >&2
+  echo "ZIP2LEARN-REASON: input-missing" >&2
   exit 66
 fi
 
@@ -37,16 +37,16 @@ mkdir -p "$WORK/jtmp"
 # 作る。入力の bind mount は読み取り専用のまま保ち、容量制限付きの /tmp へ
 # 写したものを読ませる。ハッシュの照合は、元の読み取り専用の入力で行う。
 COPY="$WORK/in/input.gzf"
-mkdir -p "$WORK/in" && cp "$IN" "$COPY" || { echo "MWS-REASON: workspace-full" >&2; exit 70; }
+mkdir -p "$WORK/in" && cp "$IN" "$COPY" || { echo "ZIP2LEARN-REASON: workspace-full" >&2; exit 70; }
 
-"$GHIDRA_HOME/support/analyzeHeadless" "$WORK/project" mws_job \
+"$GHIDRA_HOME/support/analyzeHeadless" "$WORK/project" zip2learn_job \
   -import "$COPY" \
   -loader GzfLoader \
   -noanalysis \
   -readOnly \
   -deleteProject \
   -max-cpu 2 \
-  -scriptPath /opt/mws/scripts \
+  -scriptPath /opt/zip2learn/scripts \
   -postScript ExtractStaticFacts.java "$IN" "$OUT" \
   -log "$WORK/ghidra.log" \
   -scriptlog "$WORK/script.log" \
@@ -81,13 +81,13 @@ if [ "$rc" -eq 0 ] && [ -f "$OUT" ] && [ ! -L "$OUT" ]; then
   if cat "$OUT"; then
     exit 0
   fi
-  echo "MWS-REASON: extract-failed rc=$rc" >&2
+  echo "ZIP2LEARN-REASON: extract-failed rc=$rc" >&2
   exit 3
 fi
 
-echo "MWS-REASON: $(reason) rc=$rc" >&2
-# 開発者向けの診断。呼び出し側は MWS_GHIDRA_DEBUG=1 のときだけ手元の端末へ出す。
-if [ -n "${MWS_DIAG:-}" ]; then
+echo "ZIP2LEARN-REASON: $(reason) rc=$rc" >&2
+# 開発者向けの診断。呼び出し側は ZIP2LEARN_GHIDRA_DEBUG=1 のときだけ手元の端末へ出す。
+if [ -n "${ZIP2LEARN_DIAG:-}" ]; then
   tail -c 6000 "$WORK/headless.out" >&2 2>/dev/null
 fi
 exit 3

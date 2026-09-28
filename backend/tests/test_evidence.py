@@ -36,7 +36,7 @@ def build_lesson(name, sources, lesson_id, parser_ids=None, **kwargs):
 HOST = "WS99"
 ITM2 = [
     # InfoTrace Mark II では、起動したプロセスが `psPath`、親が `parentPath`。
-    # 検証に使った実データでも、起動記録はすべてこの形で、`path` は空だった。
+    # 起動記録では `path` は空になる。
     '10/05/2022 14:00:01.000 +0900 loc=en-US type=ITM2 sn=1 lv=5 evt=ps '
     f'subEvt=start os=Win com="{HOST}" parentPath="C:\\Windows\\explorer.exe" '
     'psPath="C:\\Windows\\System32\\cmd.exe"',
@@ -748,21 +748,20 @@ class TestLongRealisticLines(unittest.TestCase):
     """Regression: the excerpt cap must not cut off the field being asked about.
 
     The short fixtures above cannot catch this — their lines fit well inside
-    any cap. Full-length ITM2 lines are long and put the
-    interesting fields late, after hundreds of characters of identifiers.
-    With the cap at 400 those fields were dropped, `_grounded_choice` found no
-    value to ask about, and two of the three stages silently produced no
-    questions at all. Only real data showed it.
+    any cap. Full-length ITM2 lines are long and put the interesting fields
+    late, after hundreds of characters of identifiers. With a cap that is too
+    short those fields are dropped, `_grounded_choice` finds no value to ask
+    about, and stages silently produce no questions at all.
 
-    So this fixture pads the head of each line the way the real logs do.
+    So this fixture pads the head of each line the way full-length lines do.
     """
 
     def line(self, seq: int, exe: str) -> str:
-        # 実データと同じ並び: 先頭に識別子が続き、psPath は後ろに来る。
+        # ITM2 の完全な行と同じ並び: 先頭に識別子が続き、psPath は後ろに来る。
         #
         # 値はすべてテスト用に作った合成値で、実在の端末・利用者を指さない。
         # 長さと形式（GUID の桁と区切り、SID の構造、IPv4/IPv6 の組、MAC）は、
-        # 行の長さと項目の位置を再現するために元の並びと同じに保っている。
+        # 行の長さと項目の位置を再現するために ITM2 の形式に合わせている。
         #   GUID … 7e57（"test"）と 0 だけで作った値
         #   SID  … 各部を 1/2/3 の繰り返しにした、実在しない値
         #   IP   … IPv4 は RFC 5737、IPv6 は RFC 3849 の文書用アドレス

@@ -1,4 +1,4 @@
-"""static_facts.py — 抽出 JSON（schema mws-ghidra-static/1）を検証して静的事実にする。
+"""static_facts.py — 抽出 JSON（schema zip2learn-ghidra-static/1）を検証して静的事実にする。
 
 コンテナの出力も信用しない。ここを通らなかったものは、教材にも画面にも
 出さない。確かめること:
@@ -25,8 +25,8 @@ import json
 import re
 from dataclasses import dataclass, field
 
-SCHEMA = "mws-ghidra-static/1"
-END_MARK = "mws-ghidra-static-end"
+SCHEMA = "zip2learn-ghidra-static/1"
+END_MARK = "zip2learn-ghidra-static-end"
 MAX_JSON_BYTES = 32 * 1024**2
 
 MAX_FUNCTIONS = 5000

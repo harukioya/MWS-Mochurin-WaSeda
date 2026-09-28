@@ -55,7 +55,7 @@ import parsers  # noqa: E402
 from store import Store, blob_path, sha256_file  # noqa: E402
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-STATE_DIR = os.path.join(REPO_ROOT, ".mws-state")
+STATE_DIR = os.path.join(REPO_ROOT, ".zip2learn-state")
 BLOB_DIR = os.path.join(STATE_DIR, "vault")
 #: GZF の入力コピーを置く、ジョブ専用の一時領域。処理が終われば消える。
 GHIDRA_JOB_DIR = os.path.join(STATE_DIR, "ghidra-jobs")
@@ -78,7 +78,7 @@ PICKER_TIMEOUT = 180
 MAX_SUBDIR_HINTS = 20
 
 # {nonce} is filled per response. Never use 'unsafe-inline' here: the page
-# carries the injected mws-token, so script injection would hand it over.
+# carries the injected zip2learn-token, so script injection would hand it over.
 CSP = (
     "default-src 'none'; script-src 'self' 'nonce-{nonce}'; "
     "style-src 'self' 'unsafe-inline'; "
@@ -165,7 +165,7 @@ ROUTES = [
 ]
 
 
-ROLE_FILE = os.path.expanduser("~/.config/mws/role")
+ROLE_FILE = os.path.expanduser("~/.config/zip2learn/role")
 DEFAULT_ROLE = "instructor"
 
 
@@ -184,7 +184,7 @@ def load_role() -> str:
     hostile web page could drive through the API; it does not restrain a
     motivated student, and the UI must not claim otherwise. The controls that
     do carry weight -- the Host allowlist, the token on every mutation, and
-    intake being off unless MWS_INTAKE_ENABLED=1 -- are unaffected by the role.
+    intake being off unless ZIP2LEARN_INTAKE_ENABLED=1 -- are unaffected by the role.
     """
     try:
         with open(ROLE_FILE, encoding="utf-8") as fh:
@@ -670,7 +670,7 @@ def _choose_directory_locked() -> str:
 
 class Handler(ghidra_api.GhidraHandlers, BaseHTTPRequestHandler):
     timeout = 15  # a stalled connection must not hold a thread forever
-    server_version = "mws-local"
+    server_version = "zip2learn-local"
     sys_version = ""
 
     # -- plumbing ---------------------------------------------------------
@@ -770,7 +770,7 @@ class Handler(ghidra_api.GhidraHandlers, BaseHTTPRequestHandler):
             self._error(403, "送信元が不正です")
             return False
         if not secrets.compare_digest(
-            self.headers.get("X-MWS-Token") or "", STATE.token
+            self.headers.get("X-Zip2Learn-Token") or "", STATE.token
         ):
             self._error(403, "トークンがないか無効です")
             return False
@@ -799,8 +799,8 @@ class Handler(ghidra_api.GhidraHandlers, BaseHTTPRequestHandler):
         with open(os.path.join(REPO_ROOT, "index.html"), "rb") as fh:
             html = fh.read()
         # Hand the token to the page. EventSource cannot set headers, so the
-        # UI reads this meta tag and sends it as X-MWS-Token via fetch().
-        tag = f'<meta name="mws-token" content="{STATE.token}">'.encode()
+        # UI reads this meta tag and sends it as X-Zip2Learn-Token via fetch().
+        tag = f'<meta name="zip2learn-token" content="{STATE.token}">'.encode()
         html = html.replace(b"<head>", b"<head>\n  " + tag, 1)
         # The no-flash theme init is inline by design (it must run pre-paint),
         # so it needs a nonce rather than 'unsafe-inline'.

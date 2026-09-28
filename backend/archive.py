@@ -431,7 +431,7 @@ def _enumerate_open(zf: zipfile.ZipFile, depth: int = 0) -> Listing:
     # --- nested archives ------------------------------------------------
     # Without this, a student is told "an archive -- look inside before
     # trusting it" with no way to look inside, and the encrypted members
-    # (which in the real dataset live one level down) are never seen at all.
+    # (which often live one level down) are never seen at all.
     if depth < MAX_DEPTH:
         for parent in list(listing.members):
             if parent.verdict is not Verdict.CONTAINER or parent.container:
