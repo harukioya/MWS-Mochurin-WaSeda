@@ -17,7 +17,7 @@ export async function renderHome(mount) {
 
   const eyebrow = document.createElement('div');
   eyebrow.className = 'eyebrow';
-  eyebrow.textContent = 'Mochurin WaSeda · MWS Cup 2026';
+  eyebrow.textContent = 'Zip2Learn · Mochurin WaSeda · MWS Cup 2026';
 
   const h1 = document.createElement('h1');
   h1.textContent = 'マルウェアの挙動を段階ごとに読み解く';

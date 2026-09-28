@@ -1800,7 +1800,7 @@ def main() -> None:
     # flush=True matters: Python block-buffers stdout when it is a pipe, so
     # launching this from a script or a log redirect would otherwise show
     # nothing at all -- including the port number you need to open the app.
-    print(f"  MWS inspector  ->  http://127.0.0.1:{port}/", flush=True)
+    print(f"  Zip2Learn  ->  http://127.0.0.1:{port}/", flush=True)
     if STATE.role == "instructor":
         print("  role: instructor  (full access - this is your own machine)", flush=True)
         print(f"        hand it to a learner with:  "

@@ -1,4 +1,6 @@
-# 証拠付き DFIR 教材生成基盤
+# Zip2Learn
+
+**証拠付き DFIR 教材生成基盤**
 
 実データを、**証拠・引用元・時系列を保持した教材**へ変換する再利用可能な基盤です。
 配布 ZIP を**展開せず・実行せず**に読み取り、ログの 1 行 1 行を根拠にして、
@@ -162,7 +164,7 @@ DATASET_PROFILE_DIR=/path/to/profiles python3 backend/api.py
 起動すると、次のような行が表示されます。
 
 ```
-  MWS inspector  ->  http://127.0.0.1:53421/
+  Zip2Learn  ->  http://127.0.0.1:53421/
   role: instructor  (full access - this is your own machine)
   profiles: 0 loaded  (parsers: itm2, proxy)
   Ctrl+C to stop.
