@@ -1,0 +1,5 @@
+# build context はこのディレクトリの固定ファイルだけ。
+*
+!Dockerfile
+!ExtractStaticFacts.java
+!run-extract.sh

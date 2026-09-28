@@ -1,0 +1,764 @@
+{
+ "difficulty": "入門",
+ "evidence": {
+  "ev-045e16297c3a00b8a11c29bd": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-045e16297c3a00b8a11c29bd",
+   "kind": "function",
+   "source": {
+    "address": "ram:00101190",
+    "excerpt": "draw @ ram:00101190",
+    "function": "draw",
+    "instruction": null,
+    "program": "minigame",
+    "reference": "関数の入口（このプログラム内）"
+   }
+  },
+  "ev-05469bb80490510142b8d42e": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-05469bb80490510142b8d42e",
+   "kind": "instruction",
+   "source": {
+    "address": "ram:00101120",
+    "excerpt": "CALL 0x00101150",
+    "function": "init_board",
+    "instruction": "CALL 0x00101150",
+    "program": "minigame",
+    "reference": "呼び出し先: ram:00101150"
+   }
+  },
+  "ev-171bfe448d9426939cbdbd80": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-171bfe448d9426939cbdbd80",
+   "kind": "string",
+   "source": {
+    "address": "ram:00102010",
+    "excerpt": "「Game over」",
+    "function": null,
+    "instruction": null,
+    "program": "minigame",
+    "reference": "定義済み文字列（9 文字）"
+   }
+  },
+  "ev-5533ee1b90a9ec9a052993fa": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-5533ee1b90a9ec9a052993fa",
+   "kind": "string",
+   "source": {
+    "address": "ram:00102040",
+    "excerpt": "「You win!」",
+    "function": null,
+    "instruction": null,
+    "program": "minigame",
+    "reference": "定義済み文字列（8 文字）"
+   }
+  },
+  "ev-594502a753e062186e392096": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-594502a753e062186e392096",
+   "kind": "function",
+   "source": {
+    "address": "ram:00101200",
+    "excerpt": "main @ ram:00101200",
+    "function": "main",
+    "instruction": null,
+    "program": "minigame",
+    "reference": "関数の入口（このプログラム内）"
+   }
+  },
+  "ev-6c319c62f978ea504760f580": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-6c319c62f978ea504760f580",
+   "kind": "string",
+   "source": {
+    "address": "ram:00102020",
+    "excerpt": "「Board ready」",
+    "function": null,
+    "instruction": null,
+    "program": "minigame",
+    "reference": "定義済み文字列（11 文字）"
+   }
+  },
+  "ev-8c8c12bd147b23a51ae1dbe7": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-8c8c12bd147b23a51ae1dbe7",
+   "kind": "external",
+   "source": {
+    "address": "EXTERNAL:00000018",
+    "excerpt": "rand @ EXTERNAL:00000018 — libc.so.6",
+    "function": "rand",
+    "instruction": null,
+    "program": "minigame",
+    "reference": "外部関数（登録先: libc.so.6）"
+   }
+  },
+  "ev-93109eaac411b02544fa0faa": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-93109eaac411b02544fa0faa",
+   "kind": "instruction",
+   "source": {
+    "address": "ram:00101220",
+    "excerpt": "CALL 0x00101100",
+    "function": "main",
+    "instruction": "CALL 0x00101100",
+    "program": "minigame",
+    "reference": "呼び出し先: ram:00101100"
+   }
+  },
+  "ev-acb14acf16f5f407a8a0b956": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-acb14acf16f5f407a8a0b956",
+   "kind": "string",
+   "source": {
+    "address": "ram:00102060",
+    "excerpt": "「Cheat mode」",
+    "function": null,
+    "instruction": null,
+    "program": "minigame",
+    "reference": "定義済み文字列（10 文字）"
+   }
+  },
+  "ev-ba081b8c8769da898fc51b97": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-ba081b8c8769da898fc51b97",
+   "kind": "string",
+   "source": {
+    "address": "ram:00102050",
+    "excerpt": "「Mines left: %d」",
+    "function": null,
+    "instruction": null,
+    "program": "minigame",
+    "reference": "定義済み文字列（14 文字）"
+   }
+  },
+  "ev-bc844a01fd8a4a0d6a0b0844": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-bc844a01fd8a4a0d6a0b0844",
+   "kind": "instruction",
+   "source": {
+    "address": "ram:00101110",
+    "excerpt": "LEA RDI,[0x00102020]",
+    "function": "init_board",
+    "instruction": "LEA RDI,[0x00102020]",
+    "program": "minigame",
+    "reference": "参照先: ram:00102020"
+   }
+  },
+  "ev-caf880669a4edf5226e1e9ff": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-caf880669a4edf5226e1e9ff",
+   "kind": "string",
+   "source": {
+    "address": "ram:00102000",
+    "excerpt": "「Usage: %s」",
+    "function": null,
+    "instruction": null,
+    "program": "minigame",
+    "reference": "定義済み文字列（9 文字）"
+   }
+  },
+  "ev-e1c370c8a35e83f2f69f9805": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-e1c370c8a35e83f2f69f9805",
+   "kind": "function",
+   "source": {
+    "address": "ram:00101180",
+    "excerpt": "print_usage @ ram:00101180",
+    "function": "print_usage",
+    "instruction": null,
+    "program": "minigame",
+    "reference": "関数の入口（このプログラム内）"
+   }
+  },
+  "ev-eac9a51a415f2aa38e9bac22": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-eac9a51a415f2aa38e9bac22",
+   "kind": "function",
+   "source": {
+    "address": "ram:00101100",
+    "excerpt": "init_board @ ram:00101100",
+    "function": "init_board",
+    "instruction": null,
+    "program": "minigame",
+    "reference": "関数の入口（このプログラム内）"
+   }
+  },
+  "ev-f32aea0b75fa791603f939c7": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-f32aea0b75fa791603f939c7",
+   "kind": "instruction",
+   "source": {
+    "address": "ram:00101230",
+    "excerpt": "LEA RDI,[0x00102010]",
+    "function": "main",
+    "instruction": "LEA RDI,[0x00102010]",
+    "program": "minigame",
+    "reference": "参照先: ram:00102010"
+   }
+  },
+  "ev-f7a356b61d69d53736e6896f": {
+   "confidence": "stored",
+   "evidenceType": "static",
+   "id": "ev-f7a356b61d69d53736e6896f",
+   "kind": "function",
+   "source": {
+    "address": "ram:00101150",
+    "excerpt": "place_mines @ ram:00101150",
+    "function": "place_mines",
+    "instruction": null,
+    "program": "minigame",
+    "reference": "関数の入口（このプログラム内）"
+   }
+  }
+ },
+ "family": "静的解析",
+ "id": "gen-gzf-abababababababab",
+ "introduction": {
+  "estimatedMinutes": 15,
+  "kind": "static",
+  "objectives": [
+   "命令が参照するアドレスを、定義済み文字列の記録と突き合わせる",
+   "呼び出し命令の行き先を、関数の入口アドレスから特定する",
+   "プログラム内の関数と、外部関数の記録を見分ける",
+   "記録から言えることと、実行しないと分からないことを分ける"
+  ],
+  "scenario": "Ghidra で解析して保存されたプログラムの記録を読み、命令・文字列・関数のつながりを確かめます。プログラムは動かさず、保存済みの記録だけを使います。",
+  "static": {
+   "counts": {
+    "calls": 4,
+    "externals": 3,
+    "functions": 7,
+    "indirectCalls": 2,
+    "stringRefs": 5,
+    "strings": 7,
+    "unresolvedCalls": 1
+   },
+   "input": {
+    "bytes": 12345,
+    "sha256": "abababababababababababababababababababababababababababababababab"
+   },
+   "origin": {
+    "kind": "upload",
+    "name": "minigame.gzf"
+   },
+   "program": {
+    "compilerSpecId": "gcc",
+    "executableFormat": "Executable and Linking Format (ELF)",
+    "imageBase": "ram:00100000",
+    "languageId": "x86:LE:64:default",
+    "name": "minigame",
+    "storedExecutableSha256": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+   },
+   "questionCounts": {
+    "call": 2,
+    "external": 1,
+    "string": 2
+   },
+   "sample": null,
+   "schemaVersion": "mws-ghidra-static/1",
+   "skipped": [],
+   "tool": {
+    "arch": "arm64",
+    "ghidraVersion": "12.1.4",
+    "imageId": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "imageRef": "mws-ghidra-static:12.1.4-test",
+    "scriptSha256": "5555555555555555555555555555555555555555555555555555555555555555",
+    "scriptVersion": "1.0.0"
+   },
+   "truncated": []
+  },
+  "status": "draft"
+ },
+ "kind": "static",
+ "recap": {
+  "summary": "minigame の保存済み解析情報から、文字列の参照 2 問、直接呼び出し 2 問、外部関数 1 問を解きました。どれも静的に確認できる記録の読み方で、実行時の挙動は含みません。"
+ },
+ "report": {
+  "facts": [
+   {
+    "category": "static-string",
+    "evidenceIds": [
+     "ev-f32aea0b75fa791603f939c7",
+     "ev-171bfe448d9426939cbdbd80"
+    ],
+    "title": "ram:00101230 の命令「LEA RDI,[0x00102010]」には、Ghidra が保存した参照（種類 DATA）があり、参照先は ram:00102010 です。このアドレスに定義されている文字列は 「Game over」 です。"
+   },
+   {
+    "category": "static-string",
+    "evidenceIds": [
+     "ev-bc844a01fd8a4a0d6a0b0844",
+     "ev-6c319c62f978ea504760f580"
+    ],
+    "title": "ram:00101110 の命令「LEA RDI,[0x00102020]」には、Ghidra が保存した参照（種類 DATA）があり、参照先は ram:00102020 です。このアドレスに定義されている文字列は 「Board ready」 です。"
+   },
+   {
+    "category": "static-call",
+    "evidenceIds": [
+     "ev-93109eaac411b02544fa0faa",
+     "ev-eac9a51a415f2aa38e9bac22"
+    ],
+    "title": "ram:00101220 の命令「CALL 0x00101100」の呼び出し先は ram:00101100 です。この入口アドレスを持つ関数は init_board です。"
+   },
+   {
+    "category": "static-call",
+    "evidenceIds": [
+     "ev-05469bb80490510142b8d42e",
+     "ev-f7a356b61d69d53736e6896f"
+    ],
+    "title": "ram:00101120 の命令「CALL 0x00101150」の呼び出し先は ram:00101150 です。この入口アドレスを持つ関数は place_mines です。"
+   },
+   {
+    "category": "static-external",
+    "evidenceIds": [
+     "ev-8c8c12bd147b23a51ae1dbe7"
+    ],
+    "title": "rand は EXTERNAL:00000018（EXTERNAL 空間）に外部関数として登録されており、登録先のライブラリは libc.so.6 です。ほかの選択肢は、このプログラムのメモリ上に入口を持つ関数です。"
+   }
+  ],
+  "nextInvestigations": [
+   "Ghidra で同じアドレスを開き、前後の命令と引数の準備を読む",
+   "参照（XREF）の一覧で、同じ文字列や関数を使っている別の箇所を確かめる",
+   "間接呼び出しの行き先は、データの流れを追うか、隔離環境での動的解析で確かめる"
+  ],
+  "techniques": [],
+  "timeline": [],
+  "unknowns": [
+   {
+    "detail": "この教材は、GZF に保存済みの解析情報を読み出して作りました。対象プログラムの起動・エミュレーション・デバッガ接続は行っていません。実行時の挙動（何が起きたか、どの順で呼ばれたか）は、ここからは分かりません。",
+    "topic": "実行はしていません"
+   },
+   {
+    "detail": "呼び出し命令が存在することは、実行時にその呼び出しが起きたことを意味しません。間接呼び出し 2 件と、行き先を一意に解決できなかった呼び出し 1 件は、設問に使っていません。",
+    "topic": "呼び出し命令と実際の呼び出し"
+   },
+   {
+    "detail": "文字列や外部関数の名前だけから、悪性かどうかや攻撃手法を決めることはしていません。この教材は ATT&CK との対応付けを行いません。",
+    "topic": "悪性の判断"
+   },
+   {
+    "detail": "記録は GZF を保存した時点の Ghidra の解析結果です。自動解析はやり直していないので、解析の設定や版が違えば、関数や参照の数は変わり得ます。",
+    "topic": "保存時点の解析結果であること"
+   }
+  ]
+ },
+ "source": {
+  "note": "GZF に保存済みの解析情報から自動生成した演習です。対象プログラムは実行していません。",
+  "type": "generated-static"
+ },
+ "stages": [
+  {
+   "events": [
+    {
+     "detail": "main / ram:00101230: LEA RDI,[0x00102010]",
+     "evidenceIds": [
+      "ev-f32aea0b75fa791603f939c7"
+     ],
+     "type": "instruction"
+    },
+    {
+     "detail": "ram:00102010: 「Game over」",
+     "evidenceIds": [
+      "ev-171bfe448d9426939cbdbd80"
+     ],
+     "type": "string"
+    },
+    {
+     "detail": "ram:00102020: 「Board ready」",
+     "evidenceIds": [
+      "ev-6c319c62f978ea504760f580"
+     ],
+     "type": "string"
+    },
+    {
+     "detail": "ram:00102040: 「You win!」",
+     "evidenceIds": [
+      "ev-5533ee1b90a9ec9a052993fa"
+     ],
+     "type": "string"
+    },
+    {
+     "detail": "ram:00102050: 「Mines left: %d」",
+     "evidenceIds": [
+      "ev-ba081b8c8769da898fc51b97"
+     ],
+     "type": "string"
+    },
+    {
+     "detail": "init_board / ram:00101110: LEA RDI,[0x00102020]",
+     "evidenceIds": [
+      "ev-bc844a01fd8a4a0d6a0b0844"
+     ],
+     "type": "instruction"
+    },
+    {
+     "detail": "ram:00102000: 「Usage: %s」",
+     "evidenceIds": [
+      "ev-caf880669a4edf5226e1e9ff"
+     ],
+     "type": "string"
+    },
+    {
+     "detail": "ram:00102060: 「Cheat mode」",
+     "evidenceIds": [
+      "ev-acb14acf16f5f407a8a0b956"
+     ],
+     "type": "string"
+    }
+   ],
+   "id": "static-strings",
+   "intro": "Ghidra は、命令がどのアドレスのデータを指しているかを「参照」として保存します。\n\n下の記録には、ある関数の命令と、プログラム内に定義された文字列が並んでいます。命令の参照先アドレスと、文字列が置かれたアドレスを突き合わせてください。",
+   "name": "段階1 — 文字列の参照を読む",
+   "quizzes": [
+    {
+     "answerCheck": {
+      "from": "ram:0000000000101230",
+      "function": "fn:ram:0000000000101200",
+      "kind": "string-ref",
+      "string": "str:ram:0000000000102010"
+     },
+     "category": "static-string",
+     "correct": 2,
+     "evidenceIds": [
+      "ev-f32aea0b75fa791603f939c7",
+      "ev-171bfe448d9426939cbdbd80"
+     ],
+     "explain": "ram:00101230 の命令「LEA RDI,[0x00102010]」には、Ghidra が保存した参照（種類 DATA）があり、参照先は ram:00102010 です。このアドレスに定義されている文字列は 「Game over」 です。\n\nほかの選択肢は、この関数のどの命令からも参照されていない文字列です。参照があることは、その文字列が実行時に使われたことまでは示しません。",
+     "hints": [
+      "命令の欄にあるオペランドと、その下の「参照先」に書かれたアドレスに注目してください。",
+      "そのアドレスを、この段階に並んだ「定義済み文字列」の記録のアドレスと照らし合わせてください。",
+      "文字列の中身が関数名と関係ありそうかどうかでは決めません。アドレスが一致する記録を選びます。"
+     ],
+     "id": "q-str-1",
+     "learningObjective": "命令が参照するアドレスを、定義済み文字列の記録と突き合わせる",
+     "optionIds": [
+      "str:ram:0000000000102020",
+      "str:ram:0000000000102050",
+      "str:ram:0000000000102010",
+      "str:ram:0000000000102040"
+     ],
+     "options": [
+      "「Board ready」",
+      "「Mines left: %d」",
+      "「Game over」",
+      "「You win!」"
+     ],
+     "prompt": "関数 main の ram:00101230 にある命令について。この命令が参照している定義済み文字列はどれですか。",
+     "q": "関数 main の ram:00101230 にある命令について。この命令が参照している定義済み文字列はどれですか。",
+     "subjectEvidenceIds": [
+      "ev-f32aea0b75fa791603f939c7"
+     ],
+     "type": "single_choice"
+    },
+    {
+     "answerCheck": {
+      "from": "ram:0000000000101110",
+      "function": "fn:ram:0000000000101100",
+      "kind": "string-ref",
+      "string": "str:ram:0000000000102020"
+     },
+     "category": "static-string",
+     "correct": 0,
+     "evidenceIds": [
+      "ev-bc844a01fd8a4a0d6a0b0844",
+      "ev-6c319c62f978ea504760f580"
+     ],
+     "explain": "ram:00101110 の命令「LEA RDI,[0x00102020]」には、Ghidra が保存した参照（種類 DATA）があり、参照先は ram:00102020 です。このアドレスに定義されている文字列は 「Board ready」 です。\n\nほかの選択肢は、この関数のどの命令からも参照されていない文字列です。参照があることは、その文字列が実行時に使われたことまでは示しません。",
+     "hints": [
+      "命令の欄にあるオペランドと、その下の「参照先」に書かれたアドレスに注目してください。",
+      "そのアドレスを、この段階に並んだ「定義済み文字列」の記録のアドレスと照らし合わせてください。",
+      "文字列の中身が関数名と関係ありそうかどうかでは決めません。アドレスが一致する記録を選びます。"
+     ],
+     "id": "q-str-2",
+     "learningObjective": "命令が参照するアドレスを、定義済み文字列の記録と突き合わせる",
+     "optionIds": [
+      "str:ram:0000000000102020",
+      "str:ram:0000000000102040",
+      "str:ram:0000000000102060",
+      "str:ram:0000000000102000"
+     ],
+     "options": [
+      "「Board ready」",
+      "「You win!」",
+      "「Cheat mode」",
+      "「Usage: %s」"
+     ],
+     "prompt": "関数 init_board の ram:00101110 にある命令について。この命令が参照している定義済み文字列はどれですか。",
+     "q": "関数 init_board の ram:00101110 にある命令について。この命令が参照している定義済み文字列はどれですか。",
+     "subjectEvidenceIds": [
+      "ev-bc844a01fd8a4a0d6a0b0844"
+     ],
+     "type": "single_choice"
+    }
+   ]
+  },
+  {
+   "events": [
+    {
+     "detail": "main / ram:00101220: CALL 0x00101100",
+     "evidenceIds": [
+      "ev-93109eaac411b02544fa0faa"
+     ],
+     "type": "call"
+    },
+    {
+     "detail": "init_board — 入口 ram:00101100",
+     "evidenceIds": [
+      "ev-eac9a51a415f2aa38e9bac22"
+     ],
+     "type": "function"
+    },
+    {
+     "detail": "print_usage — 入口 ram:00101180",
+     "evidenceIds": [
+      "ev-e1c370c8a35e83f2f69f9805"
+     ],
+     "type": "function"
+    },
+    {
+     "detail": "draw — 入口 ram:00101190",
+     "evidenceIds": [
+      "ev-045e16297c3a00b8a11c29bd"
+     ],
+     "type": "function"
+    },
+    {
+     "detail": "main — 入口 ram:00101200",
+     "evidenceIds": [
+      "ev-594502a753e062186e392096"
+     ],
+     "type": "function"
+    },
+    {
+     "detail": "init_board / ram:00101120: CALL 0x00101150",
+     "evidenceIds": [
+      "ev-05469bb80490510142b8d42e"
+     ],
+     "type": "call"
+    },
+    {
+     "detail": "place_mines — 入口 ram:00101150",
+     "evidenceIds": [
+      "ev-f7a356b61d69d53736e6896f"
+     ],
+     "type": "function"
+    }
+   ],
+   "id": "static-calls",
+   "intro": "呼び出し命令（x86 の CALL など）は、行き先のアドレスを持ちます。そのアドレスがどの関数の入口かを、関数の記録と照らし合わせて確かめます。\n\n間接呼び出し（レジスタやメモリの値で行き先が決まるもの）は、この教材では扱いません。",
+   "name": "段階2 — 直接呼び出しを読む",
+   "quizzes": [
+    {
+     "answerCheck": {
+      "from": "ram:0000000000101220",
+      "function": "fn:ram:0000000000101200",
+      "kind": "call"
+     },
+     "category": "static-call",
+     "correct": 1,
+     "evidenceIds": [
+      "ev-93109eaac411b02544fa0faa",
+      "ev-eac9a51a415f2aa38e9bac22"
+     ],
+     "explain": "ram:00101220 の命令「CALL 0x00101100」の呼び出し先は ram:00101100 です。この入口アドレスを持つ関数は init_board です。\n\nここで分かるのは「呼び出す命令がある」ことまでです。条件分岐の先にある場合もあり、実行時に実際に呼ばれたかどうかは、この記録だけでは分かりません。",
+     "hints": [
+      "CALL などの呼び出し命令は、オペランドに呼び出し先の入口アドレスを持ちます。「呼び出し先」の欄も見てください。",
+      "この段階に並んだ関数の記録から、入口アドレスが呼び出し先と一致するものを探してください。",
+      "名前の印象ではなく、アドレスの一致で判断します。命令があることと、実行時に呼ばれたことは別です。"
+     ],
+     "id": "q-call-1",
+     "learningObjective": "呼び出し命令の行き先アドレスを、関数の入口アドレスと突き合わせる",
+     "optionIds": [
+      "fn:ram:0000000000101180",
+      "fn:ram:0000000000101100",
+      "fn:ram:0000000000101190",
+      "fn:ram:0000000000101200"
+     ],
+     "options": [
+      "print_usage",
+      "init_board",
+      "draw",
+      "main"
+     ],
+     "prompt": "関数 main の ram:00101220 にある CALL 命令について。この命令が直接呼び出す関数はどれですか。",
+     "q": "関数 main の ram:00101220 にある CALL 命令について。この命令が直接呼び出す関数はどれですか。",
+     "subjectEvidenceIds": [
+      "ev-93109eaac411b02544fa0faa"
+     ],
+     "type": "single_choice"
+    },
+    {
+     "answerCheck": {
+      "from": "ram:0000000000101120",
+      "function": "fn:ram:0000000000101100",
+      "kind": "call"
+     },
+     "category": "static-call",
+     "correct": 3,
+     "evidenceIds": [
+      "ev-05469bb80490510142b8d42e",
+      "ev-f7a356b61d69d53736e6896f"
+     ],
+     "explain": "ram:00101120 の命令「CALL 0x00101150」の呼び出し先は ram:00101150 です。この入口アドレスを持つ関数は place_mines です。\n\nここで分かるのは「呼び出す命令がある」ことまでです。条件分岐の先にある場合もあり、実行時に実際に呼ばれたかどうかは、この記録だけでは分かりません。",
+     "hints": [
+      "CALL などの呼び出し命令は、オペランドに呼び出し先の入口アドレスを持ちます。「呼び出し先」の欄も見てください。",
+      "この段階に並んだ関数の記録から、入口アドレスが呼び出し先と一致するものを探してください。",
+      "名前の印象ではなく、アドレスの一致で判断します。命令があることと、実行時に呼ばれたことは別です。"
+     ],
+     "id": "q-call-2",
+     "learningObjective": "呼び出し命令の行き先アドレスを、関数の入口アドレスと突き合わせる",
+     "optionIds": [
+      "fn:ram:0000000000101180",
+      "fn:ram:0000000000101190",
+      "fn:ram:0000000000101200",
+      "fn:ram:0000000000101150"
+     ],
+     "options": [
+      "print_usage",
+      "draw",
+      "main",
+      "place_mines"
+     ],
+     "prompt": "関数 init_board の ram:00101120 にある CALL 命令について。この命令が直接呼び出す関数はどれですか。",
+     "q": "関数 init_board の ram:00101120 にある CALL 命令について。この命令が直接呼び出す関数はどれですか。",
+     "subjectEvidenceIds": [
+      "ev-05469bb80490510142b8d42e"
+     ],
+     "type": "single_choice"
+    }
+   ]
+  },
+  {
+   "events": [
+    {
+     "detail": "draw — 入口 ram:00101190",
+     "evidenceIds": [
+      "ev-045e16297c3a00b8a11c29bd"
+     ],
+     "type": "function"
+    },
+    {
+     "detail": "place_mines — 入口 ram:00101150",
+     "evidenceIds": [
+      "ev-f7a356b61d69d53736e6896f"
+     ],
+     "type": "function"
+    },
+    {
+     "detail": "print_usage — 入口 ram:00101180",
+     "evidenceIds": [
+      "ev-e1c370c8a35e83f2f69f9805"
+     ],
+     "type": "function"
+    },
+    {
+     "detail": "rand — EXTERNAL:00000018",
+     "evidenceIds": [
+      "ev-8c8c12bd147b23a51ae1dbe7"
+     ],
+     "type": "external"
+    }
+   ],
+   "id": "static-externals",
+   "intro": "プログラムの中にある関数と、共有ライブラリなど外から取り込む関数は、Ghidra の記録では登録先（アドレス空間）が違います。",
+   "name": "段階3 — 外部関数を見分ける",
+   "quizzes": [
+    {
+     "answerCheck": {
+      "external": "ext:EXTERNAL:0000000000000018",
+      "kind": "external"
+     },
+     "category": "static-external",
+     "correct": 1,
+     "evidenceIds": [
+      "ev-8c8c12bd147b23a51ae1dbe7"
+     ],
+     "explain": "rand は EXTERNAL:00000018（EXTERNAL 空間）に外部関数として登録されており、登録先のライブラリは libc.so.6 です。ほかの選択肢は、このプログラムのメモリ上に入口を持つ関数です。\n\n外部関数として登録されていることは、その関数を使う準備があることを示すだけで、何のために使うのか、実行時に呼ばれたのかは分かりません。関数名だけから悪性や攻撃手法を決めつけないでください。",
+     "hints": [
+      "外部関数は、このプログラムの外（共有ライブラリなど）にある関数として、EXTERNAL というアドレス空間に登録されます。",
+      "並んでいる記録それぞれのアドレス空間と、「登録先」の欄を確かめてください。",
+      "有名なライブラリ関数の名前に似ているかどうかでは決めません。記録上の登録先で判断します。"
+     ],
+     "id": "q-ext-1",
+     "learningObjective": "関数の記録から、プログラム内の関数と外部関数を見分ける",
+     "optionIds": [
+      "fn:ram:0000000000101150",
+      "ext:EXTERNAL:0000000000000018",
+      "fn:ram:0000000000101180",
+      "fn:ram:0000000000101190"
+     ],
+     "options": [
+      "place_mines",
+      "rand",
+      "print_usage",
+      "draw"
+     ],
+     "prompt": "次の関数のうち、このプログラムに外部関数（プログラムの外にある関数）として登録されているものはどれですか。",
+     "q": "次の関数のうち、このプログラムに外部関数（プログラムの外にある関数）として登録されているものはどれですか。",
+     "subjectEvidenceIds": [],
+     "type": "single_choice"
+    }
+   ]
+  }
+ ],
+ "static": {
+  "counts": {
+   "calls": 4,
+   "externals": 3,
+   "functions": 7,
+   "indirectCalls": 2,
+   "stringRefs": 5,
+   "strings": 7,
+   "unresolvedCalls": 1
+  },
+  "input": {
+   "bytes": 12345,
+   "sha256": "abababababababababababababababababababababababababababababababab"
+  },
+  "origin": {
+   "kind": "upload",
+   "name": "minigame.gzf"
+  },
+  "program": {
+   "compilerSpecId": "gcc",
+   "executableFormat": "Executable and Linking Format (ELF)",
+   "imageBase": "ram:00100000",
+   "languageId": "x86:LE:64:default",
+   "name": "minigame",
+   "storedExecutableSha256": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+  },
+  "questionCounts": {
+   "call": 2,
+   "external": 1,
+   "string": 2
+  },
+  "sample": null,
+  "schemaVersion": "mws-ghidra-static/1",
+  "skipped": [],
+  "tool": {
+   "arch": "arm64",
+   "ghidraVersion": "12.1.4",
+   "imageId": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+   "imageRef": "mws-ghidra-static:12.1.4-test",
+   "scriptSha256": "5555555555555555555555555555555555555555555555555555555555555555",
+   "scriptVersion": "1.0.0"
+  },
+  "truncated": []
+ },
+ "tagline": "Ghidra の保存済み解析情報から自動生成しました。使用前に内容を確認してください。",
+ "title": "minigame — Ghidra 静的解析"
+}

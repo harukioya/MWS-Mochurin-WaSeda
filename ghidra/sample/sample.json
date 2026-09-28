@@ -1,0 +1,12 @@
+{
+  "file": "termmines.gzf",
+  "sha256": "437a2f5b96b329a56045f4fe0618336825ebb02eeb612f3cfa3caf46471d1b3b",
+  "executableSha256": "b84a3c42ddfafab4637ab34c12ffda69d90654e4e7d537d92f20726680466624",
+  "name": "termmines",
+  "label": "termmines（Ghidra 公式教材のマインスイーパー）",
+  "note": "同梱サンプルの termmines は、Ghidra の公式教材に含まれる端末版マインスイーパーです。マルウェアではなく、解析の練習用のゲームです。配置ディレクトリの名前に Debugger とありますが、この教材ではデバッグ機能を使わず、プログラムも実行しません。",
+  "source": "https://github.com/NationalSecurityAgency/ghidra/blob/Ghidra_12.1.4_build/GhidraDocs/GhidraClass/ExerciseFiles/Debugger/termmines.c",
+  "sourceCommit": "8b6bbb857accdfa20dc5b2f5dea471178c2e9fbc",
+  "sourceSha256": "a30710cc0ff4e1e8136ec2164c235e201a969672cf6f5a5aceea95d81d6e13d2",
+  "license": "Apache-2.0"
+}

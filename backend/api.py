@@ -46,6 +46,9 @@ from archive import (  # noqa: E402
 )
 import dataset  # noqa: E402
 import explain  # noqa: E402
+import ghidra_api  # noqa: E402
+import ghidra_docker  # noqa: E402
+import ghidra_jobs  # noqa: E402
 from identify import HEAD_BYTES, Verdict  # noqa: E402
 import net  # noqa: E402
 import parsers  # noqa: E402
@@ -54,6 +57,8 @@ from store import Store, blob_path, sha256_file  # noqa: E402
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATE_DIR = os.path.join(REPO_ROOT, ".mws-state")
 BLOB_DIR = os.path.join(STATE_DIR, "vault")
+#: GZF の入力コピーを置く、ジョブ専用の一時領域。処理が終われば消える。
+GHIDRA_JOB_DIR = os.path.join(STATE_DIR, "ghidra-jobs")
 
 # Static files we will serve, by directory and extension. An allowlist, so a
 # new file type cannot be served by accident.
@@ -88,6 +93,10 @@ class Capability:
     VERIFY = "verify"
     MATERIALIZE_INERT = "materialize-inert"
     INTAKE = "intake"
+    # Ghidra 静的解析教材。GZF を受け取ってローカルの Docker で読むことと、
+    # その処理環境（イメージ）を準備することは、別の権限にする。
+    GHIDRA_ANALYZE = "ghidra-analyze"
+    GHIDRA_PREPARE = "ghidra-prepare"
 
 
 ROLE_CAPS = {
@@ -96,6 +105,7 @@ ROLE_CAPS = {
     "instructor": {
         Capability.READ, Capability.SCAN, Capability.VERIFY,
         Capability.MATERIALIZE_INERT, Capability.INTAKE,
+        Capability.GHIDRA_ANALYZE, Capability.GHIDRA_PREPARE,
     },
 }
 
@@ -137,6 +147,21 @@ ROUTES = [
     Route("POST", r"/api/verify", Capability.VERIFY, "h_verify"),
     Route("POST", r"/api/materialize", Capability.MATERIALIZE_INERT, "h_materialize"),
     Route("POST", r"/api/fetch", Capability.INTAKE, "h_fetch"),
+    # Ghidra 静的解析教材（ghidra_api.py）。状態の取得とキャンセルにも権限を要る。
+    Route("GET", r"/api/ghidra/status", Capability.GHIDRA_ANALYZE, "h_ghidra_status"),
+    Route("GET", r"/api/ghidra/jobs/([0-9a-f]{32,32})", Capability.GHIDRA_ANALYZE,
+          "h_ghidra_job"),
+    Route("POST", r"/api/ghidra/jobs/([0-9a-f]{32,32})/cancel", Capability.GHIDRA_ANALYZE,
+          "h_ghidra_cancel"),
+    Route("POST", r"/api/ghidra/prepare", Capability.GHIDRA_PREPARE, "h_ghidra_prepare"),
+    Route("POST", r"/api/ghidra/jobs/new", Capability.GHIDRA_ANALYZE, "h_ghidra_new_upload"),
+    Route("POST", r"/api/ghidra/jobs/([0-9a-f]{32,32})/upload", Capability.GHIDRA_ANALYZE,
+          "h_ghidra_upload"),
+    Route("POST", r"/api/ghidra/jobs/from-archive", Capability.GHIDRA_ANALYZE,
+          "h_ghidra_from_archive"),
+    Route("POST", r"/api/ghidra/jobs/sample", Capability.GHIDRA_ANALYZE, "h_ghidra_sample"),
+    Route("POST", r"/api/lessons/(gen-gzf-[0-9a-f]{16,16})/delete", Capability.GHIDRA_ANALYZE,
+          "h_ghidra_delete_lesson"),
 ]
 
 
@@ -154,8 +179,7 @@ def load_role() -> str:
     opt-in downgrade for when the app is handed to a learner.
 
     That is not a weakened boundary, because `student` was never a boundary.
-    Honest framing (BUILD-CONTRACT): it is an anti-footgun control, not
-    containment. Someone running as their own uid can edit this file or start
+    Honest framing: it is an anti-footgun control, not containment. Someone running as their own uid can edit this file or start
     their own copy of the server. It prevents accidents and limits what a
     hostile web page could drive through the API; it does not restrain a
     motivated student, and the UI must not claim otherwise. The controls that
@@ -189,6 +213,13 @@ class State:
         self.token = secrets.token_urlsafe(32)
         self.lock = threading.Lock()
         self.dataset_dirs: list[str] = []
+        self.ghidra = ghidra_jobs.JobManager(
+            GHIDRA_JOB_DIR,
+            ghidra_docker.owner_id(STATE_DIR),
+            sink=lambda lesson: self.store.save_lesson(lesson, "ghidra"),
+            sample_lookup=ghidra_api.sample_lookup,
+            log=self.store.log,
+        )
 
     def can(self, cap: str) -> bool:
         return cap in self.caps
@@ -637,7 +668,7 @@ def _choose_directory_locked() -> str:
     raise PickerUnavailable("この環境で使えるフォルダ選択画面が見つかりませんでした")
 
 
-class Handler(BaseHTTPRequestHandler):
+class Handler(ghidra_api.GhidraHandlers, BaseHTTPRequestHandler):
     timeout = 15  # a stalled connection must not hold a thread forever
     server_version = "mws-local"
     sys_version = ""
@@ -681,6 +712,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def _error(self, code: int, message: str):
         self._json({"error": message}, code)
+
+    @staticmethod
+    def _state() -> "State":
+        return STATE
 
     def _host_ok(self) -> bool:
         return self.headers.get("Host", "") in ALLOWED_HOSTS
@@ -1048,8 +1083,18 @@ class Handler(BaseHTTPRequestHandler):
 
     @staticmethod
     def _hash_descriptor(fh) -> str | None:
-        """SHA-256 of everything behind an open descriptor, then rewind it."""
+        """SHA-256 of everything behind an open descriptor, then rewind it.
+
+        The SEEK_END first is not redundant. A buffered reader answers a seek
+        that lands inside its current buffer from memory, without touching the
+        file. zipfile reads the local header at offset 0 in small pieces, so
+        after a read the first 8 KiB were typically still buffered, and a plain
+        seek(0) re-hashed those stale bytes: an in-place rewrite of the start
+        of the archive went unnoticed by `_recheck`. Seeking relative to the
+        end always goes to the OS and drops the buffer.
+        """
         try:
+            fh.seek(0, os.SEEK_END)
             fh.seek(0)
             digest = hashlib.sha256()
             for block in iter(lambda: fh.read(1024 * 1024), b""):
@@ -1156,11 +1201,13 @@ class Handler(BaseHTTPRequestHandler):
         Read-only, and deliberately says only whether a password hint EXISTS.
         The candidate strings never leave the process: putting them in a
         response would park a working key in the browser's memory, in any
-        proxy log, and in whatever the page later caches (BUILD-CONTRACT-style
-        rule from 仕様書 12.1).
+        proxy log, and in whatever the page later caches. Rule: a password
+        candidate found in the bundled notes is used only inside the request
+        that the person explicitly triggers, and is never returned, stored or
+        logged.
 
-        `?profileId=<id>` overrides the automatic decision (仕様書 11.2,
-        「自動判定結果は利用者が変更できる」). The reply says which of the two
+        `?profileId=<id>` overrides the automatic decision (the person must
+        always be able to correct a wrong detection). The reply says which of the two
         happened via `forced`, so the screen can label it rather than leaving
         the person to guess whether the format was detected or chosen. No
         match is not an error: the reply is the generic analysis mode.
@@ -1420,6 +1467,24 @@ class Handler(BaseHTTPRequestHandler):
         # 証拠オブジェクトへ内部用の項目が増えたとき、黙って API へ漏れる
         # のを防ぐため。増やすかどうかは、そのつど明示的に決める。
         src = item.get("source") or {}
+        if item.get("evidenceType") == "static":
+            # 静的な根拠は「プログラム名／関数／アドレス／命令または参照関係」。
+            # ログの行番号や手元のパスは持たない。ログの根拠の応答は、既存の
+            # 画面・教材との互換のため、以前と同じ項目のまま変えない。
+            return self._json({
+                "id": item.get("id"),
+                "kind": item.get("kind"),
+                "evidenceType": "static",
+                "confidence": item.get("confidence"),
+                "source": {
+                    "program": src.get("program"),
+                    "function": src.get("function"),
+                    "address": src.get("address"),
+                    "instruction": src.get("instruction"),
+                    "reference": src.get("reference"),
+                    "excerpt": src.get("excerpt"),
+                },
+            })
         return self._json({
             "id": item.get("id"),
             "kind": item.get("kind"),
@@ -1714,6 +1779,13 @@ def main() -> None:
     os.makedirs(STATE_DIR, exist_ok=True)
     STATE = State()
     catalog = configure_profiles_from_env()
+    # 前回の異常終了で残った GZF の作業データは、待ち受けを始める前に消す
+    # （受付と並行させると今回の入力まで消しかねない）。処理コンテナの回収は
+    # Docker の応答で遅れることがあるので別スレッドで行い、今回の起動の
+    # コンテナはセッションのラベルで除く。
+    STATE.ghidra.recover_dirs()
+    threading.Thread(target=STATE.ghidra.recover_containers, daemon=True,
+                     name="ghidra-recover").start()
 
     sock = socket.socket()
     sock.bind(("127.0.0.1", 0))  # random high port: the attacker must guess it

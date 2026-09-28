@@ -36,13 +36,35 @@ const KIND_LABEL = {
   file: 'ファイル',
   registry: 'レジストリ',
   network: '通信',
+  // 静的な根拠（Ghidra の保存済み解析情報）
+  instruction: '命令',
+  string: '定義済み文字列',
+  function: '関数',
+  external: '外部関数',
 };
 
 const CONFIDENCE_LABEL = {
   observed: '記録から直接読める',
   correlated: '複数の記録を突き合わせた',
   hypothesis: '可能性はあるが未確定',
+  stored: '保存済みの解析情報に記録されている',
 };
+
+/**
+ * 静的な根拠か。ログの根拠（ファイル名と行番号）とは出典の形が違う。
+ * 静的な根拠は「プログラム名／関数／アドレス／命令または参照関係」で示す。
+ */
+export const isStatic = (item) => !!item && item.evidenceType === 'static';
+
+/** 出典を短く 1 行で。ジャンプボタンや事象の一覧で使う。 */
+export function sourceLabel(item) {
+  const src = (item && item.source) || {};
+  if (isStatic(item)) {
+    const who = src.function || src.program || '';
+    return `${visible(who)} ${visible(src.address)}`.trim();
+  }
+  return `${visible(src.member)} ${src.line} 行目`;
+}
 
 /** 演習の証拠表。無い（旧形式）なら空を返す。 */
 export function evidenceMap(lesson) {
@@ -82,6 +104,7 @@ export function evidenceCard(item, note, anchor = true, scope = 'stage') {
 
   const src = item.source || {};
   const label = KIND_LABEL[item.kind] || item.kind || '記録';
+  if (isStatic(item)) return staticCard(card, item, label, note);
   card.setAttribute(
     'aria-label',
     `証拠 ${label}。出典 ${visible(src.member)} の ${src.line} 行目。`
@@ -123,6 +146,66 @@ export function evidenceCard(item, note, anchor = true, scope = 'stage') {
   return card;
 }
 
+/** 静的な根拠のカード。項目ごとに見出しを付けて並べる。 */
+function staticCard(card, item, label, note) {
+  const src = item.source || {};
+  card.classList.add('evidence--static');
+  const where = [visible(src.program), visible(src.function), visible(src.address)]
+    .filter(Boolean)
+    .join(' の ');
+  card.setAttribute('aria-label', `証拠 ${label}。${where}。`);
+
+  const head = el('div', 'evidence__head');
+  head.append(el('span', 'evidence__kind', label));
+  head.append(
+    el('span', 'evidence__confidence', CONFIDENCE_LABEL[item.confidence] || item.confidence || '')
+  );
+  card.append(head);
+
+  const dl = el('dl', 'factlist evidence__facts');
+  const rows = [
+    ['プログラム', src.program],
+    ['関数', src.function],
+    ['アドレス', src.address],
+    ['命令', src.instruction],
+    ['参照・記録', src.reference],
+  ];
+  rows.forEach(([k, v]) => {
+    if (v == null || v === '') return;
+    dl.append(el('dt', 'factlist__key', k));
+    dl.append(el('dd', 'factlist__value mono', visible(v)));
+  });
+  card.append(dl);
+
+  // 命令が無い記録（文字列・関数・外部関数）は、記録そのものを抜粋として出す。
+  if (!src.instruction && src.excerpt) {
+    const raw = visible(src.excerpt);
+    const body = el('pre', 'evidence__excerpt mono', raw.length > MAX_EXCERPT ? `${raw.slice(0, MAX_EXCERPT)}…` : raw);
+    body.tabIndex = 0;
+    body.setAttribute('role', 'region');
+    body.setAttribute('aria-label', '保存済みの記録');
+    card.append(body);
+  }
+  if (note) card.append(el('p', 'evidence__note', note));
+  return card;
+}
+
+/**
+ * いま強調している証拠カード。強調は常に 1 枚だけにする。
+ *
+ * 以前は付けたまま外さなかったので、同じ段階で次の設問へ進んでも、前の
+ * 設問の根拠が強調されたまま残り、どれが今の設問の根拠か分からなくなった。
+ */
+let citedCard = null;
+
+/** 証拠カードの強調を外す。次の設問・段階へ移るときに呼ぶ。 */
+export function clearCited() {
+  if (citedCard) {
+    citedCard.classList.remove('is-cited');
+    citedCard = null;
+  }
+}
+
 /**
  * 「根拠ログを見る」。回答後に、対応する証拠カードへ移動させる。
  *
@@ -139,11 +222,9 @@ export function jumpButtons(ids, map, scope = 'stage', text = '根拠ログを�
 
   known.forEach((ident, i) => {
     const item = map[ident];
-    const src = item.source || {};
+    const where = sourceLabel(item);
     const label =
-      known.length > 1
-        ? `${text}（${i + 1}）: ${visible(src.member)} ${src.line} 行目`
-        : `${text}: ${visible(src.member)} ${src.line} 行目`;
+      known.length > 1 ? `${text}（${i + 1}）: ${where}` : `${text}: ${where}`;
     const btn = el('button', 'btn btn-ghost btn-sm', label);
     btn.type = 'button';
     btn.addEventListener('click', () => {
@@ -152,7 +233,9 @@ export function jumpButtons(ids, map, scope = 'stage', text = '根拠ログを�
       const card = document.getElementById(cardId(ident, scope));
       if (!card) return;
       card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      clearCited();
       card.classList.add('is-cited');
+      citedCard = card;
       card.focus({ preventScroll: true });
     });
     row.append(btn);

@@ -26,6 +26,7 @@ class El {
     this._root = false;
     this.classList = {
       add: (c) => { this.className = (this.className ? this.className + ' ' : '') + c; },
+      remove: (c) => { this.className = String(this.className || '').split(' ').filter((x) => x && x !== c).join(' '); },
     };
   }
   _adopt(c) {

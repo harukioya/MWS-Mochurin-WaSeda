@@ -15,7 +15,7 @@ import {
   jumpButtons,
   visible,
 } from './evidence.js';
-import { glossary } from './intro.js';
+import { glossary, staticGlossary } from './intro.js';
 import { profileLine, profileOfLesson } from './profile.js';
 
 const el = (tag, className, text) => {
@@ -37,6 +37,9 @@ const CATEGORY_LABEL = {
   correlation: '二つの証拠を関連付ける',
   attck: '観測を手法に対応させる',
   limits: '断定できない理由を説明する',
+  'static-string': '命令が参照する文字列を読む',
+  'static-call': '直接呼び出しの行き先を読む',
+  'static-external': '外部関数を見分ける',
 };
 
 // このレポート画面の id 空間。演習の段階とは別に持つ。レポートは mount を
@@ -113,6 +116,10 @@ export function renderRecap(mount, lesson, stats) {
   const total = Number(stats && stats.total) || 0;
   const answers = (stats && stats.answers) || [];
   const goToStage = stats && stats.goToStage;
+  // 静的解析の教材には時系列が無い。記録の順序や ATT&CK の代わりに、静的に
+  // 確かめられた事実と、実行しないと分からないことを並べる。
+  const staticLesson = lesson.kind === 'static';
+  const staticFacts = staticLesson && Array.isArray(report.facts) ? report.facts : [];
 
   const root = document.createElement('section');
   root.className = 'recap';
@@ -171,7 +178,32 @@ export function renderRecap(mount, lesson, stats) {
   // ---- 観測された時系列 ----
   const timeline = Array.isArray(report.timeline) ? report.timeline : [];
   const techniques = Array.isArray(report.techniques) ? report.techniques : [];
-  root.appendChild(
+  if (staticLesson) {
+    root.appendChild(
+      section('静的に確認できた事実', (box) => {
+        box.append(
+          el('p', 'muted',
+            'Ghidra が GZF に保存した記録から、直接確かめられたことの一覧です。どれも「そういう命令・記録がある」という事実で、実行時に起きたことではありません。')
+        );
+        if (!staticFacts.length) {
+          box.append(el('p', 'muted', '示せる事実がありませんでした。'));
+          return;
+        }
+        const list = el('ol', 'timeline');
+        staticFacts.forEach((row) => {
+          const item = el('li', 'timeline__row');
+          item.append(el('span', 'timeline__status', CATEGORY_LABEL[row.category] || ''));
+          item.append(el('span', 'timeline__title', visible(row.title || '')));
+          const jump = jumpButtons(row.evidenceIds, evidence, SCOPE, '根拠の記録を見る');
+          if (jump) item.append(jump);
+          list.append(item);
+        });
+        box.append(list);
+      })
+    );
+  }
+
+  if (!staticLesson) root.appendChild(
     section('記録された順序', (box) => {
       box.append(
         el('p', 'muted',
@@ -231,6 +263,7 @@ export function renderRecap(mount, lesson, stats) {
     if (evidence[i] && !keyIds.includes(i)) keyIds.push(i);
   };
   timeline.forEach((row) => (row.evidenceIds || []).forEach(addId));
+  staticFacts.forEach((row) => (row.evidenceIds || []).forEach(addId));
   techniques.forEach((t) => {
     (t.evidenceIds || []).forEach(addId);
     (t.reasons || []).forEach((r) => (r.evidenceIds || []).forEach(addId));
@@ -241,7 +274,9 @@ export function renderRecap(mount, lesson, stats) {
       section('判断の根拠になった記録', (box) => {
         box.append(
           el('p', 'muted',
-            'このレポートの「根拠ログを見る」は、すべてこの一覧の記録を指しています。')
+            staticLesson
+              ? 'このレポートの「根拠の記録を見る」は、すべてこの一覧の記録を指しています。'
+              : 'このレポートの「根拠ログを見る」は、すべてこの一覧の記録を指しています。')
         );
         const list = el('div', 'evidence-list');
         keyIds.forEach((i) => list.append(evidenceCard(evidence[i], null, true, SCOPE)));
@@ -251,7 +286,7 @@ export function renderRecap(mount, lesson, stats) {
   }
 
   // ---- ATT&CK ----
-  root.appendChild(
+  if (!staticLesson) root.appendChild(
     section('MITRE ATT&CK との対応', (box) => {
       if (!techniques.length) {
         box.append(
@@ -351,7 +386,10 @@ export function renderRecap(mount, lesson, stats) {
           back.addEventListener('click', () => goToStage(a.stageId));
           nav.append(back);
         }
-        const jump = jumpButtons(a.evidenceIds, evidence, SCOPE);
+        const jump = jumpButtons(
+          a.evidenceIds, evidence, SCOPE,
+          staticLesson ? '根拠の記録を見る' : '根拠ログを見る'
+        );
         if (jump) nav.append(...jump.children);
         if (nav.children.length) row.append(nav);
         box.append(row);
@@ -384,10 +422,11 @@ export function renderRecap(mount, lesson, stats) {
     );
   }
 
-  root.appendChild(glossary());
+  root.appendChild(staticLesson ? staticGlossary() : glossary());
 
   // 何も無い教材でも白画面にしない。
-  if (!timeline.length && !techniques.length && !answers.length && !chain.length) {
+  if (!timeline.length && !techniques.length && !answers.length && !chain.length
+      && !staticFacts.length) {
     root.appendChild(
       el('p', 'muted',
         'この演習からは、まとめとして示せる記録が得られませんでした。読み取れたログが少ないか、根拠が不足しています。')

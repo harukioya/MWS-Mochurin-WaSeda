@@ -46,6 +46,18 @@ export async function renderHome(mount) {
   });
   cta.appendChild(inspect);
 
+  // Ghidra で保存した .gzf から、静的解析の演習を作る入口。処理はこの PC の
+  // Docker の中で行い、対象プログラムは実行しない（ghidra.js）。
+  const ghidra = document.createElement('button');
+  ghidra.type = 'button';
+  ghidra.className = 'btn btn-ghost btn-lg';
+  ghidra.textContent = 'Ghidraファイルから演習を作る →';
+  ghidra.setAttribute('aria-label', 'Ghidraファイル（.gzf）から演習を作る画面を開く');
+  ghidra.addEventListener('click', () => {
+    location.hash = '#/ghidra';
+  });
+  cta.appendChild(ghidra);
+
   hero.append(eyebrow, h1, intro, cta);
   mount.appendChild(hero);
   h1.focus({ preventScroll: true });
@@ -85,13 +97,17 @@ export async function renderHome(mount) {
   }
 
   generated.forEach((l) => {
+    // 静的解析の教材（gen-gzf-）は、ログ教材と取り違えないよう言い分ける。
+    const isStatic = /^gen-gzf-/.test(String(l.id));
     grid.appendChild(
       buildCard({
         id: l.id,
         title: l.title,
-        tagline: 'ログから自動生成しました。使用前に内容を確認してください。',
-        difficulty: '自動生成',
-        family: l.source || 'DFIR',
+        tagline: isStatic
+          ? 'Ghidra の保存済み解析情報から自動生成しました。使用前に内容を確認してください。'
+          : 'ログから自動生成しました。使用前に内容を確認してください。',
+        difficulty: isStatic ? '静的解析' : '自動生成',
+        family: isStatic ? 'Ghidra' : l.source || 'DFIR',
       }).el
     );
   });

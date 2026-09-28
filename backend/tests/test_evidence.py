@@ -328,7 +328,7 @@ class TestQuestionsAreGrounded(unittest.TestCase):
             explain._stage_files = original
         stage = next(s for s in lesson["stages"] if s["id"] == "files")
         # フェーズ3以降、段階は消さない。観測できた事実は見せたうえで、
-        # 設問を作れなかったことを言う（仕様書 5 節「空状態」）。
+        # 設問を作れなかったことを言う（空の段階を黙って消さない）。
         self.assertEqual(stage["quizzes"], [])
         self.assertIn("根拠が不足", stage.get("note", ""))
 
@@ -759,6 +759,14 @@ class TestLongRealisticLines(unittest.TestCase):
 
     def line(self, seq: int, exe: str) -> str:
         # 実データと同じ並び: 先頭に識別子が続き、psPath は後ろに来る。
+        #
+        # 値はすべてテスト用に作った合成値で、実在の端末・利用者を指さない。
+        # 長さと形式（GUID の桁と区切り、SID の構造、IPv4/IPv6 の組、MAC）は、
+        # 行の長さと項目の位置を再現するために元の並びと同じに保っている。
+        #   GUID … 7e57（"test"）と 0 だけで作った値
+        #   SID  … 各部を 1/2/3 の繰り返しにした、実在しない値
+        #   IP   … IPv4 は RFC 5737、IPv6 は RFC 3849 の文書用アドレス
+        #   MAC  … RFC 7042 の文書用アドレス（00-00-5E-00-53-xx）
         pad = (
             f'tmid=7e570000-0000-4000-8000-00000000000{seq} '
             'csid=S-1-5-21-1111111111-2222222222-3333333333 '

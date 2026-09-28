@@ -633,12 +633,22 @@ export async function renderArchive(mount, archiveId) {
   });
 
   let members;
+  // GZF から演習を作れる権限があるか。無ければボタンを出さない（押しても
+  // 403 になるだけなので）。状態の取得に失敗しても、中身の表示は続ける。
+  let canGhidra = false;
   try {
-    const [membersRes, { archives }] = await Promise.all([
+    const [membersRes, { archives }, status] = await Promise.all([
       api(`/api/archives/${encodeURIComponent(archiveId)}/members`),
       api('/api/archives'),
+      api('/api/status').catch(() => ({})),
     ]);
     members = membersRes.members;
+    canGhidra = (status.capabilities || []).includes('ghidra-analyze');
+    // 目録での位置。GZF の処理を頼むとき、名前と一緒にサーバーへ渡す。
+    // 名前はパスには使われず、目録が変わっていないかの照合にだけ使われる。
+    members.forEach((m, i) => {
+      m.ordinal = i;
+    });
     const match = archives.find((a) => String(a.id) === String(archiveId));
     if (!match) {
       title.textContent = '見つかりません';
@@ -673,7 +683,7 @@ export async function renderArchive(mount, archiveId) {
     page.append(el('h2', null, `注意が必要なファイル（${care.length} 個）`));
     page.append(el('p', 'muted', '何のファイルで、なぜ注意が要るのかを一件ずつ示します。'));
     const table = el('div', 'member-list');
-    care.forEach((m) => table.append(memberRow(m, archiveId)));
+    care.forEach((m) => table.append(memberRow(m, archiveId, canGhidra)));
     page.append(table);
   }
 
@@ -682,7 +692,7 @@ export async function renderArchive(mount, archiveId) {
     page.append(fold(
       `中身を確かめられなかったファイル（${unchecked.length} 個）`,
       'パスワードが掛かっている、または未対応の形式です。危険と決まったわけではありませんが、安全とも言えません。',
-      unchecked, archiveId
+      unchecked, archiveId, canGhidra
     ));
   }
 
@@ -692,7 +702,7 @@ export async function renderArchive(mount, archiveId) {
     page.append(fold(
       `そのまま開いて問題のないファイル（${safe.length} 個）`,
       `${kinds} など。これら自体が動き出すことはありません。`,
-      safe, archiveId
+      safe, archiveId, canGhidra
     ));
   }
 
@@ -1163,7 +1173,7 @@ async function renderDataset(mount, archiveId, forcedProfile) {
 }
 
 /** 畳める一覧。件数が多く、一件ずつ読む必要がないものに使う。 */
-function fold(headText, note, items, archiveId) {
+function fold(headText, note, items, archiveId, canGhidra = false) {
   const box = document.createElement('details');
   box.className = 'fold';
   const head = document.createElement('summary');
@@ -1172,12 +1182,69 @@ function fold(headText, note, items, archiveId) {
   box.append(head);
   box.append(el('p', 'muted', note));
   const table = el('div', 'member-list');
-  items.forEach((m) => table.append(memberRow(m, archiveId)));
+  items.forEach((m) => table.append(memberRow(m, archiveId, canGhidra)));
   box.append(table);
   return box;
 }
 
-function memberRow(m, archiveId) {
+/** Ghidra の GZF らしい項目か。本当の確認はサーバーが中身で行う。 */
+const looksLikeGzf = (m) =>
+  /\.gzf$/i.test(String(m.name || '')) || /Ghidra/.test(String(m.kind || ''));
+
+/**
+ * 「この GZF から演習を作る」。押したときだけ、その 1 件を処理に回す。
+ * 暗号化された項目はパスワードを求め、その場で入れ直せるようにする。
+ * 入力したパスワードは送信後すぐに欄から消し、保存しない。
+ */
+function gzfAction(m, archiveId) {
+  const box = el('div', 'navbtns navbtns--wrap');
+  const go = el('button', 'btn btn-primary btn-sm', 'この GZF から演習を作る');
+  go.type = 'button';
+  go.setAttribute('aria-label', `${showBidi(m.name)} から Ghidra の静的解析演習を作る`);
+  const pw = el('input', 'text-input');
+  pw.type = 'password';
+  pw.autocomplete = 'off';
+  pw.placeholder = 'ZIP のパスワード';
+  pw.setAttribute('aria-label', 'この項目の ZIP パスワード');
+  pw.hidden = m.verdict !== 'opaque-encrypted';
+  const out = el('div');
+  go.addEventListener('click', async () => {
+    go.disabled = true;
+    out.textContent = '';
+    const body = { archive: Number(archiveId), member: m.ordinal, name: m.name };
+    if (!pw.hidden && pw.value) body.password = pw.value;
+    pw.value = '';
+    let res;
+    let data = {};
+    try {
+      res = await fetch('/api/ghidra/jobs/from-archive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-MWS-Token': token() },
+        body: JSON.stringify(body),
+      });
+      data = await res.json().catch(() => ({}));
+    } catch (err) {
+      data = { error: 'サーバーに接続できません。' };
+    }
+    if (!out.isConnected) return;
+    go.disabled = false;
+    if (res && res.ok && data.job) {
+      location.hash = '#/ghidra';
+      return;
+    }
+    if (data.code === 'password-required' || data.code === 'password-rejected') {
+      pw.hidden = false;
+      pw.focus();
+    }
+    out.append(el('p', 'feedback is-bad', visible(data.error || '開始できませんでした。')));
+  });
+  box.append(pw, go);
+  const wrap = el('div');
+  wrap.append(box, out);
+  return wrap;
+}
+
+function memberRow(m, archiveId, canGhidra = false) {
   const row = el('div', 'member');
   const bar = el('div', 'member__bar');
   bar.append(verdictBadge(m.verdict));
@@ -1248,5 +1315,8 @@ function memberRow(m, archiveId) {
   });
   row.append(toggle);
   row.append(holder);
+  if (canGhidra && looksLikeGzf(m) && Number.isInteger(m.ordinal)) {
+    row.append(gzfAction(m, archiveId));
+  }
   return row;
 }
