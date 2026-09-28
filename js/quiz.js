@@ -16,7 +16,25 @@ const CATEGORY_HINTS = {
   correlation: '二つの記録の日時とタイムゾーンを確認してください。比較できる時刻基準で前後を比べ、表示順や因果関係とは区別します。',
   attck: 'プログラムと引数、または設定された場所から、記録された動作を確認してください。手法の意味と照合し、目的は推測で補わないようにします。',
   limits: 'それぞれの選択肢を裏付ける項目が、原文にあるか確認してください。記録された事実と、目的や背景の推測を分けます。',
+  'static-string': '命令の参照先アドレスと、定義済み文字列の記録のアドレスを照らし合わせてください。',
+  'static-call': '呼び出し命令の行き先アドレスと、関数の入口アドレスを照らし合わせてください。',
+  'static-external': '各記録のアドレス空間と登録先を確かめ、プログラムの外にある関数を探してください。',
 };
+
+/** Ghidra の保存済み解析情報から作った設問か。ボタンの言い方を変える。 */
+const isStaticQuiz = (quiz) => /^static-/.test(String(quiz && quiz.category));
+
+/**
+ * 段階的なヒント。`hints` が配列で来た設問だけが持つ。
+ *
+ * 一度に全部を見せると、最後のヒントが答えの在りかをほぼ言ってしまう。
+ * 1 つ目から順に開けるようにし、どこまで見たかを「ヒント n/m」で示す。
+ */
+function stagedHints(quiz) {
+  return Array.isArray(quiz.hints)
+    ? quiz.hints.filter((h) => typeof h === 'string' && h.trim())
+    : [];
+}
 
 function hintText(quiz) {
   if (typeof quiz.hint === 'string' && quiz.hint.trim()) return quiz.hint;
@@ -80,8 +98,8 @@ export function renderQuiz(container, quiz, onAnswered, evidence) {
   // soft: say so, and still hand control back so the stage isn't a dead end —
   // the caller only reveals "Continue" from this callback.
   //
-  // 問い文は旧形式が `q`、仕様書の `evidence_pick` が `prompt`。どちらか
-  // 一方でも設問として成り立つ。`q` だけを必須にしていたため、仕様書どおり
+  // 問い文は旧形式が `q`、根拠を選ぶ形式（`evidence_pick`）が `prompt`。
+  // どちらか一方でも設問として成り立つ。`q` だけを必須にしていたため、
   // `prompt` だけを書いた設問が「設問がありません」になっていた。
   const question =
     typeof quiz?.q === 'string'
@@ -124,7 +142,7 @@ export function renderQuiz(container, quiz, onAnswered, evidence) {
   const ids = subjectIds(quiz);
   const subject = subjectShown
     ? citedEvidence(ids, map, undefined, '対象の記録')
-    : jumpButtons(ids, map, 'stage', '問題の行を見る');
+    : jumpButtons(ids, map, 'stage', isStaticQuiz(quiz) ? '問題の命令を見る' : '問題の行を見る');
   if (subject) {
     subject.classList.add('quiz__subject');
     quizEl.appendChild(subject);
@@ -148,13 +166,39 @@ export function renderQuiz(container, quiz, onAnswered, evidence) {
   const hintToggle = document.createElement('summary');
   hintToggle.className = 'quiz__hint-toggle';
   hintToggle.textContent = 'ヒントを見る';
+  const steps = stagedHints(quiz);
   const hintBody = document.createElement('p');
   hintBody.className = 'quiz__hint-body';
-  hintBody.textContent = visible(hintText(quiz));
+  hintBody.textContent = visible(steps.length ? steps[0] : hintText(quiz));
   const hintNote = document.createElement('p');
   hintNote.className = 'quiz__hint-note';
   hintNote.textContent = 'ヒントを見ても減点されません。';
-  hint.append(hintToggle, hintBody, hintNote);
+  hint.append(hintToggle, hintBody);
+  if (steps.length > 1) {
+    hintToggle.textContent = `ヒントを見る（全 ${steps.length} 段階）`;
+    hintBody.textContent = `ヒント 1/${steps.length}: ${visible(steps[0])}`;
+    let shown = 1;
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'btn btn-ghost btn-sm quiz__hint-more';
+    more.textContent = '次のヒント';
+    more.addEventListener('click', () => {
+      if (shown >= steps.length) return;
+      const p = document.createElement('p');
+      p.className = 'quiz__hint-body';
+      p.textContent = `ヒント ${shown + 1}/${steps.length}: ${visible(steps[shown])}`;
+      hint.insertBefore(p, more);
+      shown += 1;
+      if (shown >= steps.length) {
+        more.disabled = true;
+        more.textContent = 'ヒントは以上です';
+      }
+      p.tabIndex = -1;
+      p.focus({ preventScroll: true });
+    });
+    hint.append(more);
+  }
+  hint.append(hintNote);
   quizEl.appendChild(hint);
 
   const optionsEl = document.createElement('div');
@@ -267,7 +311,10 @@ export function renderQuiz(container, quiz, onAnswered, evidence) {
     const cited = subject && subjectShown ? null : citedEvidence(quiz.evidenceIds, map);
     if (cited) quizEl.appendChild(cited);
 
-    const jump = jumpButtons(quiz.evidenceIds, map);
+    const jump = jumpButtons(
+      quiz.evidenceIds, map, 'stage',
+      isStaticQuiz(quiz) ? '根拠の記録を見る' : '根拠ログを見る'
+    );
     if (jump) quizEl.appendChild(jump);
 
     if (quiz.nextInvestigation) {

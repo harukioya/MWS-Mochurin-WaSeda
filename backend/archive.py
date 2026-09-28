@@ -22,7 +22,8 @@ Three classes of hazard are handled here:
 
 Note that traversal cannot actually escape via this tool, because storage is
 content-addressed and no member name ever becomes a path component
-(BUILD-CONTRACT rule 3). The name checks here exist to WARN the learner about
+(the storage rule: names come from the content hash, never from the archive).
+The name checks here exist to WARN the learner about
 what a third-party extractor would do with the same archive.
 """
 

@@ -35,7 +35,8 @@ import timeline
 from evidence import EvidenceStore, pick_index
 from parsers import FactReading, FactText, NormalizedEvent, ParsedSources, Parser
 
-#: 学習カテゴリ（仕様書 15.3）。最終レポートのカテゴリ別得点に使う。
+#: 学習カテゴリ。最終レポートのカテゴリ別得点に使う。データが許す範囲で、
+#: 1 つの演習に 4 つ以上の観点を含める。
 #:
 #: 「読む」「根拠を出す」だけでは、調査の練習として足りない。観測から手法へ
 #: 対応させる練習と、逆に「ここからは言えない」と線を引く練習を別建てにする。
@@ -51,11 +52,11 @@ CATEGORY_LABEL = {
 #: 1 段階に載せる事象の数。
 STAGE_EVENTS = 8
 
-#: 相関とみなす時間幅（秒）。仕様書 14.2 の初期値は前後 60 秒。
+#: 相関とみなす時間幅（秒）。初期値は前後 60 秒。
 #: プロファイルから差し替えられるよう、引数で上書きできる形にしてある。
 CORRELATION_WINDOW_SECONDS = 60.0
 
-#: 相関の対象にする種別の組（仕様書 14.2）。
+#: 相関の対象にする種別の組。説明できる決定規則だけを使う。
 #: 「プロセス開始とファイル操作」「プロセス開始と通信」の二つだけを持つ。
 #: 起動どうし、ファイルどうしを結ぶ規則は仕様に無いので実装しない。
 CORRELATION_PAIRS = (
@@ -63,7 +64,7 @@ CORRELATION_PAIRS = (
     frozenset({"process", "network"}),
 )
 
-#: 確からしさの区別（仕様書 14.1）。色だけでなく文言でも出せるよう、表示名を
+#: 確からしさの区別。色だけでなく文言でも出せるよう、表示名を
 #: ここに持つ。生ログ 1 行の証拠は常に observed。複数行を突き合わせた「解釈」
 #: を作っても、元の証拠自体は observed のまま書き換えない。
 STATUS_LABEL = {
@@ -651,7 +652,7 @@ def _stage_network(records: int, network: list[dict], store: EvidenceStore,
 
 
 # ---------------------------------------------------------------------------
-# 相関（仕様書 14.2）
+# 相関（同じ端末・近い時刻の記録を、説明できる規則だけで結び付ける）
 # ---------------------------------------------------------------------------
 
 def correlation_candidates(events: list[NormalizedEvent]) -> list[NormalizedEvent]:
@@ -673,7 +674,7 @@ def correlation_candidates(events: list[NormalizedEvent]) -> list[NormalizedEven
             if not _is_external(nev.attributes["target"]):
                 continue
         elif kind != "process":
-            continue  # レジストリは仕様書 14.2 の相関対象に無い
+            continue  # レジストリは相関の対象にしない（規則に無い組は結ばない）
         stamp = nev.timestamp
         if not stamp.known or not stamp.basis:
             continue
@@ -713,7 +714,7 @@ def _best_pair(candidates: list[NormalizedEvent], window: float,
     終わらなくなる。
 
     もうひとつは無駄。組になりうるのは「プロセス開始」と「ファイル操作 /
-    通信」の間だけで（仕様書 14.2）、しかも同じ端末・同じ時計の基準どうしに
+    通信」の間だけで、しかも同じ端末・同じ時計の基準どうしに
     限られる。総当たりは、その条件を満たさない組を大量に見てから捨てている。
 
     そこで (時計の基準, 端末キー) で仕切り、その中をプロセス側と非プロセス側の
@@ -789,7 +790,7 @@ def _best_pair(candidates: list[NormalizedEvent], window: float,
 
 
 def _gap_text(gap: float) -> str:
-    """時間差の言い方。仕様書の例「34 秒以内」に合わせる。"""
+    """時間差の言い方。関連付けの理由として「34 秒以内」のように示す。"""
     if gap < 1:
         return "1 秒以内"
     return f"{int(gap) if gap == int(gap) else round(gap, 1)} 秒以内"
@@ -802,7 +803,7 @@ def _correlation_quiz(store: EvidenceStore, candidates: list[NormalizedEvent],
                       ) -> tuple[dict | None, str, list[dict]]:
     """近接した二つの記録を突き合わせる設問。作れない理由と、使った 2 件も返す。
 
-    仕様書 14.2 の関連付け規則のうち、MVP で持つ二つを実装する。
+    関連付け規則のうち、MVP で持つ二つを実装する。
 
       * 同一ホストかつ近接時刻の「プロセス開始とファイル操作」
       * 同一ホストかつ近接時刻の「プロセス開始と通信」
@@ -842,8 +843,8 @@ def _correlation_quiz(store: EvidenceStore, candidates: list[NormalizedEvent],
         return None, ("採用した二つの記録の出典を保存できなかったため、"
                       "関連付けの設問は作りませんでした。"), []
     ids = [first["evidenceIds"][0], other["evidenceIds"][0]]
-    # 仕様書 14.2 が求める「同一端末で 34 秒以内」の形。これを出せない組は
-    # 上で落としてある。
+    # 理由は「同一端末で 34 秒以内」の形で示す。この形で説明できない組は、
+    # 自動の関連付けとして採用しない（上で落としてある）。
     reason_text = f"同一端末（{shared}）で {_gap_text(gap)}"
     gap_text = reason_text + "に"
 
@@ -1309,7 +1310,7 @@ def lesson_from_parsed(name: str, parsed: ParsedSources, lesson_id: str) -> dict
     elif why:
         correlation_notes.append(why)
 
-    # 根拠の無い設問は落とす。仕様書 15.1 の「根拠が不足する問題は生成しない」。
+    # 根拠の無い設問は落とす。根拠が不足する問題は生成しない。
     # 一般論だけの設問が混ざると、根拠を示すという教材の約束が崩れる。
     for stage in stages:
         raw = stage.get("quizzes")
